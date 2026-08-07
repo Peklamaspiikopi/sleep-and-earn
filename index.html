@@ -19,93 +19,254 @@
         }
         .container {
             text-align: center;
-            padding: 20px;
+            padding: 15px;
             border-radius: 20px;
             background: #1e1e1e;
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
-            width: 85%;
-            max-width: 400px;
+            width: 88%;
+            max-width: 380px;
+            height: 82vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
         }
-        h1 { font-size: 24px; margin-bottom: 15px; color: #00b0ff; letter-spacing: 1px; }
+        h1 { font-size: 22px; margin: 5px 0 10px 0; color: #00b0ff; letter-spacing: 1px; }
         
-        /* Блок курса валют */
+        /* Вкладки */
+        .tab-content {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            height: 100%;
+            overflow-y: auto;
+        }
+        .tab-content.active { display: flex; }
+
         .info-box {
             background: #252525;
-            padding: 12px;
-            border-radius: 15px;
-            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 12px;
+            margin-bottom: 12px;
             border: 1px solid #333;
             font-size: 13px;
         }
-        .info-line { margin: 6px 0; color: #bbb; }
+        .info-line { margin: 5px 0; color: #bbb; }
         .info-line b { color: #00e676; }
-        .alert-line { color: #ff9100; font-size: 11px; margin-top: 4px; }
+        
+        .alert-box {
+            background: #332512;
+            border: 1px solid #ff9100;
+            padding: 8px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            font-size: 11px;
+            color: #ffb74d;
+            text-align: left;
+            line-height: 1.4;
+        }
+        
+        .honesty-box {
+            background: #1a261a;
+            border: 1px solid #00e676;
+            padding: 8px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            font-size: 11px;
+            color: #a7ffeb;
+            text-align: left;
+            line-height: 1.4;
+        }
 
-        /* Блок суточного лимита */
         .limit-box {
             background: #232d38;
             border: 1px solid #00b0ff;
-            padding: 10px;
+            padding: 8px;
             border-radius: 12px;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             font-size: 12px;
             color: #00b0ff;
         }
 
-        .balance-box { background: #2a2a2a; padding: 15px; border-radius: 15px; margin-bottom: 25px; }
-        .balance-label { font-size: 14px; color: #aaa; }
-        .balance-value { font-size: 32px; font-weight: bold; color: #00e676; margin-top: 5px; }
+        /* Стильный компактный баланс */
+        .balance-box { background: #2a2a2a; padding: 8px 12px; border-radius: 12px; margin-bottom: 12px; }
+        .balance-label { font-size: 12px; color: #aaa; }
+        .balance-value { font-size: 26px; font-weight: bold; color: #00e676; margin-top: 2px; }
+        
+        .withdraw-box {
+            background: #291a1a;
+            border: 1px solid #ff5252;
+            padding: 8px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            font-size: 12px;
+            color: #ff8a80;
+        }
+
+        .promo-box {
+            background: #222;
+            border: 1px solid #444;
+            padding: 8px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            display: flex;
+            gap: 5px;
+        }
+        .promo-input {
+            flex: 1;
+            background: #111;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 6px;
+            border-radius: 8px;
+            font-size: 12px;
+            text-align: center;
+        }
+        .promo-btn {
+            background: #00e676; color: #000; border: none;
+            padding: 0 12px; font-weight: bold; border-radius: 8px;
+            cursor: pointer; font-size: 12px;
+        }
         
         .timer-circle {
-            width: 170px; height: 170px; border-radius: 50%;
-            border: 6px solid #333; display: flex; align-items: center;
-            justify-content: center; margin: 0 auto 25px auto;
+            width: 120px; height: 120px; border-radius: 50%;
+            border: 5px solid #333; display: flex; align-items: center;
+            justify-content: center; margin: 5px auto 15px auto;
             position: relative; transition: border-color 0.3s;
         }
         .timer-circle.active { border-color: #00b0ff; }
-        .timer-display { font-size: 36px; font-weight: bold; font-variant-numeric: tabular-nums; }
+        .timer-display { font-size: 26px; font-weight: bold; font-variant-numeric: tabular-nums; }
         
         .btn {
             background: #00b0ff; color: #fff; border: none;
-            padding: 15px 40px; font-size: 18px; font-weight: bold;
+            padding: 10px 30px; font-size: 15px; font-weight: bold;
             border-radius: 50px; cursor: pointer; width: 100%;
             box-shadow: 0 4px 15px rgba(0, 176, 255, 0.4);
             transition: background 0.2s, transform 0.1s;
         }
         .btn:disabled { background: #444; box-shadow: none; color: #888; cursor: not-allowed; }
-        .btn:active:not(:disabled) { transform: scale(0.98); }
+        
+        .btn-withdraw {
+            background: #e040fb;
+            box-shadow: 0 4px 15px rgba(224, 64, 251, 0.4);
+            margin-top: 5px;
+        }
+
+        .nav-bar {
+            display: flex;
+            background: #252525;
+            border-radius: 12px;
+            padding: 5px;
+            margin-top: 10px;
+            gap: 5px;
+        }
+        .nav-btn {
+            flex: 1; background: transparent; color: #888; border: none;
+            padding: 8px 0; font-size: 12px; font-weight: bold;
+            border-radius: 8px; cursor: pointer; transition: background 0.2s, color 0.2s;
+        }
+        .nav-btn.active { background: #333; color: #00b0ff; }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); display: none; align-items: center;
+            justify-content: center; z-index: 1000;
+        }
+        .modal-content {
+            background: #222; border: 1px solid #00b0ff; padding: 20px;
+            border-radius: 20px; width: 75%; max-width: 300px; text-align: center;
+        }
+        .modal-title { font-size: 16px; color: #00b0ff; font-weight: bold; margin-bottom: 10px; }
+        .modal-text { font-size: 12px; color: #ddd; line-height: 1.5; margin-bottom: 15px; }
     </style>
     <script src="https://adsgram.ai"></script>
 </head>
 <body>
 
+<div class="modal-overlay" id="welcomeModal">
+    <div class="modal-content">
+        <div class="modal-title">🚀 Первый запуск!</div>
+        <div class="modal-text">Привет! Это первый запуск автоматического терминала. Пожалуйста, если вы заметите какую-то ошибку или баг — сразу напишите в нашу техподдержку! Вместе мы сделаем сервис лучше.</div>
+        <button class="btn" onclick="closeModal()">Понятно</button>
+    </div>
+</div>
+
 <div class="container">
     <h1>Спи и Копи</h1>
     
-    <!-- Новый блок курса и правил ОБТ -->
-    <div class="info-box">
-        <div class="info-line">💎 Курс: <b>1 Монета = 1 Копейка</b></div>
-        <div class="info-line">📺 Награда за авто-просмотр: <b>+7 Монет</b></div>
-        <div class="alert-line">⚠️ Не сворачивайте бота! Реклама включится сама.</div>
+    <!-- ВКЛАДКА 1: ТЕРМИНАЛ (ГЛАВНАЯ) -->
+    <div class="tab-content active" id="tabTerminal">
+        <div class="alert-box">
+            ⚠️ <b>Внимание:</b> Чтобы экран смартфона не засыпал во время работы терминала, обязательно <b>отключите режим энергосбережения</b> в настройках телефона и оставьте его на зарядке.
+        </div>
+
+        <div class="limit-box">
+            ⏱️ Суточный лимит авто-фарма: <b><span id="limitHours">2.0</span> ч. / <span id="maxLimitHours">2.0</span> ч.</b>
+        </div>
+        
+        <!-- БАЛАНС ПЕРЕНЕСЕН СЮДА -->
+        <div class="balance-box">
+            <div class="balance-label">Ваш баланс:</div>
+            <div class="balance-value"><span id="balance">0</span> Монет</div>
+        </div>
+        
+        <div class="timer-circle" id="timerContainer">
+            <div class="timer-display" id="timer">05:00</div>
+        </div>
+        
+        <button class="btn" id="startBtn">Запустить авто-фарм</button>
     </div>
 
-    <!-- Блок суточного лимита часов -->
-    <div class="limit-box">
-        ⏱️ Суточный лимит авто-фарма: <b><span id="limitHours">2.0</span> ч. / 2.0 ч.</b>
+    <!-- ВКЛАДКА 2: ФИНАНСЫ (ДОПОЛНИТЕЛЬНАЯ) -->
+    <div class="tab-content" id="tabFinance">
+        <div class="info-box">
+            <div class="info-line">💎 Курс: <b>1 Монета = 1 Копейка</b></div>
+            <div class="info-line">📺 Награда за авто-просмотр: <b>+7 Монет</b></div>
+        </div>
+
+        <div class="honesty-box">
+            🛡️ <b>Правило честности:</b> Любые попытки искусственной накрутки или изменения кода баланса проверяются через сервера Adsgram. Нарушители блокируются навсегда без выплаты средств. Играйте честно!
+        </div>
+        
+        <div class="withdraw-box">
+            🔒 Минимальный вывод: <b>2000 Монет (20 руб.)</b> на телефон РФ.
+        </div>
+
+        <div class="promo-box">
+            <input type="text" id="promoInput" class="promo-input" placeholder="Введите промокод...">
+            <button class="promo-btn" id="promoBtn">OK</button>
+        </div>
+        
+        <button class="btn btn-withdraw" id="withdrawBtn">Заказать вывод средств</button>
     </div>
-    
-    <div class="balance-box">
-        <div class="balance-label">Ваш баланс:</div>
-        <div class="balance-value"><span id="balance">0</span> Монет</div>
+
+    <!-- Панель навигации внизу карточки -->
+    <div class="nav-bar">
+        <button class="nav-btn active" id="btnNavTerminal" onclick="switchTab('terminal')">🛌 Терминал</button>
+        <button class="nav-btn" id="btnNavFinance" onclick="switchTab('finance')">💼 Финансы</button>
     </div>
-    
-    <div class="timer-circle" id="timerContainer">
-        <div class="timer-display" id="timer">05:00</div>
-    </div>
-    
-    <button class="btn" id="startBtn">Запустить авто-фарм</button>
 </div>
 
 <script src="script.js"></script>
+<script>
+function switchTab(tabName) {
+    const tabTerminal = document.getElementById('tabTerminal');
+    const tabFinance = document.getElementById('tabFinance');
+    const btnTerminal = document.getElementById('btnNavTerminal');
+    const btnFinance = document.getElementById('btnNavFinance');
+
+    if (tabName === 'terminal') {
+        tabTerminal.classList.add('active');
+        tabFinance.classList.remove('active');
+        btnTerminal.classList.add('active');
+        btnFinance.classList.remove('active');
+    } else {
+        tabTerminal.classList.remove('active');
+        tabFinance.classList.add('active');
+        btnTerminal.classList.remove('active');
+        btnFinance.classList.add('active');
+    }
+}
+</script>
 </body>
 </html>
