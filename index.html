@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Заработок Спи и Копи (ОБТ)</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .container {
+            text-align: center;
+            padding: 20px;
+            border-radius: 20px;
+            background: #1e1e1e;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            width: 85%;
+            max-width: 400px;
+        }
+        h1 { font-size: 24px; margin-bottom: 15px; color: #00b0ff; letter-spacing: 1px; }
+        
+        /* Блок курса валют */
+        .info-box {
+            background: #252525;
+            padding: 12px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+            font-size: 13px;
+        }
+        .info-line { margin: 6px 0; color: #bbb; }
+        .info-line b { color: #00e676; }
+        .alert-line { color: #ff9100; font-size: 11px; margin-top: 4px; }
+
+        /* Блок суточного лимита */
+        .limit-box {
+            background: #232d38;
+            border: 1px solid #00b0ff;
+            padding: 10px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 12px;
+            color: #00b0ff;
+        }
+
+        .balance-box { background: #2a2a2a; padding: 15px; border-radius: 15px; margin-bottom: 25px; }
+        .balance-label { font-size: 14px; color: #aaa; }
+        .balance-value { font-size: 32px; font-weight: bold; color: #00e676; margin-top: 5px; }
+        
+        .timer-circle {
+            width: 170px; height: 170px; border-radius: 50%;
+            border: 6px solid #333; display: flex; align-items: center;
+            justify-content: center; margin: 0 auto 25px auto;
+            position: relative; transition: border-color 0.3s;
+        }
+        .timer-circle.active { border-color: #00b0ff; }
+        .timer-display { font-size: 36px; font-weight: bold; font-variant-numeric: tabular-nums; }
+        
+        .btn {
+            background: #00b0ff; color: #fff; border: none;
+            padding: 15px 40px; font-size: 18px; font-weight: bold;
+            border-radius: 50px; cursor: pointer; width: 100%;
+            box-shadow: 0 4px 15px rgba(0, 176, 255, 0.4);
+            transition: background 0.2s, transform 0.1s;
+        }
+        .btn:disabled { background: #444; box-shadow: none; color: #888; cursor: not-allowed; }
+        .btn:active:not(:disabled) { transform: scale(0.98); }
+    </style>
+    <script src="https://adsgram.ai"></script>
+</head>
+<body>
+
+<div class="container">
+    <h1>Спи и Копи</h1>
+    
+    <!-- Новый блок курса и правил ОБТ -->
+    <div class="info-box">
+        <div class="info-line">💎 Курс: <b>1 Монета = 1 Копейка</b></div>
+        <div class="info-line">📺 Награда за авто-просмотр: <b>+7 Монет</b></div>
+        <div class="alert-line">⚠️ Не сворачивайте бота! Реклама включится сама.</div>
+    </div>
+
+    <!-- Блок суточного лимита часов -->
+    <div class="limit-box">
+        ⏱️ Суточный лимит авто-фарма: <b><span id="limitHours">2.0</span> ч. / 2.0 ч.</b>
+    </div>
+    
+    <div class="balance-box">
+        <div class="balance-label">Ваш баланс:</div>
+        <div class="balance-value"><span id="balance">0</span> Монет</div>
+    </div>
+    
+    <div class="timer-circle" id="timerContainer">
+        <div class="timer-display" id="timer">05:00</div>
+    </div>
+    
+    <button class="btn" id="startBtn">Запустить авто-фарм</button>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
