@@ -1,131 +1,174 @@
-let timer;
-let timeLeft = 300; // 5 минут в секундах (5 * 60)
-let limitSeconds = 7200; // 2 часа суточного лимита в секундах (2 * 3600)
-let isRunning = false;
+const AdController = window.Adsgram ? window.Adsgram.init({ blockId: "41720" }) : null;
+
+let balance = parseInt(localStorage.getItem('sleep_balance')) || 0;
+let lastLimitReset = localStorage.getItem('sleep_limit_reset') || '';
+let usedPromos = JSON.parse(localStorage.getItem('used_promos')) || [];
+
+let timerInterval = null;
+let currentSeconds = 300; 
+let isFarming = false;
 let wakeLock = null;
-let balance = 0;
 
-const timerDisplay = document.getElementById('timer');
-const startBtn = document.getElementById('startBtn');
-const timerContainer = document.getElementById('timerContainer');
-const balanceDisplay = document.getElementById('balance');
-const limitHoursDisplay = document.getElementById('limitHours');
+let maxLimitMinutes = 120; 
+let promoTimeEnd = localStorage.getItem('promo_time_end');
 
-// НАСТРОЙКА РЕКЛАМЫ ADSGRAM (Сюда вставите свой Block ID)
-const AdController = window.Adsgram ? window.Adsgram.init({ blockId: "YOUR_BLOCK_ID_HERE" }) : null;
-
-// Функция защиты экрана от выключения (Wake Lock API)
-async function requestWakeLock() {
-    try {
-        if ('wakeLock' in navigator) {
-            wakeLock = await navigator.wakeLock.request('screen');
-            console.log('Защита экрана активирована: дисплей не погаснет');
-        }
-    } catch (err) {
-        console.log(`Ошибка Wake Lock: ${err.message}`);
+if (promoTimeEnd) {
+    if (Date.now() > parseInt(promoTimeEnd)) {
+        localStorage.removeItem('promo_time_end');
+        maxLimitMinutes = 120;
+    } else {
+        maxLimitMinutes = 180;
     }
 }
 
-// Функция отключения защиты экрана
-function releaseWakeLock() {
-    if (wakeLock !== null) {
-        wakeLock.release();
-        wakeLock = null;
-        console.log('Защита экрана отключена');
-    }
+let limitMinutes = localStorage.getItem('sleep_limit_minutes') !== null ? parseInt(localStorage.getItem('sleep_limit_minutes')) : maxLimitMinutes;
+
+const today = new Date().toDateString();
+if (lastLimitReset !== today) {
+    limitMinutes = maxLimitMinutes;
+    localStorage.setItem('sleep_limit_minutes', limitMinutes);
+    localStorage.setItem('sleep_limit_reset', today);
 }
 
-// Обновление шкалы лимита на экране
+document.getElementById('balance').innerText = balance;
+updateLimitDisplay();
+
 function updateLimitDisplay() {
-    const hoursLeft = (limitSeconds / 3600).toFixed(2);
-    limitHoursDisplay.innerText = hoursLeft;
+    document.getElementById('limitHours').innerText = (limitMinutes / 60).toFixed(1);
+    document.getElementById('maxLimitHours').innerText = (maxLimitMinutes / 60).toFixed(1);
 }
 
-// Функция запуска таймера
-function startTimer() {
-    if (limitSeconds <= 0) {
-        stopFarmDueToLimit();
+window.addEventListener('DOMContentLoaded', () => {
+    if (!localStorage.getItem('sleep_first_run_done')) {
+        document.getElementById('welcomeModal').style.display = 'flex';
+    }
+});
+
+window.closeModal = function() {
+    localStorage.setItem('sleep_first_run_done', 'true');
+    document.getElementById('welcomeModal').style.display = 'none';
+}
+
+document.getElementById('promoBtn').addEventListener('click', () => {
+    let code = document.getElementById('promoInput').value.trim().toUpperCase();
+    if (!code) return;
+    
+    if (usedPromos.includes(code)) {
+        alert("Этот промокод уже был активирован вами ранее!");
         return;
     }
 
-    isRunning = true;
-    startBtn.disabled = true;
-    startBtn.innerText = "Авто-фарм активен...";
-    timerContainer.classList.add('active');
-    requestWakeLock(); // Включаем защиту экрана
-
-    timer = setInterval(() => {
-        timeLeft--;
-        limitSeconds--; // Отнимаем суточный лимит каждую секунду
+    if (code === "BONUS300") {
+        balance += 300;
+        localStorage.setItem('sleep_balance', balance);
+        document.getElementById('balance').innerText = balance;
+        usedPromos.push(code);
+        localStorage.setItem('used_promos', JSON.stringify(usedPromos));
+        alert("Успешно! Вам начислено +300 бонусных монет!");
+        document.getElementById('promoInput').value = "";
+    } 
+    else if (code === "SUPERTIME2026") {
+        let expireTime = Date.now() + (48 * 60 * 60 * 1000); 
+        localStorage.setItem('promo_time_end', expireTime);
+        localStorage.setItem('sleep_limit_minutes', 180);
         
-        updateTimerDisplay();
-        updateLimitDisplay();
+        usedPromos.push(code);
+        localStorage.setItem('used_promos', JSON.stringify(usedPromos));
+        alert("Успешно! Ваш суточный лимит увеличен до 3 часов на следующие 48 часов!");
+        location.reload();
+    } else {
+        alert("Ошибка: Такого промокода не существует или он устарел.");
+    }
+});
 
-        // Если суточный лимит кончился прямо во время таймера
-        if (limitSeconds <= 0) {
-            clearInterval(timer);
-            stopFarmDueToLimit();
+document.getElementById('withdrawBtn').addEventListener('click', () => {
+    if (balance < 2000) {
+        alert("Ошибка: Недостаточно монет! Для вывода на балансе должно быть минимум 2000 монет (20 руб.). Продолжайте авто-фарминг.");
+    } else {
+        alert("Заявка доступна! Скопируйте ваш баланс (" + balance + " монет) и отправьте в бота техподдержки @SleepEarnSupport_bot, указав ваш номер телефона. Администратор проверит баланс и переведет деньги на мобильный анонимно.");
+    }
+});
+
+async function requestWakeLock() {
+    try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
+}
+function releaseWakeLock() {
+    if (wakeLock !== null) { wakeLock.release(); wakeLock = null; }
+}
+
+const startBtn = document.getElementById('startBtn');
+const timerContainer = document.getElementById('timerContainer');
+const timerDisplay = document.getElementById('timer');
+
+startBtn.addEventListener('click', () => {
+    if (!isFarming) {
+        if (limitMinutes <= 0) {
+            alert("Ваш суточный лимит исчерпан. Обновление лимита происходит раз в 24 часа. Возвращайтесь завтра!");
+            return;
         }
-        // Если таймер дошел до 0
-        else if (timeLeft <= 0) {
-            clearInterval(timer);
-            triggerAdShow(); // Автоматически вызываем рекламу!
+        startFarming();
+    }
+});
+
+function startFarming() {
+    isFarming = true;
+    startBtn.disabled = true;
+    startBtn.innerText = "Авто-фарм запущен...";
+    timerContainer.classList.add('active');
+    requestWakeLock();
+
+    timerInterval = setInterval(() => {
+        currentSeconds--;
+        let mins = Math.floor(currentSeconds / 60);
+        let secs = currentSeconds % 60;
+        timerDisplay.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+        if (currentSeconds <= 0) {
+            clearInterval(timerInterval);
+            triggerAd();
         }
     }, 1000);
 }
 
-// Обновление цифр таймера
-function updateTimerDisplay() {
-    const minutes = Math.floor(timeLeft / 60);
-    const seconds = timeLeft % 60;
-    timerDisplay.innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-}
-
-// Остановка фарминга при исчерпании лимита
-function stopFarmDueToLimit() {
-    isRunning = false;
-    releaseWakeLock();
-    timerContainer.classList.remove('active');
-    startBtn.disabled = true;
-    startBtn.innerText = "Лимит исчерпан! Ждите обновления.";
-    alert("Ваш суточный лимит авто-фарма на сегодня полностью закончен! Возвращайтесь завтра или приглашайте рефералов.");
-}
-
-// Функция автоматического показа рекламы Adsgram
-function triggerAdShow() {
-    console.log('Запуск рекламного ролика...');
-    
+function triggerAd() {
     if (AdController) {
-        AdController.show().then((result) => {
-            // Видео успешно просмотрено до конца!
-            balance += 7; // Честно начисляем 7 монет (7 копеек)
-            balanceDisplay.innerText = balance;
-            restartCycle();
-        }).catch((result) => {
-            // Ошибка или пропуск рекламы
-            alert("Реклама пропущена или не загрузилась. Монеты не начислены.");
-            restartCycle();
+        AdController.show().then(() => {
+            balance += 7;
+            limitMinutes -= 5;
+            if (limitMinutes < 0) limitMinutes = 0;
+
+            localStorage.setItem('sleep_balance', balance);
+            localStorage.setItem('sleep_limit_minutes', limitMinutes);
+
+            document.getElementById('balance').innerText = balance;
+            updateLimitDisplay();
+            
+            alert("Просмотр завершен. Начислено +7 Монет!");
+            resetTimer();
+        }).catch(() => {
+            alert("Рекламный ролик не загрузился или был пропущен. Попробуйте еще раз.");
+            resetTimer();
         });
     } else {
-        // ТЕСТОВЫЙ РЕЖИМ (Если код запущен локально без сети Adsgram)
-        balance += 7;
-        balanceDisplay.innerText = balance;
-        alert("[ТЕСТ ПОКАЗА] 5 минут прошло! Начислено +7 монет. Запуск нового цикла.");
-        restartCycle();
+        alert("Ошибка сети. Пожалуйста, отключите блокировщики рекламы.");
+        resetTimer();
     }
 }
 
-// Перезапуск цикла авто-фарма
-function restartCycle() {
-    timeLeft = 300; // Сбрасываем таймер обратно на 5 минут
-    updateTimerDisplay();
-    startTimer(); // Запускаем заново бесконечный цикл
-}
-
-// Обработчик клика по кнопке запуска
-startBtn.addEventListener('click', () => {
-    if (!isRunning) {
-        startTimer();
+function resetTimer() {
+    clearInterval(timerInterval);
+    currentSeconds = 300;
+    timerDisplay.innerText = "05:00";
+    isFarming = false;
+    timerContainer.classList.remove('active');
+    releaseWakeLock();
+    
+    if (limitMinutes > 0) {
+        startBtn.disabled = false;
+        startBtn.innerText = "Запустить авто-фарм";
+        startFarming();
+    } else {
+        startBtn.innerText = "Лимит исчерпан";
+        alert("Суточный лимит полностью исчерпан! Терминал остановлен до завтра.");
     }
-});
-
+}
