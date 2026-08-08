@@ -181,7 +181,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         toggleModeUI(false);
     };
 
-    // Инициализация Adsgram с вашими реальными ID
     let videoController = null;
     let bannerController = null;
 
@@ -394,10 +393,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (isAutoMode) {
             if (bannerController) {
                 bannerController.show()
-                    .then(() => { onAdWatchedSuccess(2); })
-                    .catch((err) => { handleAdError(err); });
+                    .then(() => { 
+                        onAdWatchedSuccess(2); 
+                    })
+                    .catch((err) => { 
+                        handleAdError(err); 
+                    });
             } else { 
-                setTimeout(() => { onAdWatchedSuccess(2); }, 2000);
+                handleAdError("Banner controller not initialized");
             }
         } else {
             if (videoController) {
@@ -409,9 +412,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                             handleAdError("Ad closed before completion");
                         }
                     })
-                    .catch((err) => { handleAdError(err); });
+                    .catch((err) => { 
+                        handleAdError(err); 
+                    });
             } else { 
-                setTimeout(() => { onAdWatchedSuccess(7); }, 2000);
+                handleAdError("Video controller not initialized");
             }
         }
     }
