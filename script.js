@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ==========================================
-    // 3. ADSGRAM КОНТРОЛЛЕРЫ (ЗАМЕНИТЕ ID ПОСЛЕ ПОЛУЧЕНИЯ КЛЮЧЕЙ!)
+    // 3. ADSGRAM КОНТРОЛЛЕРЫ
     // ==========================================
     const VideoController = window.Adsgram ? window.Adsgram.init({ blockId: "41720" }) : null;
     const BannerController = window.Adsgram ? window.Adsgram.init({ blockId: "YOUR_INTERSTITIAL_ID_HERE" }) : null;
