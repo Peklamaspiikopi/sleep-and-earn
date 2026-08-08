@@ -40,12 +40,12 @@
         /* General Card Base */
         .card { background: #1a1c23; border: 1px solid #2a2d37; border-radius: 16px; padding: 14px; text-align: left; }
         
-        /* Neon Styled Secondary Elements */
+        /* Neon Orange Alert Box (Lamp) */
         .alert-box { 
-            background: rgba(0, 176, 255, 0.04); 
-            border: 1px solid rgba(0, 176, 255, 0.4); 
-            box-shadow: 0 0 12px rgba(0, 176, 255, 0.12), inset 0 1px 0 rgba(255,255,255,0.03);
-            color: #b3e5fc; 
+            background: rgba(255, 145, 0, 0.04); 
+            border: 1px solid rgba(255, 145, 0, 0.5); 
+            box-shadow: 0 0 14px rgba(255, 145, 0, 0.15), inset 0 1px 0 rgba(255,255,255,0.03);
+            color: #ffe0b2; 
             font-size: 12px; 
             line-height: 1.4; 
             border-radius: 16px; 
@@ -54,7 +54,7 @@
             gap: 10px; 
             align-items: center; 
         }
-        .alert-icon { font-size: 20px; flex-shrink: 0; text-shadow: 0 0 8px rgba(0, 176, 255, 0.6); }
+        .alert-icon { font-size: 20px; flex-shrink: 0; text-shadow: 0 0 10px rgba(255, 145, 0, 0.7); }
 
         .honesty-card { 
             background: rgba(0, 230, 118, 0.04); 
@@ -299,7 +299,7 @@
         </div>
         
         <div class="honesty-card" id="tHonesty">
-            🛡️ <b>Честная игра:</b> Мы за прозрачное сотрудничество. Любые накрутки фиксируются системой. Предоставляем 1 предупреждение без блокировки аккаунта.
+            🛡️ <b>Правило честности:</b> Мы за прозрачное сотрудничество. Любые накрутки фиксируются системой. Предоставляем 1 предупреждение без блокировки аккаунта.
         </div>
         
         <div class="withdraw-limit-card" id="tWithdrawLimit">
@@ -321,7 +321,7 @@
     </div>
 </div>
 
-<script src="script.js?v=4" defer></script>
+<script src="script.js?v=5" defer></script>
 <script>
 function switchTab(tabName) {
     const tabTerminal = document.getElementById('tabTerminal'); 
