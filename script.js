@@ -144,7 +144,6 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleModeUI();
     };
 
-    // Замените "41720" на ваш реальный Block ID видеорекламы, а "YOUR_INTERSTITIAL_ID_HERE" на ID баннера/межстраничной рекламы
     const VideoController = window.Adsgram ? window.Adsgram.init({ blockId: "41720" }) : null;
     const BannerController = window.Adsgram ? window.Adsgram.init({ blockId: "YOUR_INTERSTITIAL_ID_HERE" }) : null;
 
@@ -200,9 +199,10 @@ document.addEventListener('DOMContentLoaded', () => {
             modeLabel.innerText = t.modeVideo;
             selectedTimerMinutes = 5;
             maxLimitMinutes = 120;
-            limitMinutes = maxLimitMinutes;
+            limitMinutes = maxLimitMinutes; // Сброс до макс. значения при переключении
             currentSeconds = selectedTimerMinutes * 60;
         }
+        localStorage.setItem('sleep_limit_minutes', limitMinutes);
         updateTimerDisplay();
         updateLimitDisplay();
     }
@@ -222,12 +222,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isFarming) return;
         selectedTimerMinutes = timeMins;
         maxLimitMinutes = limitMins;
-        limitMinutes = maxLimitMinutes;
+        limitMinutes = maxLimitMinutes; // Сброс до макс. значения при выборе пресета
         currentSeconds = selectedTimerMinutes * 60;
         
         document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         
+        localStorage.setItem('sleep_limit_minutes', limitMinutes);
         updateTimerDisplay();
         updateLimitDisplay();
     };
@@ -329,7 +330,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 1000);
         };
 
-        // Заглушка, если приложение запущено локально через file://
         if (window.location.protocol === 'file:') {
             setTimeout(() => {
                 onAdWatchedSuccess(isAutoMode ? 2 : 7);
@@ -343,7 +343,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     .then(() => { onAdWatchedSuccess(2); })
                     .catch((err) => { handleAdError(err); });
             } else { 
-                // Заглушка если контроллер рекламы не подгрузился
                 setTimeout(() => { onAdWatchedSuccess(2); }, 2000);
             }
         } else {
@@ -352,7 +351,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     .then(() => { onAdWatchedSuccess(7); })
                     .catch((err) => { handleAdError(err); });
             } else { 
-                // Заглушка если контроллер рекламы не подгрузился
                 setTimeout(() => { onAdWatchedSuccess(7); }, 2000);
             }
         }
