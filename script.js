@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    // Безопасное чтение ключей из окружения Vercel или window-переменных
     const SUPABASE_URL = window.ENV_SUPABASE_URL || "https://dpbrrirjnsobmtojzwtx.supabase.co";
-    const SUPABASE_KEY = window.ENV_SUPABASE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."; // Публичный anon ключ или переменная
+    const SUPABASE_KEY = window.ENV_SUPABASE_KEY || "";
     const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
     const translations = {
@@ -79,11 +78,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     let fullRefLink = `https://t.me/${botUsername}?start=ref_${myTelegramID}`;
     document.getElementById('myRefLink').value = fullRefLink;
 
+    let isAutoMode = localStorage.getItem('sleep_auto_mode') === 'true';
+    let maxLimitMinutes = isAutoMode ? 180 : 120; 
+    
     let userData = {
         balance: 0,
         ref_count: 0,
         ref_earn: 0,
-        limit_minutes: 120,
+        limit_minutes: maxLimitMinutes,
         used_promos: [],
         last_reset: new Date().toDateString()
     };
@@ -100,9 +102,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (data) {
             userData = data;
             if (userData.last_reset !== today) {
-                userData.limit_minutes = 120;
+                userData.limit_minutes = maxLimitMinutes;
                 userData.last_reset = today;
-                await updateSupabase({ limit_minutes: 120, last_reset: today });
+                await updateSupabase({ limit_minutes: maxLimitMinutes, last_reset: today });
             }
         } else {
             await supabaseClient.from('users').insert([{
@@ -110,12 +112,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 balance: 0,
                 ref_count: 0,
                 ref_earn: 0,
-                limit_minutes: 120,
+                limit_minutes: maxLimitMinutes,
                 used_promos: [],
                 last_reset: today
             }]);
         }
     }
+
+    let limitMinutes = userData.limit_minutes;
 
     async function updateSupabase(fields) {
         if (!supabaseClient) return;
@@ -169,7 +173,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('tRefCoinUnit').innerText = t.refCoinUnit;
 
         if (!isFarming) {
-            document.getElementById('startBtn').innerText = (userData.limit_minutes > 0) ? t.startBtn : t.limitBtn;
+            document.getElementById('startBtn').innerText = (limitMinutes > 0) ? t.startBtn : t.limitBtn;
         } else {
             document.getElementById('startBtn').innerText = t.stopBtn;
         }
@@ -185,11 +189,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let isFarming = false;
     let wakeLock = null;
     let isClickActionPending = false;
-
-    let isAutoMode = localStorage.getItem('sleep_auto_mode') === 'true';
     let selectedTimerMinutes = 5; 
-    let maxLimitMinutes = isAutoMode ? 180 : 120; 
-    let limitMinutes = userData.limit_minutes;
 
     const startBtn = document.getElementById('startBtn');
     const timerContainer = document.getElementById('timerContainer');
@@ -202,10 +202,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     modeToggle.checked = isAutoMode;
+    toggleModeUI(true);
     setLanguage(currentLang);
-    updateLimitDisplay();
 
-    function toggleModeUI() {
+    function toggleModeUI(resetLimit = false) {
         const presetBox = document.getElementById('presetBox');
         const modeLabel = document.getElementById('modeLabel');
         const t = translations[currentLang];
@@ -213,11 +213,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (isAutoMode) {
             presetBox.style.display = 'block';
             modeLabel.innerText = t.modeBanner;
-            maxLimitMinutes = 180; 
+            if (resetLimit && (limitMinutes > 180 || limitMinutes === 120)) {
+                maxLimitMinutes = 180;
+                limitMinutes = 180;
+            } else if (!maxLimitMinutes || maxLimitMinutes === 120) {
+                maxLimitMinutes = 180;
+            }
         } else {
             presetBox.style.display = 'none';
             modeLabel.innerText = t.modeVideo;
             maxLimitMinutes = 120;
+            if (resetLimit && limitMinutes > 120) {
+                limitMinutes = 120;
+            }
             selectedTimerMinutes = 5;
         }
         
@@ -238,17 +246,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         isAutoMode = e.target.checked;
         localStorage.setItem('sleep_auto_mode', isAutoMode);
-        toggleModeUI(); 
+        
+        maxLimitMinutes = isAutoMode ? 180 : 120;
+        limitMinutes = maxLimitMinutes;
+        
+        toggleModeUI(false);
+        updateSupabase({ limit_minutes: limitMinutes });
     });
 
     window.setPreset = function(timeMins, limitMins, btn) {
         if (isFarming) return;
         selectedTimerMinutes = timeMins;
         maxLimitMinutes = limitMins;
+        limitMinutes = limitMins; 
         
-        if (limitMinutes > maxLimitMinutes) {
-            limitMinutes = maxLimitMinutes;
-        }
         currentSeconds = selectedTimerMinutes * 60;
         
         document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
@@ -256,6 +267,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         updateTimerDisplay();
         updateLimitDisplay();
+        updateSupabase({ limit_minutes: limitMinutes });
     };
 
     function updateLimitDisplay() {
@@ -313,6 +325,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     function runFarmingCycle() {
         if (!isFarming) return;
 
+        if (timerInterval) clearInterval(timerInterval);
+
         const t = translations[currentLang];
         
         timerDisplay.classList.add('timer-loading');
@@ -345,8 +359,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentSeconds = selectedTimerMinutes * 60;
             updateTimerDisplay();
 
-            clearInterval(timerInterval);
+            if (timerInterval) clearInterval(timerInterval);
+            
             timerInterval = setInterval(() => {
+                if (!isFarming) {
+                    clearInterval(timerInterval);
+                    return;
+                }
                 currentSeconds--;
                 updateTimerDisplay();
 
@@ -391,9 +410,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function stopFarming(message) {
-        const t = translations[currentLang];
-        clearInterval(timerInterval);
+        if (timerInterval) clearInterval(timerInterval);
         isFarming = false;
+        const t = translations[currentLang];
         startBtn.innerText = t.startBtn;
         startBtn.classList.remove('btn-stop');
         timerContainer.classList.remove('active');
