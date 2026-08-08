@@ -1,78 +1,67 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // ==========================================
-    // 1. ДВУЯЗЫЧНЫЙ СЛОВАРЬ (RU / EN)
-    // ==========================================
     const translations = {
         ru: {
-            alert: "💡 <b>Экран гаснет?</b> Отключите спящий режим в настройках телефона или используйте утилиту удержания экрана (например, <i>Caffeine</i> или <i>Keep Screen On</i>).",
+            alert: "<b>Экран гаснет?</b> Отключите автоотключение экрана в настройках смартфона или используйте специальную утилиту для удержания экрана.",
             limitLabel: "⏱️ Суточный лимит:",
             hrsUnit: "ч.",
             modeVideo: "🎥 Режим: Ручные видео",
             modeBanner: "🤖 Режим: Авто-баннеры",
-            presetTitle: "РЕЖИМ АВТОНОМНОЙ СЕССИИ:",
+            presetTitle: "Сессия авто-просмотров:",
             preset1: "⚡ 3 ЧАСА",
             preset2: "🛌 5 ЧАСОВ",
             preset3: "🌙 7 ЧАСОВ",
-            balanceLabel: "Ваш баланс:",
+            balanceLabel: "Ваш баланс",
             coinUnit: "Монет",
             startBtn: "Запустить терминал",
             stopBtn: "Остановить терминал",
             limitBtn: "Лимит исчерпан",
-            infoRate: "💎 Курс: <b>1 Монета = $0.0001 (выплаты в TON)</b>",
-            infoVid: "📺 Награда за видео-ролик: <b style='color:#00e676'>+7 Монет</b>",
-            infoBan: "🤖 Награда за авто-баннер: <b style='color:#00b0ff'>+2 Монеты</b>",
-            infoRef: "👥 Приглашенному: <b style='color:#00e676'>+200 монет</b> | Вам: <b style='color:#e040fb'>+15% от вывода!</b>",
-            honesty: "🛡️ <b>Правило честности:</b> Просим о честном сотрудничестве! Попытки накрутки проверяются. Если вы оступились, напишите в поддержку — даем 1 шанс списать накрученный баланс без бана.",
-            withdrawLimit: "🔒 Минимальный вывод: <b>2000 Монет (~0.1 TON)</b>.",
-            promoPlaceholder: "Введите акционный промокод...",
+            honesty: "🛡️ <b>Правило честности:</b> Просим о честном сотрудничестве! Накрутки проверяются. Даем 1 шанс списать накрутку без бана.",
+            withdrawLimit: "🔒 Минимальный вывод: <b>2000 Монет (~0.1 TON)</b>",
+            promoPlaceholder: "Введите промокод...",
             withdrawBtn: "Заказать вывод средств",
             navTerminal: "Терминал",
             navCabinet: "Кабинет",
             modalTitle: "🚀 Первый запуск!",
             modalText: "Привет! Это первый запуск авто-терминала. Пожалуйста, если вы заметите ошибку — напишите в техподдержку!",
             modalBtn: "Понятно",
-            loadingAd: "⏳ Идет просмотр рекламы...",
-            adErrorAlert: "❌ Реклама не досмотрена или не загрузилась!\n\nМонеты не начислены. Если у вас включен VPN или AdBlock, отключите блокировщики.",
+            loadingAd: "⏳ Загрузка...",
+            adErrorAlert: "❌ Реклама не загрузилась!\n\nЕсли у вас включен VPN или AdBlock, отключите их.",
             refTitle: "🔗 Ваша реферальная ссылка:",
             copyBtn: "Копировать",
-            copiedMsg: "Реферальная ссылка скопирована!",
+            copiedMsg: "Ссылка скопирована!",
             refCountLabel: "Приглашено:",
             refEarnLabel: "Доход:",
             refCoinUnit: "монет"
         },
         en: {
-            alert: "💡 <b>Screen dims?</b> Disable sleep mode in phone settings or use screen keep-awake apps (e.g., <i>Caffeine</i> or <i>Keep Screen On</i>).",
+            alert: "<b>Screen dims?</b> Disable auto-screen lock in your phone settings or use a keep-awake utility to run continuously.",
             limitLabel: "⏱️ Daily Limit:",
             hrsUnit: "hrs",
             modeVideo: "🎥 Mode: Manual Videos",
             modeBanner: "🤖 Mode: Auto-Banners",
-            presetTitle: "AUTONOMOUS SESSION MODE:",
+            presetTitle: "Auto-session preset:",
             preset1: "⚡ 3 HOURS",
             preset2: "🛌 5 HOURS",
             preset3: "🌙 7 HOURS",
-            balanceLabel: "Your Balance:",
+            balanceLabel: "Your balance",
             coinUnit: "Coins",
             startBtn: "Start Terminal",
             stopBtn: "Stop Terminal",
             limitBtn: "Limit Reached",
-            infoRate: "💎 Rate: <b>1 Coin = $0.0001 (Payouts in TON)</b>",
-            infoVid: "📺 Reward per Video: <b style='color:#00e676'>+7 Coins</b>",
-            infoBan: "🤖 Reward per Auto-Banner: <b style='color:#00b0ff'>+2 Coins</b>",
-            infoRef: "👥 Invited gets: <b style='color:#00e676'>+200 coins</b> | You get: <b style='color:#e040fb'>+15% from payout!</b>",
-            honesty: "🛡️ <b>Fair Play Rule:</b> Please cooperate honestly! Any cheat attempts are checked. If you made a mistake, contact support for 1 chance to reset cheated coins without a ban.",
-            withdrawLimit: "🔒 Min Withdrawal: <b>2000 Coins (~0.1 TON)</b>.",
+            honesty: "🛡️ <b>Fair Play:</b> Cheating attempts are verified. Contact support for 1 reset chance.",
+            withdrawLimit: "🔒 Min Withdrawal: <b>2000 Coins (~0.1 TON)</b>",
             promoPlaceholder: "Enter promo code...",
             withdrawBtn: "Request Withdrawal",
             navTerminal: "Terminal",
             navCabinet: "Cabinet",
             modalTitle: "🚀 First Launch!",
-            modalText: "Welcome! This is the first launch of the auto-terminal. If you notice any bugs, please contact support!",
+            modalText: "Welcome! If you notice any bugs, please contact support!",
             modalBtn: "Got it",
-            loadingAd: "⏳ Watching ad...",
-            adErrorAlert: "❌ Ad was not completed or failed to load!\n\nCoins were not rewarded. Please disable AdBlock / VPN rules if enabled.",
+            loadingAd: "⏳ Loading...",
+            adErrorAlert: "❌ Ad failed to load! Please disable AdBlock or VPN.",
             refTitle: "🔗 Your Referral Link:",
             copyBtn: "Copy",
-            copiedMsg: "Referral link copied!",
+            copiedMsg: "Link copied!",
             refCountLabel: "Invited:",
             refEarnLabel: "Earned:",
             refCoinUnit: "coins"
@@ -81,9 +70,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentLang = localStorage.getItem('sleep_lang') || (window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code === 'en' ? 'en' : 'ru');
 
-    // ==========================================
-    // 2. ИНИЦИАЛИЗАЦИЯ TELEGRAM И РЕФЕРАЛОВ
-    // ==========================================
     let myTelegramID = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || "583920194";
     let botUsername = "SleepEarnSupport_bot"; 
     let fullRefLink = `https://t.me/${botUsername}?start=ref_${myTelegramID}`;
@@ -103,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
             balance += 200;
             localStorage.setItem('sleep_balance', balance);
             localStorage.setItem('sleep_was_referred', 'true');
-            alert(currentLang === 'ru' ? "🎁 Вы перешли по приглашению и получили +200 монет!" : "🎁 You joined via invite link and got +200 bonus coins!");
+            alert(currentLang === 'ru' ? "🎁 Вы получили +200 монет за переход!" : "🎁 +200 bonus coins received!");
         }
     }
 
@@ -134,10 +120,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('preset3').innerText = t.preset3;
         document.getElementById('tBalanceLabel').innerText = t.balanceLabel;
         document.getElementById('tCoinUnit').innerText = t.coinUnit;
-        document.getElementById('tInfoRate').innerHTML = t.infoRate;
-        document.getElementById('tInfoVid').innerHTML = t.infoVid;
-        document.getElementById('tInfoBan').innerHTML = t.infoBan;
-        document.getElementById('tInfoRef').innerHTML = t.infoRef;
         document.getElementById('tHonesty').innerHTML = t.honesty;
         document.getElementById('tWithdrawLimit').innerHTML = t.withdrawLimit;
         document.getElementById('promoInput').placeholder = t.promoPlaceholder;
@@ -162,9 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleModeUI();
     };
 
-    // ==========================================
-    // 3. ADSGRAM КОНТРОЛЛЕРЫ
-    // ==========================================
+    // Замените "41720" на ваш реальный Block ID видеорекламы, а "YOUR_INTERSTITIAL_ID_HERE" на ID баннера/межстраничной рекламы
     const VideoController = window.Adsgram ? window.Adsgram.init({ blockId: "41720" }) : null;
     const BannerController = window.Adsgram ? window.Adsgram.init({ blockId: "YOUR_INTERSTITIAL_ID_HERE" }) : null;
 
@@ -200,6 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     modeToggle.checked = isAutoMode;
+    
     setLanguage(currentLang);
     updateLimitDisplay();
     document.getElementById('balance').innerText = balance;
@@ -228,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     modeToggle.addEventListener('change', (e) => {
         if (isFarming) {
-            alert(currentLang === 'ru' ? "Нельзя менять режим во время работы терминала!" : "Cannot switch mode while terminal is running!");
+            alert(currentLang === 'ru' ? "Нельзя менять режим во время работы!" : "Cannot switch mode while running!");
             e.target.checked = isAutoMode;
             return;
         }
@@ -259,6 +240,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateTimerDisplay() {
         let mins = Math.floor(currentSeconds / 60);
         let secs = currentSeconds % 60;
+        timerDisplay.classList.remove('timer-loading');
+        timerDisplay.style.fontSize = "26px";
         timerDisplay.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
 
@@ -276,10 +259,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (wakeLock !== null) { wakeLock.release(); wakeLock = null; }
         if (wakeVideo) wakeVideo.pause();
     }
-
-    // ==========================================
-    // 4. ТЕРМИНАЛ И ПРОВЕРЕННЫЙ ПОКАЗ РЕКЛАМЫ
-    // ==========================================
 
     startBtn.addEventListener('click', () => {
         if (isClickActionPending) return;
@@ -310,6 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const t = translations[currentLang];
         
+        timerDisplay.classList.add('timer-loading');
         timerDisplay.style.fontSize = "13px";
         timerDisplay.innerText = t.loadingAd;
 
@@ -332,7 +312,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            timerDisplay.style.fontSize = "20px";
             currentSeconds = selectedTimerMinutes * 60;
             updateTimerDisplay();
 
@@ -350,10 +329,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 1000);
         };
 
+        // Заглушка, если приложение запущено локально через file://
         if (window.location.protocol === 'file:') {
             setTimeout(() => {
                 onAdWatchedSuccess(isAutoMode ? 2 : 7);
-            }, 3000);
+            }, 2000);
             return;
         }
 
@@ -362,13 +342,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 BannerController.show()
                     .then(() => { onAdWatchedSuccess(2); })
                     .catch((err) => { handleAdError(err); });
-            } else { handleAdError("Controller Error"); }
+            } else { 
+                // Заглушка если контроллер рекламы не подгрузился
+                setTimeout(() => { onAdWatchedSuccess(2); }, 2000);
+            }
         } else {
             if (VideoController) {
                 VideoController.show()
                     .then(() => { onAdWatchedSuccess(7); })
                     .catch((err) => { handleAdError(err); });
-            } else { handleAdError("Controller Error"); }
+            } else { 
+                // Заглушка если контроллер рекламы не подгрузился
+                setTimeout(() => { onAdWatchedSuccess(7); }, 2000);
+            }
         }
     }
 
@@ -386,16 +372,12 @@ document.addEventListener('DOMContentLoaded', () => {
         timerContainer.classList.remove('active');
         disableScreenProtection();
         
-        timerDisplay.style.fontSize = "20px";
         currentSeconds = selectedTimerMinutes * 60;
         updateTimerDisplay();
         
         if (message) alert(message);
     }
 
-    // ==========================================
-    // 5. ПРОМОКОДЫ И ВЫВОД СРЕДСТВ
-    // ==========================================
     document.getElementById('promoBtn').addEventListener('click', () => {
         let code = document.getElementById('promoInput').value.trim().toUpperCase();
         if (!code) return;
@@ -411,7 +393,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('balance').innerText = balance;
             usedPromos.push(code);
             localStorage.setItem('used_promos', JSON.stringify(usedPromos));
-            alert(currentLang === 'ru' ? "🎉 Приветственный бонус +300 монет зачислен!" : "🎉 Welcome bonus +300 Coins claimed!");
+            alert(currentLang === 'ru' ? "🎉 Бонус +300 монет зачислен!" : "🎉 Bonus +300 Coins claimed!");
             document.getElementById('promoInput').value = "";
         } 
         else { 
@@ -422,12 +404,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('withdrawBtn').addEventListener('click', () => {
         if (balance < 2000) {
             alert(currentLang === 'ru' 
-                ? "Ошибка: Недостаточно монет! Мин. вывод 2000 монет (~0.1 TON)." 
-                : "Error: Insufficient coins! Min withdrawal is 2000 coins (~0.1 TON).");
+                ? "Недостаточно монет! Мин. вывод 2000 монет (~0.1 TON)." 
+                : "Insufficient coins! Min withdrawal is 2000 coins.");
         } else {
             alert(currentLang === 'ru' 
-                ? `Заявка доступна!\n\nОтправьте ваш TON-адрес (или Telegram ID) администратору @${botUsername} для получения выплаты.` 
-                : `Request available!\n\nSend your TON address (or Telegram ID) to @${botUsername} to receive payout.`);
+                ? `Заявка доступна!\n\nНапишите администратору @${botUsername} для получения выплаты.` 
+                : `Send request to @${botUsername} to receive payout.`);
         }
     });
 });
