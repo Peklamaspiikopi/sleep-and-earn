@@ -181,8 +181,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         toggleModeUI(false);
     };
 
-    const VideoController = window.Adsgram ? window.Adsgram.init({ blockId: "41720" }) : null;
-    const BannerController = window.Adsgram ? window.Adsgram.init({ blockId: "YOUR_INTERSTITIAL_ID_HERE" }) : null;
+    // Инициализация Adsgram с вашими реальными ID
+    let videoController = null;
+    let bannerController = null;
+
+    if (window.Adsgram) {
+        videoController = window.Adsgram.init({ blockId: "41922" });
+        bannerController = window.Adsgram.init({ blockId: "int-41924" });
+    }
 
     let timerInterval = null;
     let currentSeconds = 300; 
@@ -386,17 +392,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (isAutoMode) {
-            if (BannerController) {
-                BannerController.show()
+            if (bannerController) {
+                bannerController.show()
                     .then(() => { onAdWatchedSuccess(2); })
                     .catch((err) => { handleAdError(err); });
             } else { 
                 setTimeout(() => { onAdWatchedSuccess(2); }, 2000);
             }
         } else {
-            if (VideoController) {
-                VideoController.show()
-                    .then(() => { onAdWatchedSuccess(7); })
+            if (videoController) {
+                videoController.show()
+                    .then((result) => {
+                        if (result.done) {
+                            onAdWatchedSuccess(7);
+                        } else {
+                            handleAdError("Ad closed before completion");
+                        }
+                    })
                     .catch((err) => { handleAdError(err); });
             } else { 
                 setTimeout(() => { onAdWatchedSuccess(7); }, 2000);
