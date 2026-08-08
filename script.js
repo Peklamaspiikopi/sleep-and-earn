@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const translations = {
         ru: {
-            alert: "<b>Экран гаснет?</b> Отключите автоотключение экрана в настройках смартфона или используйте специальную утилиту для удержания экрана.",
+            alert: "<b>Экран гаснет?</b> Во избежание пауз продлите время работы дисплея в настройках телефона или используйте софт для удержания активного экрана.",
             limitLabel: "⏱️ Суточный лимит:",
             hrsUnit: "ч.",
             modeVideo: "🎥 Режим: Ручные видео",
@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
             startBtn: "Запустить терминал",
             stopBtn: "Остановить терминал",
             limitBtn: "Лимит исчерпан",
-            honesty: "🛡️ <b>Правило честности:</b> Просим о честном сотрудничестве! Накрутки проверяются. Даем 1 шанс списать накрутку без бана.",
+            honesty: "🛡️ <b>Правило честности:</b> Мы за прозрачное сотрудничество. Любые накрутки фиксируются системой. Предоставляем 1 предупреждение без блокировки аккаунта.",
             withdrawLimit: "🔒 Минимальный вывод: <b>2000 Монет (~0.1 TON)</b>",
             promoPlaceholder: "Введите промокод...",
             withdrawBtn: "Заказать вывод средств",
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
             refCoinUnit: "монет"
         },
         en: {
-            alert: "<b>Screen dims?</b> Disable auto-screen lock in your phone settings or use a keep-awake utility to run continuously.",
+            alert: "<b>Screen turning off?</b> To avoid pauses, extend display timeout in your phone settings or use an active screen app.",
             limitLabel: "⏱️ Daily Limit:",
             hrsUnit: "hrs",
             modeVideo: "🎥 Mode: Manual Videos",
@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
             startBtn: "Start Terminal",
             stopBtn: "Stop Terminal",
             limitBtn: "Limit Reached",
-            honesty: "🛡️ <b>Fair Play:</b> Cheating attempts are verified. Contact support for 1 reset chance.",
+            honesty: "🛡️ <b>Fair Play:</b> We stand for transparent cooperation. Any cheating is logged by the system. 1 warning is given before account ban.",
             withdrawLimit: "🔒 Min Withdrawal: <b>2000 Coins (~0.1 TON)</b>",
             promoPlaceholder: "Enter promo code...",
             withdrawBtn: "Request Withdrawal",
@@ -141,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('startBtn').innerText = t.stopBtn;
         }
 
-        toggleModeUI();
+        toggleModeUI(false);
     };
 
     const VideoController = window.Adsgram ? window.Adsgram.init({ blockId: "41720" }) : null;
@@ -159,11 +159,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let isAutoMode = localStorage.getItem('sleep_auto_mode') === 'true';
     let selectedTimerMinutes = 5; 
     let maxLimitMinutes = 120; 
+    
     let limitMinutes = localStorage.getItem('sleep_limit_minutes') !== null ? parseInt(localStorage.getItem('sleep_limit_minutes')) : maxLimitMinutes;
 
     const today = new Date().toDateString();
     if (lastLimitReset !== today) {
-        limitMinutes = maxLimitMinutes;
+        limitMinutes = 120;
         localStorage.setItem('sleep_limit_minutes', limitMinutes);
         localStorage.setItem('sleep_limit_reset', today);
     }
@@ -184,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateLimitDisplay();
     document.getElementById('balance').innerText = balance;
 
-    function toggleModeUI() {
+    function toggleModeUI(resetLimit = false) {
         const presetBox = document.getElementById('presetBox');
         const modeLabel = document.getElementById('modeLabel');
         const t = translations[currentLang];
@@ -192,16 +193,26 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isAutoMode) {
             presetBox.style.display = 'block';
             modeLabel.innerText = t.modeBanner;
-            let activePreset = document.querySelector('.preset-btn.active');
-            if (activePreset) activePreset.click();
+            if (resetLimit) {
+                maxLimitMinutes = 180; 
+                selectedTimerMinutes = 5;
+                limitMinutes = maxLimitMinutes;
+            }
         } else {
             presetBox.style.display = 'none';
             modeLabel.innerText = t.modeVideo;
             selectedTimerMinutes = 5;
             maxLimitMinutes = 120;
-            limitMinutes = maxLimitMinutes; // Сброс до макс. значения при переключении
-            currentSeconds = selectedTimerMinutes * 60;
+            if (resetLimit) {
+                limitMinutes = maxLimitMinutes;
+            }
         }
+        
+        if (limitMinutes > maxLimitMinutes) {
+            limitMinutes = maxLimitMinutes;
+        }
+
+        currentSeconds = selectedTimerMinutes * 60;
         localStorage.setItem('sleep_limit_minutes', limitMinutes);
         updateTimerDisplay();
         updateLimitDisplay();
@@ -215,14 +226,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         isAutoMode = e.target.checked;
         localStorage.setItem('sleep_auto_mode', isAutoMode);
-        toggleModeUI();
+        toggleModeUI(true); 
     });
 
     window.setPreset = function(timeMins, limitMins, btn) {
         if (isFarming) return;
         selectedTimerMinutes = timeMins;
         maxLimitMinutes = limitMins;
-        limitMinutes = maxLimitMinutes; // Сброс до макс. значения при выборе пресета
+        
+        if (limitMinutes > maxLimitMinutes) {
+            limitMinutes = maxLimitMinutes;
+        }
         currentSeconds = selectedTimerMinutes * 60;
         
         document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
