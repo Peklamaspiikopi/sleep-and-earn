@@ -1,4 +1,9 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Безопасное чтение ключей из окружения Vercel или window-переменных
+    const SUPABASE_URL = window.ENV_SUPABASE_URL || "https://dpbrrirjnsobmtojzwtx.supabase.co";
+    const SUPABASE_KEY = window.ENV_SUPABASE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."; // Публичный anon ключ или переменная
+    const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
     const translations = {
         ru: {
             alert: "<b>Экран гаснет?</b> Во избежание пауз продлите время работы дисплея в настройках телефона или используйте софт для удержания активного экрана.",
@@ -69,32 +74,60 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     let currentLang = localStorage.getItem('sleep_lang') || (window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code === 'en' ? 'en' : 'ru');
-
-    let myTelegramID = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || "583920194";
+    let myTelegramID = String(window.Telegram?.WebApp?.initDataUnsafe?.user?.id || "583920194");
     let botUsername = "SleepEarnSupport_bot"; 
     let fullRefLink = `https://t.me/${botUsername}?start=ref_${myTelegramID}`;
-
     document.getElementById('myRefLink').value = fullRefLink;
 
-    let balance = parseInt(localStorage.getItem('sleep_balance')) || 0;
-    let refCount = parseInt(localStorage.getItem('sleep_ref_count')) || 0;
-    let refEarn = parseInt(localStorage.getItem('sleep_ref_earn')) || 0;
+    let userData = {
+        balance: 0,
+        ref_count: 0,
+        ref_earn: 0,
+        limit_minutes: 120,
+        used_promos: [],
+        last_reset: new Date().toDateString()
+    };
 
-    let startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param || "";
-    let isAlreadyReferred = localStorage.getItem('sleep_was_referred');
+    if (supabaseClient) {
+        let { data, error } = await supabaseClient
+            .from('users')
+            .select('*')
+            .eq('telegram_id', myTelegramID)
+            .single();
 
-    if (startParam.startsWith("ref_") && !isAlreadyReferred) {
-        let referrerID = startParam.replace("ref_", "");
-        if (referrerID !== String(myTelegramID)) {
-            balance += 200;
-            localStorage.setItem('sleep_balance', balance);
-            localStorage.setItem('sleep_was_referred', 'true');
-            alert(currentLang === 'ru' ? "🎁 Вы получили +200 монет за переход!" : "🎁 +200 bonus coins received!");
+        const today = new Date().toDateString();
+
+        if (data) {
+            userData = data;
+            if (userData.last_reset !== today) {
+                userData.limit_minutes = 120;
+                userData.last_reset = today;
+                await updateSupabase({ limit_minutes: 120, last_reset: today });
+            }
+        } else {
+            await supabaseClient.from('users').insert([{
+                telegram_id: myTelegramID,
+                balance: 0,
+                ref_count: 0,
+                ref_earn: 0,
+                limit_minutes: 120,
+                used_promos: [],
+                last_reset: today
+            }]);
         }
     }
 
-    document.getElementById('refCount').innerText = refCount;
-    document.getElementById('refEarn').innerText = refEarn;
+    async function updateSupabase(fields) {
+        if (!supabaseClient) return;
+        await supabaseClient
+            .from('users')
+            .update(fields)
+            .eq('telegram_id', myTelegramID);
+    }
+
+    document.getElementById('refCount').innerText = userData.ref_count;
+    document.getElementById('refEarn').innerText = userData.ref_earn;
+    document.getElementById('balance').innerText = userData.balance;
 
     window.copyRefLink = function() {
         let copyText = document.getElementById("myRefLink");
@@ -136,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('tRefCoinUnit').innerText = t.refCoinUnit;
 
         if (!isFarming) {
-            document.getElementById('startBtn').innerText = (limitMinutes > 0) ? t.startBtn : t.limitBtn;
+            document.getElementById('startBtn').innerText = (userData.limit_minutes > 0) ? t.startBtn : t.limitBtn;
         } else {
             document.getElementById('startBtn').innerText = t.stopBtn;
         }
@@ -147,9 +180,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const VideoController = window.Adsgram ? window.Adsgram.init({ blockId: "41720" }) : null;
     const BannerController = window.Adsgram ? window.Adsgram.init({ blockId: "YOUR_INTERSTITIAL_ID_HERE" }) : null;
 
-    let lastLimitReset = localStorage.getItem('sleep_limit_reset') || '';
-    let usedPromos = JSON.parse(localStorage.getItem('used_promos')) || [];
-
     let timerInterval = null;
     let currentSeconds = 300; 
     let isFarming = false;
@@ -158,16 +188,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let isAutoMode = localStorage.getItem('sleep_auto_mode') === 'true';
     let selectedTimerMinutes = 5; 
-    let maxLimitMinutes = 120; 
-    
-    let limitMinutes = localStorage.getItem('sleep_limit_minutes') !== null ? parseInt(localStorage.getItem('sleep_limit_minutes')) : maxLimitMinutes;
-
-    const today = new Date().toDateString();
-    if (lastLimitReset !== today) {
-        limitMinutes = 120;
-        localStorage.setItem('sleep_limit_minutes', limitMinutes);
-        localStorage.setItem('sleep_limit_reset', today);
-    }
+    let maxLimitMinutes = isAutoMode ? 180 : 120; 
+    let limitMinutes = userData.limit_minutes;
 
     const startBtn = document.getElementById('startBtn');
     const timerContainer = document.getElementById('timerContainer');
@@ -180,12 +202,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     modeToggle.checked = isAutoMode;
-    
     setLanguage(currentLang);
     updateLimitDisplay();
-    document.getElementById('balance').innerText = balance;
 
-    function toggleModeUI(resetLimit = false) {
+    function toggleModeUI() {
         const presetBox = document.getElementById('presetBox');
         const modeLabel = document.getElementById('modeLabel');
         const t = translations[currentLang];
@@ -193,19 +213,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isAutoMode) {
             presetBox.style.display = 'block';
             modeLabel.innerText = t.modeBanner;
-            if (resetLimit) {
-                maxLimitMinutes = 180; 
-                selectedTimerMinutes = 5;
-                limitMinutes = maxLimitMinutes;
-            }
+            maxLimitMinutes = 180; 
         } else {
             presetBox.style.display = 'none';
             modeLabel.innerText = t.modeVideo;
-            selectedTimerMinutes = 5;
             maxLimitMinutes = 120;
-            if (resetLimit) {
-                limitMinutes = maxLimitMinutes;
-            }
+            selectedTimerMinutes = 5;
         }
         
         if (limitMinutes > maxLimitMinutes) {
@@ -213,7 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         currentSeconds = selectedTimerMinutes * 60;
-        localStorage.setItem('sleep_limit_minutes', limitMinutes);
         updateTimerDisplay();
         updateLimitDisplay();
     }
@@ -226,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         isAutoMode = e.target.checked;
         localStorage.setItem('sleep_auto_mode', isAutoMode);
-        toggleModeUI(true); 
+        toggleModeUI(); 
     });
 
     window.setPreset = function(timeMins, limitMins, btn) {
@@ -242,7 +254,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         
-        localStorage.setItem('sleep_limit_minutes', limitMinutes);
         updateTimerDisplay();
         updateLimitDisplay();
     };
@@ -308,17 +319,21 @@ document.addEventListener('DOMContentLoaded', () => {
         timerDisplay.style.fontSize = "13px";
         timerDisplay.innerText = t.loadingAd;
 
-        const onAdWatchedSuccess = (reward) => {
+        const onAdWatchedSuccess = async (reward) => {
             if (!isFarming) return;
 
-            balance += reward;
+            userData.balance += reward;
             limitMinutes -= selectedTimerMinutes;
             if (limitMinutes < 0) limitMinutes = 0;
+            userData.limit_minutes = limitMinutes;
 
-            localStorage.setItem('sleep_balance', balance);
-            localStorage.setItem('sleep_limit_minutes', limitMinutes);
-            document.getElementById('balance').innerText = balance;
+            document.getElementById('balance').innerText = userData.balance;
             updateLimitDisplay();
+
+            await updateSupabase({
+                balance: userData.balance,
+                limit_minutes: userData.limit_minutes
+            });
 
             if (limitMinutes <= 0) {
                 stopFarming(currentLang === 'ru' ? "Суточный лимит исчерпан!" : "Daily limit reached!");
@@ -390,21 +405,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (message) alert(message);
     }
 
-    document.getElementById('promoBtn').addEventListener('click', () => {
+    document.getElementById('promoBtn').addEventListener('click', async () => {
         let code = document.getElementById('promoInput').value.trim().toUpperCase();
         if (!code) return;
         
-        if (usedPromos.includes(code)) {
+        if (userData.used_promos && userData.used_promos.includes(code)) {
             alert(currentLang === 'ru' ? "Вы уже активировали этот промокод!" : "Promo code already used!");
             return;
         }
 
         if (code === "BONUS300") {
-            balance += 300;
-            localStorage.setItem('sleep_balance', balance);
-            document.getElementById('balance').innerText = balance;
-            usedPromos.push(code);
-            localStorage.setItem('used_promos', JSON.stringify(usedPromos));
+            userData.balance += 300;
+            if (!userData.used_promos) userData.used_promos = [];
+            userData.used_promos.push(code);
+
+            document.getElementById('balance').innerText = userData.balance;
+
+            await updateSupabase({
+                balance: userData.balance,
+                used_promos: userData.used_promos
+            });
+
             alert(currentLang === 'ru' ? "🎉 Бонус +300 монет зачислен!" : "🎉 Bonus +300 Coins claimed!");
             document.getElementById('promoInput').value = "";
         } 
@@ -414,7 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('withdrawBtn').addEventListener('click', () => {
-        if (balance < 2000) {
+        if (userData.balance < 2000) {
             alert(currentLang === 'ru' 
                 ? "Недостаточно монет! Мин. вывод 2000 монет (~0.1 TON)." 
                 : "Insufficient coins! Min withdrawal is 2000 coins.");
