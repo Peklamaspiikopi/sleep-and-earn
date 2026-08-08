@@ -40,11 +40,12 @@
         /* General Card Base */
         .card { background: #1a1c23; border: 1px solid #2a2d37; border-radius: 16px; padding: 14px; text-align: left; }
         
-        /* Bright Colored Accents */
+        /* Neon Styled Secondary Elements */
         .alert-box { 
-            background: rgba(255, 145, 0, 0.08); 
-            border: 1px solid #ff9100; 
-            color: #ffb74d; 
+            background: rgba(0, 176, 255, 0.04); 
+            border: 1px solid rgba(0, 176, 255, 0.4); 
+            box-shadow: 0 0 12px rgba(0, 176, 255, 0.12), inset 0 1px 0 rgba(255,255,255,0.03);
+            color: #b3e5fc; 
             font-size: 12px; 
             line-height: 1.4; 
             border-radius: 16px; 
@@ -53,12 +54,13 @@
             gap: 10px; 
             align-items: center; 
         }
-        .alert-icon { font-size: 20px; flex-shrink: 0; }
+        .alert-icon { font-size: 20px; flex-shrink: 0; text-shadow: 0 0 8px rgba(0, 176, 255, 0.6); }
 
         .honesty-card { 
-            background: rgba(0, 230, 118, 0.06); 
-            border: 1px solid #00e676; 
-            color: #a7ffeb; 
+            background: rgba(0, 230, 118, 0.04); 
+            border: 1px solid rgba(0, 230, 118, 0.4); 
+            box-shadow: 0 0 12px rgba(0, 230, 118, 0.12), inset 0 1px 0 rgba(255,255,255,0.03);
+            color: #b9f6ca; 
             font-size: 11px; 
             line-height: 1.4; 
             border-radius: 16px; 
@@ -66,8 +68,9 @@
         }
 
         .withdraw-limit-card { 
-            background: rgba(255, 82, 82, 0.08); 
-            border: 1px solid #ff5252; 
+            background: rgba(255, 82, 82, 0.04); 
+            border: 1px solid rgba(255, 82, 82, 0.4); 
+            box-shadow: 0 0 12px rgba(255, 82, 82, 0.12), inset 0 1px 0 rgba(255,255,255,0.03);
             color: #ff8a80; 
             font-size: 12px; 
             text-align: center; 
@@ -85,10 +88,10 @@
             color: #9aa0a6; 
             font-weight: 500; 
             background: linear-gradient(145deg, #1a1c23, #15171d);
-            border: 1px solid #2e3542;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+            border: 1px solid rgba(0, 176, 255, 0.3);
+            box-shadow: 0 0 10px rgba(0, 176, 255, 0.08), inset 0 1px 0 rgba(255,255,255,0.03);
         }
-        .limit-card b { color: #00b0ff; font-weight: 700; }
+        .limit-card b { color: #00b0ff; font-weight: 700; text-shadow: 0 0 6px rgba(0, 176, 255, 0.4); }
 
         /* Beautiful Toggle Tile */
         .toggle-card { 
@@ -96,40 +99,40 @@
             align-items: center; 
             justify-content: space-between; 
             background: linear-gradient(145deg, #1a1c23, #15171d);
-            border: 1px solid #2e3542;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+            border: 1px solid rgba(0, 176, 255, 0.3);
+            box-shadow: 0 0 10px rgba(0, 176, 255, 0.08), inset 0 1px 0 rgba(255,255,255,0.03);
         }
         .toggle-label { font-size: 14px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 8px; }
         .toggle-switch { position: relative; display: inline-block; width: 46px; height: 26px; }
         .toggle-switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #2a2d37; transition: .3s; border-radius: 34px; }
-        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: #fff; transition: .3s; border-radius: 50%; }
-        input:checked + .slider { background-color: #00e676; box-shadow: 0 0 10px rgba(0, 230, 118, 0.5); }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #2a2d37; transition: .3s; border-radius: 34px; border: 1px solid rgba(255,255,255,0.1); }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px; background-color: #fff; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        input:checked + .slider { background-color: #00e676; box-shadow: 0 0 12px rgba(0, 230, 118, 0.6); border-color: #00e676; }
         input:checked + .slider:before { transform: translateX(20px); }
 
         /* Presets */
-        .preset-card { display: none; background: #14161b; border: 1px dashed #2a2d37; border-radius: 16px; padding: 10px; }
+        .preset-card { display: none; background: #14161b; border: 1px dashed rgba(0, 176, 255, 0.3); border-radius: 16px; padding: 10px; }
         .preset-title { font-size: 11px; color: #6c727f; margin-bottom: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
         .preset-options { display: flex; gap: 6px; }
-        .preset-btn { flex: 1; background: #1a1c23; border: 1px solid #2a2d37; color: #9aa0a6; padding: 8px 0; font-size: 11px; border-radius: 10px; cursor: pointer; font-weight: 700; transition: 0.2s; }
-        .preset-btn.active { background: rgba(0, 176, 255, 0.15); color: #00b0ff; border-color: #00b0ff; }
+        .preset-btn { flex: 1; background: #1a1c23; border: 1px solid rgba(0, 176, 255, 0.3); color: #9aa0a6; padding: 8px 0; font-size: 11px; border-radius: 10px; cursor: pointer; font-weight: 700; transition: 0.2s; box-shadow: 0 0 5px rgba(0, 176, 255, 0.05); }
+        .preset-btn.active { background: rgba(0, 176, 255, 0.15); color: #00b0ff; border-color: #00b0ff; box-shadow: 0 0 10px rgba(0, 176, 255, 0.3); text-shadow: 0 0 5px rgba(0, 176, 255, 0.5); }
 
         /* Beautiful Balance Tile */
         .balance-card { 
             text-align: center; 
             padding: 16px; 
             background: linear-gradient(145deg, #1c1f28, #161820); 
-            border: 1px solid #303748; 
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+            border: 1px solid rgba(0, 230, 118, 0.4); 
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 15px rgba(0, 230, 118, 0.12), inset 0 1px 0 rgba(255,255,255,0.05);
         }
         .balance-label { font-size: 11px; color: #8a909a; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-        .balance-value { font-size: 32px; font-weight: 800; color: #00e676; margin-top: 2px; text-shadow: 0 0 15px rgba(0, 230, 118, 0.3); }
+        .balance-value { font-size: 32px; font-weight: 800; color: #00e676; margin-top: 2px; text-shadow: 0 0 15px rgba(0, 230, 118, 0.4); }
 
         /* Timer Circle */
-        .timer-circle { width: 130px; height: 130px; border-radius: 50%; background: #1a1c23; border: 4px solid #2a2d37; display: flex; align-items: center; justify-content: center; margin: 6px auto; transition: 0.3s; padding: 10px; text-align: center; }
-        .timer-circle.active { border-color: #00b0ff; box-shadow: 0 0 20px rgba(0, 176, 255, 0.3); }
-        .timer-display { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; word-break: break-word; line-height: 1.2; }
-        .timer-loading { font-size: 13px; font-weight: 700; color: #00b0ff; }
+        .timer-circle { width: 130px; height: 130px; border-radius: 50%; background: #1a1c23; border: 4px solid #2a2d37; display: flex; align-items: center; justify-content: center; margin: 6px auto; transition: 0.3s; padding: 10px; text-align: center; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); }
+        .timer-circle.active { border-color: #00b0ff; box-shadow: 0 0 25px rgba(0, 176, 255, 0.4), inset 0 0 15px rgba(0, 176, 255, 0.2); }
+        .timer-display { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; word-break: break-word; line-height: 1.2; text-shadow: 0 0 8px rgba(255,255,255,0.2); }
+        .timer-loading { font-size: 13px; font-weight: 700; color: #00b0ff; text-shadow: 0 0 8px rgba(0, 176, 255, 0.6); }
 
         /* Base Buttons */
         .btn { 
@@ -169,30 +172,30 @@
         .btn-withdraw:active { transform: scale(0.98); box-shadow: 0 0 10px rgba(224, 64, 251, 0.4); }
         
         /* Cabinet Ref Link */
-        .ref-card { border-color: #00b0ff; background: rgba(0, 176, 255, 0.04); }
+        .ref-card { border-color: rgba(0, 176, 255, 0.4); box-shadow: 0 0 12px rgba(0, 176, 255, 0.1); background: rgba(0, 176, 255, 0.04); }
         .ref-box { display: flex; gap: 6px; margin-top: 8px; }
-        .ref-input { flex: 1; background: #111317; border: 1px solid #2a2d37; color: #00e676; font-weight: 600; padding: 8px; border-radius: 10px; font-size: 11px; text-align: center; }
-        .ref-btn { background: #00b0ff; color: #fff; border: none; padding: 0 12px; font-size: 11px; font-weight: 700; border-radius: 10px; cursor: pointer; }
+        .ref-input { flex: 1; background: #111317; border: 1px solid rgba(0, 230, 118, 0.4); color: #00e676; font-weight: 600; padding: 8px; border-radius: 10px; font-size: 11px; text-align: center; box-shadow: 0 0 8px rgba(0, 230, 118, 0.15); }
+        .ref-btn { background: #00b0ff; color: #fff; border: 1px solid #00e5ff; padding: 0 12px; font-size: 11px; font-weight: 700; border-radius: 10px; cursor: pointer; box-shadow: 0 0 8px rgba(0, 176, 255, 0.4); }
 
         /* Cabinet Grid Stats */
         .grid-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .stat-item { background: #1a1c23; border: 1px solid #2a2d37; border-radius: 14px; padding: 10px 12px; }
+        .stat-item { background: #1a1c23; border: 1px solid rgba(0, 176, 255, 0.25); border-radius: 14px; padding: 10px 12px; box-shadow: 0 0 10px rgba(0, 176, 255, 0.05); }
         .stat-item-title { font-size: 11px; color: #8a909a; font-weight: 700; }
         .stat-item-val { font-size: 13px; font-weight: 700; color: #fff; margin-top: 4px; }
 
         /* Promo */
         .promo-box { display: flex; gap: 6px; }
-        .promo-input { flex: 1; background: #1a1c23; border: 1px solid #2a2d37; color: #fff; padding: 10px; border-radius: 12px; font-size: 12px; text-align: center; }
-        .promo-btn { background: rgba(0, 230, 118, 0.15); color: #00e676; border: 1px solid #00e676; padding: 0 16px; font-weight: 700; border-radius: 12px; cursor: pointer; font-size: 12px; }
+        .promo-input { flex: 1; background: #1a1c23; border: 1px solid rgba(0, 176, 255, 0.3); color: #fff; padding: 10px; border-radius: 12px; font-size: 12px; text-align: center; box-shadow: 0 0 8px rgba(0, 176, 255, 0.05); }
+        .promo-btn { background: rgba(0, 230, 118, 0.15); color: #00e676; border: 1px solid #00e676; padding: 0 16px; font-weight: 700; border-radius: 12px; cursor: pointer; font-size: 12px; box-shadow: 0 0 10px rgba(0, 230, 118, 0.25); }
 
         /* Navigation Bar */
-        .nav-bar { display: flex; background: #1a1c23; border-radius: 16px; padding: 4px; gap: 4px; border: 1px solid #2a2d37; margin-top: 4px; }
+        .nav-bar { display: flex; background: #1a1c23; border-radius: 16px; padding: 4px; gap: 4px; border: 1px solid rgba(0, 176, 255, 0.3); box-shadow: 0 0 15px rgba(0, 176, 255, 0.1); margin-top: 4px; }
         .nav-btn { flex: 1; background: transparent; color: #6c727f; border: none; padding: 10px 0; font-size: 13px; font-weight: 700; border-radius: 12px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .nav-btn.active { background: #2a2d37; color: #00b0ff; }
+        .nav-btn.active { background: #2a2d37; color: #00b0ff; box-shadow: 0 0 10px rgba(0, 176, 255, 0.3); text-shadow: 0 0 5px rgba(0, 176, 255, 0.5); }
         
         /* Modal */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(5px); }
-        .modal-content { background: #1a1c23; border: 1px solid #2a2d37; padding: 20px; border-radius: 20px; width: 85%; max-width: 320px; text-align: center; }
+        .modal-content { background: #1a1c23; border: 1px solid #00b0ff; box-shadow: 0 0 25px rgba(0, 176, 255, 0.4); padding: 20px; border-radius: 20px; width: 85%; max-width: 320px; text-align: center; }
         #wakeVideo { width: 1px; height: 1px; opacity: 0; position: absolute; pointer-events: none; }
     </style>
     <script src="https://adsgram.ai"></script>
@@ -206,7 +209,7 @@
 
 <div class="modal-overlay" id="welcomeModal">
     <div class="modal-content">
-        <div style="font-size: 18px; color: #00b0ff; font-weight: 800; margin-bottom: 10px;" id="tModalTitle">🚀 Первый запуск!</div>
+        <div style="font-size: 18px; color: #00b0ff; font-weight: 800; margin-bottom: 10px; text-shadow: 0 0 8px rgba(0, 176, 255, 0.6);" id="tModalTitle">🚀 Первый запуск!</div>
         <div style="font-size: 13px; color: #9aa0a6; line-height: 1.5; margin-bottom: 15px; text-align: left;" id="tModalText">Привет! Это первый запуск авто-терминала...</div>
         <button class="btn" id="tModalBtn" onclick="closeModal()">Понятно</button>
     </div>
@@ -225,7 +228,7 @@
     <div class="tab-content active" id="tabTerminal">
         <div class="alert-box">
             <span class="alert-icon">💡</span>
-            <span id="tAlert"><b>Экран гаснет?</b> Отключите автоотключение экрана в настройках смартфона или используйте специальную утилиту для удержания экрана.</span>
+            <span id="tAlert"><b>Экран гаснет?</b> Во избежание пауз продлите время работы дисплея в настройках телефона или используйте софт для удержания активного экрана.</span>
         </div>
 
         <div class="card limit-card">
@@ -265,38 +268,38 @@
     <!-- КАБИНЕТ -->
     <div class="tab-content" id="tabFinance">
         <div class="card ref-card">
-            <div style="font-size: 12px; font-weight: 700; color: #00b0ff;" id="tRefTitle">🔗 Ваша реферальная ссылка:</div>
+            <div style="font-size: 12px; font-weight: 700; color: #00b0ff; text-shadow: 0 0 6px rgba(0, 176, 255, 0.4);" id="tRefTitle">🔗 Ваша реферальная ссылка:</div>
             <div class="ref-box">
                 <input type="text" id="myRefLink" class="ref-input" readonly value="Загрузка...">
                 <button class="ref-btn" id="copyRefBtn" onclick="copyRefLink()">Копировать</button>
             </div>
             <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; color: #9aa0a6;">
-                <span>👥 <span id="tRefCountLabel">Приглашено:</span> <b id="refCount" style="color:#ab47bc;">0</b></span>
-                <span>💰 <span id="tRefEarnLabel">Доход:</span> <b id="refEarn" style="color:#ab47bc;">0</b> <span id="tRefCoinUnit">монет</span></span>
+                <span>👥 <span id="tRefCountLabel">Приглашено:</span> <b id="refCount" style="color:#ab47bc; text-shadow:0 0 6px rgba(171,71,188,0.5);">0</b></span>
+                <span>💰 <span id="tRefEarnLabel">Доход:</span> <b id="refEarn" style="color:#ab47bc; text-shadow:0 0 6px rgba(171,71,188,0.5);">0</b> <span id="tRefCoinUnit">монет</span></span>
             </div>
         </div>
 
         <div class="grid-stats">
             <div class="stat-item">
                 <div class="stat-item-title">💎 КУРС</div>
-                <div class="stat-item-val" style="color:#00e676;">1 Монета = $0.0001</div>
+                <div class="stat-item-val" style="color:#00e676; text-shadow:0 0 6px rgba(0,230,118,0.4);">1 Монета = $0.0001</div>
             </div>
             <div class="stat-item">
                 <div class="stat-item-title">📺 ВИДЕО-РОЛИК</div>
-                <div class="stat-item-val" style="color:#00e676;">+7 Монет</div>
+                <div class="stat-item-val" style="color:#00e676; text-shadow:0 0 6px rgba(0,230,118,0.4);">+7 Монет</div>
             </div>
             <div class="stat-item">
                 <div class="stat-item-title">🤖 АВТО-БАННЕР</div>
-                <div class="stat-item-val" style="color:#00b0ff;">+2 Монеты</div>
+                <div class="stat-item-val" style="color:#00b0ff; text-shadow:0 0 6px rgba(0,176,255,0.4);">+2 Монеты</div>
             </div>
             <div class="stat-item">
                 <div class="stat-item-title">👥 РЕФЕРАЛЫ</div>
-                <div class="stat-item-val" style="color:#ab47bc;">+15% от вывода</div>
+                <div class="stat-item-val" style="color:#ab47bc; text-shadow:0 0 6px rgba(171,71,188,0.5);">+15% от вывода</div>
             </div>
         </div>
         
         <div class="honesty-card" id="tHonesty">
-            🛡️ <b>Правило честности:</b> Просим о честном сотрудничестве! Накрутки проверяются. Даем 1 шанс списать накрутку без бана.
+            🛡️ <b>Честная игра:</b> Мы за прозрачное сотрудничество. Любые накрутки фиксируются системой. Предоставляем 1 предупреждение без блокировки аккаунта.
         </div>
         
         <div class="withdraw-limit-card" id="tWithdrawLimit">
@@ -318,7 +321,7 @@
     </div>
 </div>
 
-<script src="script.js?v=3" defer></script>
+<script src="script.js?v=4" defer></script>
 <script>
 function switchTab(tabName) {
     const tabTerminal = document.getElementById('tabTerminal'); 
