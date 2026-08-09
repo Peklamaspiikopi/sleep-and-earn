@@ -278,7 +278,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     let timerInterval = null;
-    let selectedSessionSeconds = 180 * 60; // По умолчанию 3 часа для авто
+    let selectedSessionSeconds = 300; // По умолчанию 5 минут для ручного режима
     let currentSeconds = selectedSessionSeconds; 
     let isFarming = false;
     let wakeLock = null;
@@ -332,13 +332,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             maxLimitMinutes = maxAutoLimit;
             limitMinutes = userData.auto_limit;
             
-            // Определяем время по активной кнопке пресета или ставим 3 часа (180 мин)
             const activePreset = document.querySelector('.preset-btn.active');
             let presetMins = 180;
             if (activePreset) {
-                if (activePreset.id === 'preset2') presetMins = 300; // 5 часов
-                else if (activePreset.id === 'preset3') presetMins = 420; // 7 часов
-                else presetMins = 180; // 3 часа
+                if (activePreset.id === 'preset2') presetMins = 300; 
+                else if (activePreset.id === 'preset3') presetMins = 420; 
+                else presetMins = 180; 
             }
             selectedSessionSeconds = presetMins * 60;
         } else {
@@ -346,7 +345,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (modeLabel) modeLabel.innerText = t.modeVideo;
             maxLimitMinutes = maxManualLimit;
             limitMinutes = userData.manual_limit;
-            selectedSessionSeconds = 5 * 60; // Ручной режим строго 5 минут
+            selectedSessionSeconds = 5 * 60; // Ручной режим строго 5 минут (300 секунд)
         }
 
         if (!isFarming) {
@@ -403,9 +402,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         let hours = Math.floor(currentSeconds / 3600);
         let mins = Math.floor((currentSeconds % 3600) / 60);
         let secs = currentSeconds % 60;
+        
         timerDisplay.classList.remove('timer-loading');
-        timerDisplay.style.fontSize = hours > 0 ? "22px" : "26px";
-        timerDisplay.innerText = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+        if (hours > 0) {
+            timerDisplay.style.fontSize = "22px";
+            timerDisplay.innerText = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        } else {
+            timerDisplay.style.fontSize = "26px";
+            // Формат MM:SS для ручного режима без лишних часов
+            timerDisplay.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
     }
 
     window.closeModal = function() {
