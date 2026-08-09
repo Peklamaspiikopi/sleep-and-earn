@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         ru: {
             alert: "<b>Экран гаснет?</b> Во избежание пауз продлите время работы дисплея в настройках телефона или используйте софт для удержания активного экрана.",
             limitLabel: "⏱️ Суточный лимит:",
+            resetTimeLabel: "🔄 Сброс лимитов в 00:00 UTC",
             hrsUnit: "ч.",
             modeVideo: "🎥 Режим: Ручные видео",
             modeBanner: "🤖 Режим: Авто-баннеры",
@@ -39,11 +40,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             dimLabel: "🌙 Затемнение экрана",
             claimBonusBtn: "🎁 Забрать бонус (+Реклама)",
             autoNotice: "🤖 Сейчас откроется авто-баннер для начисления награды...",
-            backgroundWarning: "⚠️ Внимание! Нельзя сворачивать приложение или выключать экран во время работы терминала!"
+            backgroundWarning: "⚠️ Внимание! Нельзя сворачивать приложение или выключать экран во время работы терминала!",
+            
+            statCourseTitle: "💎 КУРС",
+            statCourseVal: "1 Монета = $0.0001",
+            statVideoTitle: "📺 ВИДЕО-РОЛИК",
+            statVideoVal: "+7 Монет",
+            statBannerTitle: "🤖 АВТО-БАННЕР",
+            statBannerVal: "+2 Монеты",
+            statRefTitle: "👥 РЕФЕРАЛЫ",
+            statRefVal: "+15% от вывода"
         },
         en: {
             alert: "<b>Screen turning off?</b> To avoid pauses, extend display timeout in your phone settings or use an active screen app.",
             limitLabel: "⏱️ Daily Limit:",
+            resetTimeLabel: "🔄 Limits reset at 00:00 UTC",
             hrsUnit: "hrs",
             modeVideo: "🎥 Mode: Manual Videos",
             modeBanner: "🤖 Mode: Auto-Banners",
@@ -76,7 +87,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             dimLabel: "🌙 Screen Dimmer",
             claimBonusBtn: "🎁 Claim Bonus (+Ad)",
             autoNotice: "🤖 Opening auto-banner to credit your reward...",
-            backgroundWarning: "⚠️ Warning! Do not minimize the app or turn off the screen while the terminal is running!"
+            backgroundWarning: "⚠️ Warning! Do not minimize the app or turn off the screen while the terminal is running!",
+            
+            statCourseTitle: "💎 RATE",
+            statCourseVal: "1 Coin = $0.0001",
+            statVideoTitle: "📺 MANUAL VIDEO",
+            statVideoVal: "+7 Coins",
+            statBannerTitle: "🤖 AUTO-BANNER",
+            statBannerVal: "+2 Coins",
+            statRefTitle: "👥 REFERRALS",
+            statRefVal: "+15% of payout"
         }
     };
 
@@ -88,13 +108,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (refLinkInput) refLinkInput.value = fullRefLink;
 
     let isAutoMode = localStorage.getItem('sleep_auto_mode') === 'true';
-    let maxLimitMinutes = isAutoMode ? 180 : 120; 
+    let maxManualLimit = 120; // 2 часа в минутах
+    let maxAutoLimit = 180;   // 3 часа в минутах
+    let maxLimitMinutes = isAutoMode ? maxAutoLimit : maxManualLimit; 
     
     let userData = {
         balance: 0,
         ref_count: 0,
         ref_earn: 0,
-        limit_minutes: maxLimitMinutes,
+        manual_limit: 120,
+        auto_limit: 180,
         used_promos: [],
         last_reset: new Date().toDateString()
     };
@@ -110,10 +133,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (data) {
             userData = data;
+            if (userData.limit_minutes !== undefined && userData.manual_limit === undefined) {
+                userData.manual_limit = userData.limit_minutes;
+                userData.auto_limit = 180;
+            }
             if (userData.last_reset !== today) {
-                userData.limit_minutes = maxLimitMinutes;
+                userData.manual_limit = maxManualLimit;
+                userData.auto_limit = maxAutoLimit;
                 userData.last_reset = today;
-                await updateSupabase({ limit_minutes: maxLimitMinutes, last_reset: today });
+                await updateSupabase({ manual_limit: maxManualLimit, auto_limit: maxAutoLimit, last_reset: today });
             }
         } else {
             await supabaseClient.from('users').insert([{
@@ -121,14 +149,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 balance: 0,
                 ref_count: 0,
                 ref_earn: 0,
-                limit_minutes: maxLimitMinutes,
+                manual_limit: maxManualLimit,
+                auto_limit: maxAutoLimit,
                 used_promos: [],
                 last_reset: today
             }]);
         }
     }
 
-    let limitMinutes = userData.limit_minutes;
+    let limitMinutes = isAutoMode ? userData.auto_limit : userData.manual_limit;
 
     async function updateSupabase(fields) {
         if (!supabaseClient) return;
@@ -168,6 +197,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         const tLimitLabel = document.getElementById('tLimitLabel');
         if (tLimitLabel) tLimitLabel.innerText = t.limitLabel;
+
+        const tResetTime = document.getElementById('tResetTime');
+        if (tResetTime) tResetTime.innerText = t.resetTimeLabel;
         
         const tHrsUnit = document.getElementById('tHrsUnit');
         if (tHrsUnit) tHrsUnit.innerText = t.hrsUnit;
@@ -236,12 +268,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         const dimLabelEl = document.getElementById('tDimLabel');
         if (dimLabelEl) dimLabelEl.innerText = t.dimLabel;
 
+        const statCourseTitle = document.getElementById('statCourseTitle');
+        const statCourseVal = document.getElementById('statCourseVal');
+        const statVideoTitle = document.getElementById('statVideoTitle');
+        const statVideoVal = document.getElementById('statVideoVal');
+        const statBannerTitle = document.getElementById('statBannerTitle');
+        const statBannerVal = document.getElementById('statBannerVal');
+        const statRefTitle = document.getElementById('statRefTitle');
+        const statRefVal = document.getElementById('statRefVal');
+
+        if (statCourseTitle) statCourseTitle.innerText = t.statCourseTitle;
+        if (statCourseVal) statCourseVal.innerText = t.statCourseVal;
+        if (statVideoTitle) statVideoTitle.innerText = t.statVideoTitle;
+        if (statVideoVal) statVideoVal.innerText = t.statVideoVal;
+        if (statBannerTitle) statBannerTitle.innerText = t.statBannerTitle;
+        if (statBannerVal) statBannerVal.innerText = t.statBannerVal;
+        if (statRefTitle) statRefTitle.innerText = t.statRefTitle;
+        if (statRefVal) statRefVal.innerText = t.statRefVal;
+
         const startBtn = document.getElementById('startBtn');
         if (startBtn) {
             if (!isFarming) {
-                startBtn.innerText = (limitMinutes > 0) ? t.startBtn : t.limitBtn;
+                if (limitMinutes > 0) {
+                    startBtn.innerText = t.startBtn;
+                    startBtn.disabled = false;
+                } else {
+                    startBtn.innerText = t.limitBtn;
+                    startBtn.disabled = true;
+                }
             } else {
                 startBtn.innerText = t.stopBtn;
+                startBtn.disabled = false;
             }
         }
 
@@ -297,10 +354,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (modeToggle) modeToggle.checked = isAutoMode;
-    toggleModeUI(true);
+    toggleModeUI(false);
     setLanguage(currentLang);
 
-    function toggleModeUI(resetLimit = false) {
+    function toggleModeUI(updateLimitState = false) {
         const presetBox = document.getElementById('presetBox');
         const modeLabel = document.getElementById('modeLabel');
         const t = translations[currentLang];
@@ -308,32 +365,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (isAutoMode) {
             if (presetBox) presetBox.style.display = 'block';
             if (modeLabel) modeLabel.innerText = t.modeBanner;
-            if (resetLimit && (limitMinutes > 180 || limitMinutes === 120)) {
-                maxLimitMinutes = 180;
-                limitMinutes = 180;
-            } else if (!maxLimitMinutes || maxLimitMinutes === 120) {
-                maxLimitMinutes = 180;
-            }
+            maxLimitMinutes = maxAutoLimit;
+            limitMinutes = userData.auto_limit;
         } else {
             if (presetBox) presetBox.style.display = 'none';
             if (modeLabel) modeLabel.innerText = t.modeVideo;
-            maxLimitMinutes = 120;
-            if (resetLimit && limitMinutes > 120) {
-                limitMinutes = 120;
-            }
+            maxLimitMinutes = maxManualLimit;
+            limitMinutes = userData.manual_limit;
             selectedTimerMinutes = 5;
         }
-        
-        if (limitMinutes > maxLimitMinutes) {
-            limitMinutes = maxLimitMinutes;
-        }
 
-        // Устанавливаем секунды только если таймер еще не запущен
         if (!isFarming) {
             currentSeconds = selectedTimerMinutes * 60;
             updateTimerDisplay();
         }
         updateLimitDisplay();
+
+        if (startBtn) {
+            if (limitMinutes <= 0) {
+                startBtn.innerText = t.limitBtn;
+                startBtn.disabled = true;
+            } else {
+                startBtn.innerText = t.startBtn;
+                startBtn.disabled = false;
+            }
+        }
     }
 
     if (modeToggle) {
@@ -346,19 +402,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             isAutoMode = e.target.checked;
             localStorage.setItem('sleep_auto_mode', isAutoMode);
             
-            maxLimitMinutes = isAutoMode ? 180 : 120;
-            limitMinutes = maxLimitMinutes;
+            limitMinutes = isAutoMode ? userData.auto_limit : userData.manual_limit;
             
-            toggleModeUI(true);
-            updateSupabase({ limit_minutes: limitMinutes });
+            toggleModeUI(false);
         });
     }
 
     window.setPreset = function(timeMins, limitMins, btn) {
         if (isFarming) return;
         selectedTimerMinutes = timeMins;
-        maxLimitMinutes = limitMins;
-        limitMinutes = limitMins; 
         
         currentSeconds = selectedTimerMinutes * 60;
         
@@ -366,8 +418,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (btn) btn.classList.add('active');
         
         updateTimerDisplay();
-        updateLimitDisplay();
-        updateSupabase({ limit_minutes: limitMinutes });
     };
 
     function updateLimitDisplay() {
@@ -410,13 +460,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (!isFarming) {
                 if (limitMinutes <= 0) { 
-                    alert(currentLang === 'ru' ? "Суточный лимит исчерпан!" : "Daily limit reached!"); 
+                    alert(currentLang === 'ru' ? "Суточный лимит для этого режима исчерпан!" : "Daily limit for this mode is reached!"); 
                     return; 
                 }
                 
                 isFarming = true;
                 const t = translations[currentLang];
                 startBtn.innerText = t.stopBtn;
+                startBtn.disabled = false;
                 startBtn.classList.add('btn-stop');
                 if (timerContainer) timerContainer.classList.add('active');
                 enableScreenProtection();
@@ -453,11 +504,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const rewardAmount = isAutoMode ? 2 : 7;
 
         if (isAutoMode) {
-            // В авто-режиме: короткое предупреждение и сразу показ авто-баннера без кликов пользователя
             alert(translations[currentLang].autoNotice);
             claimBonusReward(rewardAmount);
         } else {
-            // В ручном режиме: показываем кнопку / подтверждение для просмотра видео
             const msg = currentLang === 'ru' 
                 ? `Сессия завершена! Посмотреть рекламу и получить +${rewardAmount} монет?` 
                 : `Session finished! Watch an ad to claim +${rewardAmount} coins?`;
@@ -511,7 +560,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         userData.balance += reward;
         limitMinutes -= selectedTimerMinutes;
         if (limitMinutes < 0) limitMinutes = 0;
-        userData.limit_minutes = limitMinutes;
+
+        if (isAutoMode) {
+            userData.auto_limit = limitMinutes;
+        } else {
+            userData.manual_limit = limitMinutes;
+        }
 
         const balanceElem = document.getElementById('balance');
         if (balanceElem) balanceElem.innerText = userData.balance;
@@ -519,11 +573,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         await updateSupabase({
             balance: userData.balance,
-            limit_minutes: userData.limit_minutes
+            manual_limit: userData.manual_limit,
+            auto_limit: userData.auto_limit
         });
 
+        // БЕЗОПАСНОСТЬ: Если лимит исчерпан, ПОЛНОСТЬЮ ОСТАНАВЛИВАЕМ терминал без авто-перезапуска
         if (limitMinutes <= 0) {
-            stopFarming(currentLang === 'ru' ? "Суточный лимит исчерпан!" : "Daily limit reached!");
+            stopFarming(currentLang === 'ru' ? "Суточный лимит исчерпан! Возвращайтесь завтра." : "Daily limit reached! Come back tomorrow.");
             if (startBtn) {
                 startBtn.innerText = translations[currentLang].limitBtn;
                 startBtn.disabled = true;
@@ -548,7 +604,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         isFarming = false;
         const t = translations[currentLang];
         if (startBtn) {
-            startBtn.innerText = t.startBtn;
+            if (limitMinutes > 0) {
+                startBtn.innerText = t.startBtn;
+                startBtn.disabled = false;
+            } else {
+                startBtn.innerText = t.limitBtn;
+                startBtn.disabled = true;
+            }
             startBtn.classList.remove('btn-stop');
         }
         if (timerContainer) timerContainer.classList.remove('active');
@@ -560,7 +622,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (message) alert(message);
     }
 
-    // Обработка сворачивания / ухода из приложения (Page Visibility API)
     document.addEventListener("visibilitychange", () => {
         if (document.hidden && isFarming) {
             if (timerInterval) clearInterval(timerInterval);
