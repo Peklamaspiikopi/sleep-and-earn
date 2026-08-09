@@ -12,9 +12,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             modeVideo: "🎥 Режим: Ручные видео",
             modeBanner: "🤖 Режим: Авто-баннеры",
             presetTitle: "Сессия авто-просмотров:",
-            preset1: "⚡ 3 ЧАСА",
-            preset2: "🛌 5 ЧАСОВ",
-            preset3: "🌙 7 ЧАСОВ",
             balanceLabel: "Ваш баланс",
             coinUnit: "Монет",
             startBtn: "Запустить терминал",
@@ -38,9 +35,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             refEarnLabel: "Доход:",
             refCoinUnit: "монет",
             dimLabel: "🌙 Затемнение экрана",
-            claimBonusBtn: "🎁 Забрать бонус (+Реклама)",
-            autoNotice: "🤖 Сейчас откроется авто-баннер для начисления награды...",
             backgroundWarning: "⚠️ Внимание! Нельзя сворачивать приложение или выключать экран во время работы терминала!",
+            autoConfirmMsg: "🤖 Внимание! Вы активируете авто-режим на выбранное время. В течение сессии баннеры будут обновляться автоматически. Не закрывайте приложение и не выключайте экран. Подтвердить запуск?",
             
             statCourseTitle: "💎 КУРС",
             statCourseVal: "1 Монета = $0.0001",
@@ -59,9 +55,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             modeVideo: "🎥 Mode: Manual Videos",
             modeBanner: "🤖 Mode: Auto-Banners",
             presetTitle: "Auto-session preset:",
-            preset1: "⚡ 3 HOURS",
-            preset2: "🛌 5 HOURS",
-            preset3: "🌙 7 HOURS",
             balanceLabel: "Your balance",
             coinUnit: "Coins",
             startBtn: "Start Terminal",
@@ -85,9 +78,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             refEarnLabel: "Earned:",
             refCoinUnit: "coins",
             dimLabel: "🌙 Screen Dimmer",
-            claimBonusBtn: "🎁 Claim Bonus (+Ad)",
-            autoNotice: "🤖 Opening auto-banner to credit your reward...",
             backgroundWarning: "⚠️ Warning! Do not minimize the app or turn off the screen while the terminal is running!",
+            autoConfirmMsg: "🤖 Warning! You are activating the auto-mode. Banners will update automatically during the session. Do not close the app or turn off the screen. Confirm start?",
             
             statCourseTitle: "💎 RATE",
             statCourseVal: "1 Coin = $0.0001",
@@ -108,8 +100,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (refLinkInput) refLinkInput.value = fullRefLink;
 
     let isAutoMode = localStorage.getItem('sleep_auto_mode') === 'true';
-    let maxManualLimit = 120;
-    let maxAutoLimit = 180;
+    let maxManualLimit = 120; // 2 часа в минутах
+    let maxAutoLimit = 360;   // 6 часов общих в авто
     let maxLimitMinutes = isAutoMode ? maxAutoLimit : maxManualLimit; 
     
     let userData = {
@@ -117,7 +109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         ref_count: 0,
         ref_earn: 0,
         manual_limit: 120,
-        auto_limit: 180,
+        auto_limit: 360,
         used_promos: [],
         last_reset: new Date().toDateString()
     };
@@ -135,7 +127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             userData = data;
             if (userData.limit_minutes !== undefined && userData.manual_limit === undefined) {
                 userData.manual_limit = userData.limit_minutes;
-                userData.auto_limit = 180;
+                userData.auto_limit = 360;
             }
             if (userData.last_reset !== today) {
                 userData.manual_limit = maxManualLimit;
@@ -210,13 +202,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tPresetTitle = document.getElementById('tPresetTitle');
         if (tPresetTitle) tPresetTitle.innerText = t.presetTitle;
         
-        const p1 = document.getElementById('preset1');
-        const p2 = document.getElementById('preset2');
-        const p3 = document.getElementById('preset3');
-        if (p1) p1.innerText = t.preset1;
-        if (p2) p2.innerText = t.preset2;
-        if (p3) p3.innerText = t.preset3;
-        
         const tBalanceLabel = document.getElementById('tBalanceLabel');
         if (tBalanceLabel) tBalanceLabel.innerText = t.balanceLabel;
         
@@ -268,25 +253,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const dimLabelEl = document.getElementById('tDimLabel');
         if (dimLabelEl) dimLabelEl.innerText = t.dimLabel;
 
-        // Перевод карточек в кабинете
-        const statCourseTitle = document.getElementById('statCourseTitle');
-        const statCourseVal = document.getElementById('statCourseVal');
-        const statVideoTitle = document.getElementById('statVideoTitle');
-        const statVideoVal = document.getElementById('statVideoVal');
-        const statBannerTitle = document.getElementById('statBannerTitle');
-        const statBannerVal = document.getElementById('statBannerVal');
-        const statRefTitle = document.getElementById('statRefTitle');
-        const statRefVal = document.getElementById('statRefVal');
-
-        if (statCourseTitle) statCourseTitle.innerText = t.statCourseTitle;
-        if (statCourseVal) statCourseVal.innerText = t.statCourseVal;
-        if (statVideoTitle) statVideoTitle.innerText = t.statVideoTitle;
-        if (statVideoVal) statVideoVal.innerText = t.statVideoVal;
-        if (statBannerTitle) statBannerTitle.innerText = t.statBannerTitle;
-        if (statBannerVal) statBannerVal.innerText = t.statBannerVal;
-        if (statRefTitle) statRefTitle.innerText = t.statRefTitle;
-        if (statRefVal) statRefVal.innerText = t.statRefVal;
-
         const startBtn = document.getElementById('startBtn');
         if (startBtn) {
             if (!isFarming) {
@@ -315,11 +281,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     let timerInterval = null;
-    let currentSeconds = 300; 
+    let selectedSessionSeconds = 180 * 60; // По умолчанию 3 часа (в секундах)
+    let currentSeconds = selectedSessionSeconds; 
     let isFarming = false;
     let wakeLock = null;
     let isClickActionPending = false;
-    let selectedTimerMinutes = 5; 
 
     const startBtn = document.getElementById('startBtn');
     const timerContainer = document.getElementById('timerContainer');
@@ -358,7 +324,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     toggleModeUI(false);
     setLanguage(currentLang);
 
-    function toggleModeUI(updateLimitState = false) {
+    function toggleModeUI() {
         const presetBox = document.getElementById('presetBox');
         const modeLabel = document.getElementById('modeLabel');
         const t = translations[currentLang];
@@ -373,11 +339,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (modeLabel) modeLabel.innerText = t.modeVideo;
             maxLimitMinutes = maxManualLimit;
             limitMinutes = userData.manual_limit;
-            selectedTimerMinutes = 5;
+            selectedSessionSeconds = 5 * 60; // 5 минут для ручного теста
         }
 
         if (!isFarming) {
-            currentSeconds = selectedTimerMinutes * 60;
+            currentSeconds = selectedSessionSeconds;
             updateTimerDisplay();
         }
         updateLimitDisplay();
@@ -402,18 +368,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             isAutoMode = e.target.checked;
             localStorage.setItem('sleep_auto_mode', isAutoMode);
-            
             limitMinutes = isAutoMode ? userData.auto_limit : userData.manual_limit;
-            
-            toggleModeUI(false);
+            toggleModeUI();
         });
     }
 
-    window.setPreset = function(timeMins, limitMins, btn) {
+    window.setPreset = function(timeMins, btn) {
         if (isFarming) return;
-        selectedTimerMinutes = timeMins;
-        
-        currentSeconds = selectedTimerMinutes * 60;
+        selectedSessionSeconds = timeMins * 60;
+        currentSeconds = selectedSessionSeconds;
         
         document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
         if (btn) btn.classList.add('active');
@@ -430,11 +393,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function updateTimerDisplay() {
         if (!timerDisplay) return;
-        let mins = Math.floor(currentSeconds / 60);
+        let hours = Math.floor(currentSeconds / 3600);
+        let mins = Math.floor((currentSeconds % 3600) / 60);
         let secs = currentSeconds % 60;
         timerDisplay.classList.remove('timer-loading');
-        timerDisplay.style.fontSize = "26px";
-        timerDisplay.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        timerDisplay.style.fontSize = hours > 0 ? "22px" : "26px";
+        timerDisplay.innerText = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
 
     window.closeModal = function() {
@@ -460,9 +424,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             setTimeout(() => { isClickActionPending = false; }, 1000);
 
             if (!isFarming) {
-                if (limitMinutes <= 0) { 
-                    alert(currentLang === 'ru' ? "Суточный лимит для этого режима исчерпан!" : "Daily limit for this mode is reached!"); 
+                const sessionMinsNeeded = Math.ceil(selectedSessionSeconds / 60);
+                if (limitMinutes < sessionMinsNeeded) { 
+                    alert(currentLang === 'ru' ? "Недостаточно суточного лимита для этого пресета!" : "Insufficient daily limit for this preset!"); 
                     return; 
+                }
+
+                // Запрос подтверждения для авто-режима
+                if (isAutoMode) {
+                    if (!confirm(translations[currentLang].autoConfirmMsg)) {
+                        return;
+                    }
                 }
                 
                 isFarming = true;
@@ -471,8 +443,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 startBtn.disabled = false;
                 startBtn.classList.add('btn-stop');
                 if (timerContainer) timerContainer.classList.add('active');
-                enableScreenProtection();
+                
+                // Блокируем переключатель режима и пресеты на время сессии
+                if (modeToggle) modeToggle.disabled = true;
+                const presetContainer = document.getElementById('presetOptionsContainer');
+                if (presetContainer) presetContainer.style.pointerEvents = 'none';
 
+                enableScreenProtection();
                 runFreeTimer();
             } else {
                 stopFarming(currentLang === 'ru' ? "Терминал остановлен пользователем." : "Terminal stopped by user.");
@@ -492,6 +469,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentSeconds--;
             updateTimerDisplay();
 
+            // Каждую минуту списываем 1 минуту лимита пропорционально, чтобы при вылете лимит не сгорал целиком
+            if (currentSeconds % 60 === 0) {
+                deductOneMinuteLimit();
+            }
+
             if (currentSeconds <= 0) {
                 clearInterval(timerInterval);
                 if (isFarming) {
@@ -501,65 +483,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 1000);
     }
 
-    function handleTimerCompletion() {
-        const rewardAmount = isAutoMode ? 2 : 7;
-
-        if (isAutoMode) {
-            alert(translations[currentLang].autoNotice);
-            claimBonusReward(rewardAmount);
-        } else {
-            const msg = currentLang === 'ru' 
-                ? `Сессия завершена! Посмотреть рекламу и получить +${rewardAmount} монет?` 
-                : `Session finished! Watch an ad to claim +${rewardAmount} coins?`;
-
-            if (confirm(msg)) {
-                claimBonusReward(rewardAmount);
-            } else {
-                runFreeTimer();
-            }
-        }
-    }
-
-    window.claimBonusReward = function(reward) {
-        if (window.location.protocol === 'file:') {
-            grantReward(reward);
-            return;
-        }
-
-        const t = translations[currentLang];
-        if (timerDisplay) {
-            timerDisplay.classList.add('timer-loading');
-            timerDisplay.style.fontSize = "13px";
-            timerDisplay.innerText = t.loadingAd;
-        }
-
-        if (isAutoMode) {
-            if (bannerController) {
-                bannerController.show()
-                    .then(() => { grantReward(reward); })
-                    .catch((err) => { handleAdError(err); });
-            } else {
-                handleAdError("Banner controller not initialized");
-            }
-        } else {
-            if (videoController) {
-                videoController.show()
-                    .then((result) => {
-                        if (result.done) { grantReward(reward); }
-                        else { handleAdError("Ad closed"); }
-                    })
-                    .catch((err) => { handleAdError(err); });
-            } else {
-                handleAdError("Video controller not initialized");
-            }
-        }
-    };
-
-    async function grantReward(reward) {
-        if (!isFarming) return;
-
-        userData.balance += reward;
-        limitMinutes -= selectedTimerMinutes;
+    async function deductOneMinuteLimit() {
+        limitMinutes -= 1;
         if (limitMinutes < 0) limitMinutes = 0;
 
         if (isAutoMode) {
@@ -567,41 +492,74 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             userData.manual_limit = limitMinutes;
         }
-
-        const balanceElem = document.getElementById('balance');
-        if (balanceElem) balanceElem.innerText = userData.balance;
         updateLimitDisplay();
-
         await updateSupabase({
-            balance: userData.balance,
             manual_limit: userData.manual_limit,
             auto_limit: userData.auto_limit
         });
+    }
 
-        if (limitMinutes <= 0) {
-            stopFarming(currentLang === 'ru' ? "Суточный лимит исчерпан! Возвращайтесь завтра." : "Daily limit reached! Come back tomorrow.");
-            if (startBtn) {
-                startBtn.innerText = translations[currentLang].limitBtn;
-                startBtn.disabled = true;
+    function handleTimerCompletion() {
+        const rewardAmount = isAutoMode ? 40 : 7; // Награда за завершенный цикл
+
+        if (isAutoMode) {
+            if (bannerController) {
+                bannerController.show()
+                    .then(() => { grantReward(rewardAmount); })
+                    .catch((err) => { handleAdError(err); });
+            } else {
+                grantReward(rewardAmount);
             }
-            return;
-        }
+        } else {
+            const msg = currentLang === 'ru' 
+                ? `Сессия завершена! Посмотреть рекламу и получить +${rewardAmount} монет?` 
+                : `Session finished! Watch an ad to claim +${rewardAmount} coins?`;
 
-        currentSeconds = selectedTimerMinutes * 60;
-        updateTimerDisplay();
-        runFreeTimer();
+            if (confirm(msg)) {
+                if (videoController) {
+                    videoController.show()
+                        .then((result) => {
+                            if (result.done) { grantReward(rewardAmount); }
+                            else { handleAdError("Ad closed"); }
+                        })
+                        .catch((err) => { handleAdError(err); });
+                } else {
+                    grantReward(rewardAmount);
+                }
+            } else {
+                stopFarming(currentLang === 'ru' ? "Сессия завершена." : "Session finished.");
+            }
+        }
+    }
+
+    async function grantReward(reward) {
+        if (!isFarming) return;
+
+        userData.balance += reward;
+        const balanceElem = document.getElementById('balance');
+        if (balanceElem) balanceElem.innerText = userData.balance;
+
+        await updateSupabase({ balance: userData.balance });
+
+        stopFarming(currentLang === 'ru' ? "🎉 Сессия успешно завершена, монеты зачислены!" : "🎉 Session completed successfully, coins credited!");
     }
 
     function handleAdError(error) {
-        alert(translations[currentLang].adErrorAlert);
-        currentSeconds = selectedTimerMinutes * 60;
-        updateTimerDisplay();
-        runFreeTimer(); 
+        if (!isAutoMode) {
+            alert(translations[currentLang].adErrorAlert);
+        }
+        stopFarming(currentLang === 'ru' ? "Сессия завершена." : "Session finished.");
     }
 
     function stopFarming(message) {
         if (timerInterval) clearInterval(timerInterval);
         isFarming = false;
+        
+        // Разблокируем настройки обратно
+        if (modeToggle) modeToggle.disabled = false;
+        const presetContainer = document.getElementById('presetOptionsContainer');
+        if (presetContainer) presetContainer.style.pointerEvents = 'auto';
+
         const t = translations[currentLang];
         if (startBtn) {
             if (limitMinutes > 0) {
@@ -616,7 +574,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (timerContainer) timerContainer.classList.remove('active');
         disableScreenProtection();
         
-        currentSeconds = selectedTimerMinutes * 60;
+        currentSeconds = selectedSessionSeconds;
         updateTimerDisplay();
         
         if (message) alert(message);
