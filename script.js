@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const translations = {
         ru: {
             alert: "<b>Экран гаснет?</b> Во избежание пауз продлите время работы дисплея в настройках телефона или используйте софт для удержания активного экрана.",
+            fairPlayWarning: "⚠️ <b>Важно:</b> Для честного начисления наград приложение должно быть открыто на экране (нельзя сворачивать и гасить экран). Использование ботов и автокликеров запрещено.",
             limitLabel: "⏱️ Суточный лимит:",
             hrsUnit: "ч.",
             modeVideo: "🎥 Режим: Ручные видео",
@@ -51,6 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         },
         en: {
             alert: "<b>Screen turning off?</b> To avoid pauses, extend display timeout in your phone settings or use an active screen app.",
+            fairPlayWarning: "⚠️ <b>Important:</b> For fair rewards, the app must stay open on screen (do not minimize or turn off the screen). Bots and auto-clickers are prohibited.",
             limitLabel: "⏱️ Daily Limit:",
             hrsUnit: "hrs",
             modeVideo: "🎥 Mode: Manual Videos",
@@ -192,6 +194,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const setText = (id, text) => { const el = document.getElementById(id); if (el) el.innerHTML = text; };
         
         setText('tAlert', t.alert);
+        setText('tFairPlayWarning', t.fairPlayWarning);
         setText('tLimitLabel', t.limitLabel);
         setText('tHrsUnit', t.hrsUnit);
         setText('tHrsUnitMax', t.hrsUnit);
@@ -408,7 +411,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!isFarming) {
                 const sessionMinsNeeded = Math.ceil(selectedSessionSeconds / 60);
                 
-                // СТРОГАЯ ПРОВЕРКА ЛИМИТА ДЛЯ АВТО-РЕЖИМА
                 if (limitMinutes < sessionMinsNeeded) { 
                     alert(translations[currentLang].presetLimitError); 
                     return; 
@@ -418,7 +420,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (!confirm(translations[currentLang].autoConfirmMsg)) {
                         return;
                     }
-                    // Списываем минуты пресета сразу при старте, чтобы исключить накрутку
                     limitMinutes -= sessionMinsNeeded;
                     userData.auto_limit = limitMinutes;
                     updateLimitDisplay();
@@ -456,7 +457,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentSeconds--;
             updateTimerDisplay();
 
-            // В ручном режиме списываем минуты поштучно каждую минуту
             if (!isAutoMode && currentSeconds % 60 === 0) {
                 deductOneMinuteLimit();
             }
