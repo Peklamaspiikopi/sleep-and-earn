@@ -100,8 +100,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (refLinkInput) refLinkInput.value = fullRefLink;
 
     let isAutoMode = localStorage.getItem('sleep_auto_mode') === 'true';
-    let maxManualLimit = 120; // 2 часа в минутах
-    let maxAutoLimit = 360;   // 6 часов общих в авто
+    let maxManualLimit = 120; // 2 часа для ручного
+    let maxAutoLimit = 420;   // 7 часов максимальный пресет для авто
     let maxLimitMinutes = isAutoMode ? maxAutoLimit : maxManualLimit; 
     
     let userData = {
@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         ref_count: 0,
         ref_earn: 0,
         manual_limit: 120,
-        auto_limit: 360,
+        auto_limit: 420,
         used_promos: [],
         last_reset: new Date().toDateString()
     };
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             userData = data;
             if (userData.limit_minutes !== undefined && userData.manual_limit === undefined) {
                 userData.manual_limit = userData.limit_minutes;
-                userData.auto_limit = 360;
+                userData.auto_limit = 420;
             }
             if (userData.last_reset !== today) {
                 userData.manual_limit = maxManualLimit;
@@ -190,9 +190,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tLimitLabel = document.getElementById('tLimitLabel');
         if (tLimitLabel) tLimitLabel.innerText = t.limitLabel;
 
-        const tResetTime = document.getElementById('tResetTime');
-        if (tResetTime) tResetTime.innerText = t.resetTimeLabel;
-        
         const tHrsUnit = document.getElementById('tHrsUnit');
         if (tHrsUnit) tHrsUnit.innerText = t.hrsUnit;
         
@@ -269,7 +266,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        toggleModeUI(false);
+        toggleModeUI();
     };
 
     let videoController = null;
@@ -281,7 +278,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     let timerInterval = null;
-    let selectedSessionSeconds = 180 * 60; // По умолчанию 3 часа (в секундах)
+    let selectedSessionSeconds = 180 * 60; // По умолчанию 3 часа для авто
     let currentSeconds = selectedSessionSeconds; 
     let isFarming = false;
     let wakeLock = null;
@@ -321,7 +318,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (modeToggle) modeToggle.checked = isAutoMode;
-    toggleModeUI(false);
+    toggleModeUI();
     setLanguage(currentLang);
 
     function toggleModeUI() {
@@ -334,12 +331,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (modeLabel) modeLabel.innerText = t.modeBanner;
             maxLimitMinutes = maxAutoLimit;
             limitMinutes = userData.auto_limit;
+            
+            // Определяем время по активной кнопке пресета или ставим 3 часа (180 мин)
+            const activePreset = document.querySelector('.preset-btn.active');
+            let presetMins = 180;
+            if (activePreset) {
+                if (activePreset.id === 'preset2') presetMins = 300; // 5 часов
+                else if (activePreset.id === 'preset3') presetMins = 420; // 7 часов
+                else presetMins = 180; // 3 часа
+            }
+            selectedSessionSeconds = presetMins * 60;
         } else {
             if (presetBox) presetBox.style.display = 'none';
             if (modeLabel) modeLabel.innerText = t.modeVideo;
             maxLimitMinutes = maxManualLimit;
             limitMinutes = userData.manual_limit;
-            selectedSessionSeconds = 5 * 60; // 5 минут для ручного теста
+            selectedSessionSeconds = 5 * 60; // Ручной режим строго 5 минут
         }
 
         if (!isFarming) {
@@ -430,7 +437,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return; 
                 }
 
-                // Запрос подтверждения для авто-режима
                 if (isAutoMode) {
                     if (!confirm(translations[currentLang].autoConfirmMsg)) {
                         return;
@@ -444,7 +450,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 startBtn.classList.add('btn-stop');
                 if (timerContainer) timerContainer.classList.add('active');
                 
-                // Блокируем переключатель режима и пресеты на время сессии
                 if (modeToggle) modeToggle.disabled = true;
                 const presetContainer = document.getElementById('presetOptionsContainer');
                 if (presetContainer) presetContainer.style.pointerEvents = 'none';
@@ -469,7 +474,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentSeconds--;
             updateTimerDisplay();
 
-            // Каждую минуту списываем 1 минуту лимита пропорционально, чтобы при вылете лимит не сгорал целиком
             if (currentSeconds % 60 === 0) {
                 deductOneMinuteLimit();
             }
@@ -500,7 +504,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function handleTimerCompletion() {
-        const rewardAmount = isAutoMode ? 40 : 7; // Награда за завершенный цикл
+        const rewardAmount = isAutoMode ? 40 : 7;
 
         if (isAutoMode) {
             if (bannerController) {
@@ -555,7 +559,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (timerInterval) clearInterval(timerInterval);
         isFarming = false;
         
-        // Разблокируем настройки обратно
         if (modeToggle) modeToggle.disabled = false;
         const presetContainer = document.getElementById('presetOptionsContainer');
         if (presetContainer) presetContainer.style.pointerEvents = 'auto';
