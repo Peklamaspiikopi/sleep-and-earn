@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             navTerminal: "Терминал",
             navCabinet: "Кабинет",
             modalTitle: "🚀 Первый запуск!",
-            modalText: "Привет! Это первый запуск авто-терминала. Пожалуйста, если вы заметите ошибку — напишите в техподдержку!",
+            modalText: "Привет! Это первый запуск терминала. Пожалуйста, если вы заметите ошибку — напишите в техподдержку!",
             modalBtn: "Понятно",
             loadingAd: "⏳ Загрузка...",
             adErrorAlert: "❌ Реклама не загрузилась!\n\nЕсли у вас включен VPN или AdBlock, отключите их.",
@@ -35,7 +35,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             copiedMsg: "Ссылка скопирована!",
             refCountLabel: "Приглашено:",
             refEarnLabel: "Доход:",
-            refCoinUnit: "монет"
+            refCoinUnit: "монет",
+            dimLabel: "🌙 Затемнение экрана",
+            claimBonusBtn: "🎁 Забрать бонус (+Реклама)"
         },
         en: {
             alert: "<b>Screen turning off?</b> To avoid pauses, extend display timeout in your phone settings or use an active screen app.",
@@ -68,7 +70,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             copiedMsg: "Link copied!",
             refCountLabel: "Invited:",
             refEarnLabel: "Earned:",
-            refCoinUnit: "coins"
+            refCoinUnit: "coins",
+            dimLabel: "🌙 Screen Dimmer",
+            claimBonusBtn: "🎁 Claim Bonus (+Ad)"
         }
     };
 
@@ -91,7 +95,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     if (supabaseClient) {
-        let { data, error } = await supabaseClient
+        let { data } = await supabaseClient
             .from('users')
             .select('*')
             .eq('telegram_id', myTelegramID)
@@ -172,6 +176,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('tRefEarnLabel').innerText = t.refEarnLabel;
         document.getElementById('tRefCoinUnit').innerText = t.refCoinUnit;
 
+        const dimLabelEl = document.getElementById('tDimLabel');
+        if (dimLabelEl) dimLabelEl.innerText = t.dimLabel;
+
         if (!isFarming) {
             document.getElementById('startBtn').innerText = (limitMinutes > 0) ? t.startBtn : t.limitBtn;
         } else {
@@ -201,6 +208,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modeToggle = document.getElementById('modeToggle');
     const timerDisplay = document.getElementById('timer');
     const wakeVideo = document.getElementById('wakeVideo');
+
+    // Затемнение экрана (добавим элемент динамически, если его нет в HTML)
+    let dimOverlay = document.getElementById('dimOverlay');
+    if (!dimOverlay) {
+        dimOverlay = document.createElement('div');
+        dimOverlay.id = 'dimOverlay';
+        dimOverlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0); pointer-events: none; z-index: 999; transition: background-color 0.3s ease;";
+        document.body.appendChild(dimOverlay);
+    }
+
+    const dimSlider = document.getElementById('dimSlider');
+    if (dimSlider) {
+        dimSlider.addEventListener('input', (e) => {
+            const opacity = e.target.value / 100;
+            dimOverlay.style.backgroundColor = `rgba(0, 0, 0, ${opacity})`;
+            dimOverlay.style.pointerEvents = opacity > 0.5 ? 'auto' : 'none';
+        });
+        dimOverlay.addEventListener('click', () => {
+            dimSlider.value = 0;
+            dimOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0)';
+            dimOverlay.style.pointerEvents = 'none';
+        });
+    }
 
     if (!localStorage.getItem('sleep_first_run_done')) {
         document.getElementById('welcomeModal').style.display = 'flex';
@@ -321,109 +351,113 @@ document.addEventListener('DOMContentLoaded', async () => {
             timerContainer.classList.add('active');
             enableScreenProtection();
 
-            runFarmingCycle();
+            runFreeTimer();
         } else {
             stopFarming(currentLang === 'ru' ? "Терминал остановлен пользователем." : "Terminal stopped by user.");
         }
     });
 
-    function runFarmingCycle() {
+    function runFreeTimer() {
         if (!isFarming) return;
-
         if (timerInterval) clearInterval(timerInterval);
 
+        currentSeconds = selectedTimerMinutes * 60;
+        updateTimerDisplay();
+
+        timerInterval = setInterval(() => {
+            if (!isFarming) {
+                clearInterval(timerInterval);
+                return;
+            }
+            currentSeconds--;
+            updateTimerDisplay();
+
+            if (currentSeconds <= 0) {
+                clearInterval(timerInterval);
+                if (isFarming) {
+                    // Цикл завершился: предлагаем добровольный бонус с просмотром рекламы
+                    promptUserForBonus();
+                }
+            }
+        }, 1000);
+    }
+
+    function promptUserForBonus() {
+        const rewardAmount = isAutoMode ? 2 : 7;
+        const msg = currentLang === 'ru' 
+            ? `Сессия завершена! Посмотреть рекламу и получить +${reward} монет?` 
+            : `Session finished! Watch an ad to claim +${reward} coins?`;
+
+        if (confirm(msg)) {
+            claimBonusReward(rewardAmount);
+        } else {
+            // Если отказался, запускаем следующий таймер бесплатно
+            runFreeTimer();
+        }
+    }
+
+    window.claimBonusReward = function(reward) {
+        if (window.location.protocol === 'file:') {
+            grantReward(reward);
+            return;
+        }
+
         const t = translations[currentLang];
-        
         timerDisplay.classList.add('timer-loading');
         timerDisplay.style.fontSize = "13px";
         timerDisplay.innerText = t.loadingAd;
 
-        const onAdWatchedSuccess = async (reward) => {
-            if (!isFarming) return;
-
-            userData.balance += reward;
-            limitMinutes -= selectedTimerMinutes;
-            if (limitMinutes < 0) limitMinutes = 0;
-            userData.limit_minutes = limitMinutes;
-
-            document.getElementById('balance').innerText = userData.balance;
-            updateLimitDisplay();
-
-            await updateSupabase({
-                balance: userData.balance,
-                limit_minutes: userData.limit_minutes
-            });
-
-            if (limitMinutes <= 0) {
-                stopFarming(currentLang === 'ru' ? "Суточный лимит исчерпан!" : "Daily limit reached!");
-                startBtn.innerText = t.limitBtn;
-                startBtn.disabled = true;
-                return;
-            }
-
-            currentSeconds = selectedTimerMinutes * 60;
-            updateTimerDisplay();
-
-            if (timerInterval) clearInterval(timerInterval);
-            
-            timerInterval = setInterval(() => {
-                if (!isFarming) {
-                    clearInterval(timerInterval);
-                    return;
-                }
-                currentSeconds--;
-                updateTimerDisplay();
-
-                if (currentSeconds <= 0) {
-                    clearInterval(timerInterval);
-                    if (isFarming) {
-                        runFarmingCycle(); 
-                    }
-                }
-            }, 1000);
-        };
-
-        if (window.location.protocol === 'file:') {
-            setTimeout(() => {
-                onAdWatchedSuccess(isAutoMode ? 2 : 7);
-            }, 2000);
-            return;
-        }
-
         if (isAutoMode) {
             if (bannerController) {
                 bannerController.show()
-                    .then(() => { 
-                        onAdWatchedSuccess(2); 
-                    })
-                    .catch((err) => { 
-                        handleAdError(err); 
-                    });
-            } else { 
+                    .then(() => { grantReward(reward); })
+                    .catch((err) => { handleAdError(err); });
+            } else {
                 handleAdError("Banner controller not initialized");
             }
         } else {
             if (videoController) {
                 videoController.show()
                     .then((result) => {
-                        if (result.done) {
-                            onAdWatchedSuccess(7);
-                        } else {
-                            handleAdError("Ad closed before completion");
-                        }
+                        if (result.done) { grantReward(reward); }
+                        else { handleAdError("Ad closed"); }
                     })
-                    .catch((err) => { 
-                        handleAdError(err); 
-                    });
-            } else { 
+                    .catch((err) => { handleAdError(err); });
+            } else {
                 handleAdError("Video controller not initialized");
             }
         }
+    };
+
+    async function grantReward(reward) {
+        if (!isFarming) return;
+
+        userData.balance += reward;
+        limitMinutes -= selectedTimerMinutes;
+        if (limitMinutes < 0) limitMinutes = 0;
+        userData.limit_minutes = limitMinutes;
+
+        document.getElementById('balance').innerText = userData.balance;
+        updateLimitDisplay();
+
+        await updateSupabase({
+            balance: userData.balance,
+            limit_minutes: userData.limit_minutes
+        });
+
+        if (limitMinutes <= 0) {
+            stopFarming(currentLang === 'ru' ? "Суточный лимит исчерпан!" : "Daily limit reached!");
+            startBtn.innerText = translations[currentLang].limitBtn;
+            startBtn.disabled = true;
+            return;
+        }
+
+        runFreeTimer();
     }
 
     function handleAdError(error) {
-        stopFarming();
         alert(translations[currentLang].adErrorAlert);
+        runFreeTimer(); // продолжать работу таймера даже при сбое рекламы
     }
 
     function stopFarming(message) {
