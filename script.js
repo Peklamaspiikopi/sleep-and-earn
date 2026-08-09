@@ -7,11 +7,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         ru: {
             alert: "<b>Экран гаснет?</b> Во избежание пауз продлите время работы дисплея в настройках телефона или используйте софт для удержания активного экрана.",
             limitLabel: "⏱️ Суточный лимит:",
-            resetTimeLabel: "🔄 Сброс лимитов в 00:00 UTC",
             hrsUnit: "ч.",
             modeVideo: "🎥 Режим: Ручные видео",
             modeBanner: "🤖 Режим: Авто-баннеры",
             presetTitle: "Сессия авто-просмотров:",
+            pr1: "3 ЧАСА",
+            pr2: "5 ЧАСОВ",
+            pr3: "7 ЧАСОВ",
             balanceLabel: "Ваш баланс",
             coinUnit: "Монет",
             startBtn: "Запустить терминал",
@@ -26,7 +28,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             modalTitle: "🚀 Первый запуск!",
             modalText: "Привет! Это первый запуск терминала. Пожалуйста, если вы заметите ошибку — напишите в техподдержку!",
             modalBtn: "Понятно",
-            loadingAd: "⏳ Загрузка...",
             adErrorAlert: "❌ Реклама не загрузилась!\n\nЕсли у вас включен VPN или AdBlock, отключите их.",
             refTitle: "🔗 Ваша реферальная ссылка:",
             copyBtn: "Копировать",
@@ -50,11 +51,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         en: {
             alert: "<b>Screen turning off?</b> To avoid pauses, extend display timeout in your phone settings or use an active screen app.",
             limitLabel: "⏱️ Daily Limit:",
-            resetTimeLabel: "🔄 Limits reset at 00:00 UTC",
             hrsUnit: "hrs",
             modeVideo: "🎥 Mode: Manual Videos",
             modeBanner: "🤖 Mode: Auto-Banners",
             presetTitle: "Auto-session preset:",
+            pr1: "3 HOURS",
+            pr2: "5 HOURS",
+            pr3: "7 HOURS",
             balanceLabel: "Your balance",
             coinUnit: "Coins",
             startBtn: "Start Terminal",
@@ -69,7 +72,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             modalTitle: "🚀 First Launch!",
             modalText: "Welcome! If you notice any bugs, please contact support!",
             modalBtn: "Got it",
-            loadingAd: "⏳ Loading...",
             adErrorAlert: "❌ Ad failed to load! Please disable AdBlock or VPN.",
             refTitle: "🔗 Your Referral Link:",
             copyBtn: "Copy",
@@ -184,71 +186,46 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (langEn) langEn.classList.toggle('active', lang === 'en');
 
         const t = translations[lang];
-        const tAlert = document.getElementById('tAlert');
-        if (tAlert) tAlert.innerHTML = t.alert;
         
-        const tLimitLabel = document.getElementById('tLimitLabel');
-        if (tLimitLabel) tLimitLabel.innerText = t.limitLabel;
+        // Переводы элементов терминала и кабинета
+        const setText = (id, text) => { const el = document.getElementById(id); if (el) el.innerHTML = text; };
+        
+        setText('tAlert', t.alert);
+        setText('tLimitLabel', t.limitLabel);
+        setText('tHrsUnit', t.hrsUnit);
+        setText('tHrsUnitMax', t.hrsUnit);
+        setText('tPresetTitle', t.presetTitle);
+        setText('tPr1', t.pr1);
+        setText('tPr2', t.pr2);
+        setText('tPr3', t.pr3);
+        setText('tBalanceLabel', t.balanceLabel);
+        setText('tCoinUnit', t.coinUnit);
+        setText('tHonesty', t.honesty);
+        setText('tWithdrawLimit', t.withdrawLimit);
+        setText('withdrawBtn', t.withdrawBtn);
+        setText('tNavTerminal', t.navTerminal);
+        setText('tNavCabinet', t.navCabinet);
+        setText('tModalTitle', t.modalTitle);
+        setText('tModalText', t.modalText);
+        setText('tModalBtn', t.modalBtn);
+        setText('tRefTitle', t.refTitle);
+        setText('copyRefBtn', t.copyBtn);
+        setText('tRefCountLabel', t.refCountLabel);
+        setText('tRefEarnLabel', t.refEarnLabel);
+        setText('tRefCoinUnit', t.refCoinUnit);
+        setText('tDimLabel', t.dimLabel);
+        
+        setText('statCourseTitle', t.statCourseTitle);
+        setText('statCourseVal', t.statCourseVal);
+        setText('statVideoTitle', t.statVideoTitle);
+        setText('statVideoVal', t.statVideoVal);
+        setText('statBannerTitle', t.statBannerTitle);
+        setText('statBannerVal', t.statBannerVal);
+        setText('statRefTitle', t.statRefTitle);
+        setText('statRefVal', t.statRefVal);
 
-        const tHrsUnit = document.getElementById('tHrsUnit');
-        if (tHrsUnit) tHrsUnit.innerText = t.hrsUnit;
-        
-        const tHrsUnitMax = document.getElementById('tHrsUnitMax');
-        if (tHrsUnitMax) tHrsUnitMax.innerText = t.hrsUnit;
-        
-        const tPresetTitle = document.getElementById('tPresetTitle');
-        if (tPresetTitle) tPresetTitle.innerText = t.presetTitle;
-        
-        const tBalanceLabel = document.getElementById('tBalanceLabel');
-        if (tBalanceLabel) tBalanceLabel.innerText = t.balanceLabel;
-        
-        const tCoinUnit = document.getElementById('tCoinUnit');
-        if (tCoinUnit) tCoinUnit.innerText = t.coinUnit;
-        
-        const tHonesty = document.getElementById('tHonesty');
-        if (tHonesty) tHonesty.innerHTML = t.honesty;
-        
-        const tWithdrawLimit = document.getElementById('tWithdrawLimit');
-        if (tWithdrawLimit) tWithdrawLimit.innerHTML = t.withdrawLimit;
-        
         const promoInput = document.getElementById('promoInput');
         if (promoInput) promoInput.placeholder = t.promoPlaceholder;
-        
-        const withdrawBtn = document.getElementById('withdrawBtn');
-        if (withdrawBtn) withdrawBtn.innerText = t.withdrawBtn;
-        
-        const tNavTerminal = document.getElementById('tNavTerminal');
-        if (tNavTerminal) tNavTerminal.innerText = t.navTerminal;
-        
-        const tNavCabinet = document.getElementById('tNavCabinet');
-        if (tNavCabinet) tNavCabinet.innerText = t.navCabinet;
-        
-        const tModalTitle = document.getElementById('tModalTitle');
-        if (tModalTitle) tModalTitle.innerText = t.modalTitle;
-        
-        const tModalText = document.getElementById('tModalText');
-        if (tModalText) tModalText.innerText = t.modalText;
-        
-        const tModalBtn = document.getElementById('tModalBtn');
-        if (tModalBtn) tModalBtn.innerText = t.modalBtn;
-        
-        const tRefTitle = document.getElementById('tRefTitle');
-        if (tRefTitle) tRefTitle.innerText = t.refTitle;
-        
-        const copyRefBtn = document.getElementById('copyRefBtn');
-        if (copyRefBtn) copyRefBtn.innerText = t.copyBtn;
-        
-        const tRefCountLabel = document.getElementById('tRefCountLabel');
-        if (tRefCountLabel) tRefCountLabel.innerText = t.refCountLabel;
-        
-        const tRefEarnLabel = document.getElementById('tRefEarnLabel');
-        if (tRefEarnLabel) tRefEarnLabel.innerText = t.refEarnLabel;
-        
-        const tRefCoinUnit = document.getElementById('tRefCoinUnit');
-        if (tRefCoinUnit) tRefCoinUnit.innerText = t.refCoinUnit;
-
-        const dimLabelEl = document.getElementById('tDimLabel');
-        if (dimLabelEl) dimLabelEl.innerText = t.dimLabel;
 
         const startBtn = document.getElementById('startBtn');
         if (startBtn) {
@@ -278,7 +255,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     let timerInterval = null;
-    let selectedSessionSeconds = 300; // По умолчанию 5 минут для ручного режима
+    let selectedSessionSeconds = 180 * 60; // По умолчанию 3 часа для авто
     let currentSeconds = selectedSessionSeconds; 
     let isFarming = false;
     let wakeLock = null;
@@ -291,15 +268,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const wakeVideo = document.getElementById('wakeVideo');
 
     let dimOverlay = document.getElementById('dimOverlay');
-    if (!dimOverlay) {
-        dimOverlay = document.createElement('div');
-        dimOverlay.id = 'dimOverlay';
-        dimOverlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0); pointer-events: none; z-index: 999; transition: background-color 0.3s ease;";
-        document.body.appendChild(dimOverlay);
-    }
-
     const dimSlider = document.getElementById('dimSlider');
-    if (dimSlider) {
+    if (dimSlider && dimOverlay) {
         dimSlider.addEventListener('input', (e) => {
             const opacity = e.target.value / 100;
             dimOverlay.style.backgroundColor = `rgba(0, 0, 0, ${opacity})`;
@@ -345,7 +315,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (modeLabel) modeLabel.innerText = t.modeVideo;
             maxLimitMinutes = maxManualLimit;
             limitMinutes = userData.manual_limit;
-            selectedSessionSeconds = 5 * 60; // Ручной режим строго 5 минут (300 секунд)
+            selectedSessionSeconds = 5 * 60; // Ручной режим строго 5 минут
         }
 
         if (!isFarming) {
@@ -403,14 +373,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         let mins = Math.floor((currentSeconds % 3600) / 60);
         let secs = currentSeconds % 60;
         
-        timerDisplay.classList.remove('timer-loading');
-
         if (hours > 0) {
             timerDisplay.style.fontSize = "22px";
             timerDisplay.innerText = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         } else {
             timerDisplay.style.fontSize = "26px";
-            // Формат MM:SS для ручного режима без лишних часов
             timerDisplay.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
     }
