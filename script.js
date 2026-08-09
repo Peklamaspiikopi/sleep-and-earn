@@ -37,7 +37,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             refCoinUnit: "монет",
             dimLabel: "🌙 Затемнение экрана",
             backgroundWarning: "⚠️ Внимание! Нельзя сворачивать приложение или выключать экран во время работы терминала!",
-            autoConfirmMsg: "🤖 Внимание! Вы активируете авто-режим на выбранное время. В течение сессии баннеры будут обновляться автоматически. Не закрывайте приложение и не выключайте экран. Подтвердить запуск?",
+            autoConfirmMsg: "🤖 Внимание! Вы активируете авто-режим на выбранное время. Лимит выбранного пресета спишется сразу. Не закрывайте приложение и не выключайте экран. Подтвердить запуск?",
+            presetLimitError: "❌ Недостаточно суточного лимита для этого пресета!",
             
             statCourseTitle: "💎 КУРС",
             statCourseVal: "1 Монета = $0.0001",
@@ -81,7 +82,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             refCoinUnit: "coins",
             dimLabel: "🌙 Screen Dimmer",
             backgroundWarning: "⚠️ Warning! Do not minimize the app or turn off the screen while the terminal is running!",
-            autoConfirmMsg: "🤖 Warning! You are activating the auto-mode. Banners will update automatically during the session. Do not close the app or turn off the screen. Confirm start?",
+            autoConfirmMsg: "🤖 Warning! You are activating the auto-mode. The preset limit will be deducted immediately. Do not close the app or turn off the screen. Confirm start?",
+            presetLimitError: "❌ Insufficient daily limit for this preset!",
             
             statCourseTitle: "💎 RATE",
             statCourseVal: "1 Coin = $0.0001",
@@ -187,7 +189,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const t = translations[lang];
         
-        // Переводы элементов терминала и кабинета
         const setText = (id, text) => { const el = document.getElementById(id); if (el) el.innerHTML = text; };
         
         setText('tAlert', t.alert);
@@ -399,15 +400,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (startBtn) {
-        startBtn.addEventListener('click', () => {
+        startBtn.addEventListener('click', async () => {
             if (isClickActionPending) return;
             isClickActionPending = true;
             setTimeout(() => { isClickActionPending = false; }, 1000);
 
             if (!isFarming) {
                 const sessionMinsNeeded = Math.ceil(selectedSessionSeconds / 60);
+                
+                // СТРОГАЯ ПРОВЕРКА ЛИМИТА ДЛЯ АВТО-РЕЖИМА
                 if (limitMinutes < sessionMinsNeeded) { 
-                    alert(currentLang === 'ru' ? "Недостаточно суточного лимита для этого пресета!" : "Insufficient daily limit for this preset!"); 
+                    alert(translations[currentLang].presetLimitError); 
                     return; 
                 }
 
@@ -415,6 +418,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (!confirm(translations[currentLang].autoConfirmMsg)) {
                         return;
                     }
+                    // Списываем минуты пресета сразу при старте, чтобы исключить накрутку
+                    limitMinutes -= sessionMinsNeeded;
+                    userData.auto_limit = limitMinutes;
+                    updateLimitDisplay();
+                    await updateSupabase({ auto_limit: userData.auto_limit });
                 }
                 
                 isFarming = true;
@@ -448,7 +456,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentSeconds--;
             updateTimerDisplay();
 
-            if (currentSeconds % 60 === 0) {
+            // В ручном режиме списываем минуты поштучно каждую минуту
+            if (!isAutoMode && currentSeconds % 60 === 0) {
                 deductOneMinuteLimit();
             }
 
@@ -465,15 +474,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         limitMinutes -= 1;
         if (limitMinutes < 0) limitMinutes = 0;
 
-        if (isAutoMode) {
-            userData.auto_limit = limitMinutes;
-        } else {
-            userData.manual_limit = limitMinutes;
-        }
+        userData.manual_limit = limitMinutes;
         updateLimitDisplay();
         await updateSupabase({
-            manual_limit: userData.manual_limit,
-            auto_limit: userData.auto_limit
+            manual_limit: userData.manual_limit
         });
     }
 
