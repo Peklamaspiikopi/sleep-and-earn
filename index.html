@@ -220,6 +220,11 @@
             <span id="tAlert"><b>Экран гаснет?</b> Во избежание пауз продлите время работы дисплея в настройках телефона или используйте софт для удержания активного экрана.</span>
         </div>
 
+        <!-- Предупреждение о честности сессий -->
+        <div class="honesty-card" id="tFairPlayWarning">
+            ⚠️ <b>Важно:</b> Для честного начисления наград приложение должно быть открыто на экране (нельзя сворачивать и гасить экран). Использование ботов и автокликеров запрещено.
+        </div>
+
         <div class="card limit-card">
             <span id="tLimitLabel">⏱️ Суточный лимит:</span>
             <span><b><span id="limitHours">7.0</span> <span id="tHrsUnit">ч.</span></b> / <span id="maxLimitHours">7.0</span> <span id="tHrsUnitMax">ч.</span></span>
@@ -315,7 +320,7 @@
     </div>
 </div>
 
-<script src="script.js?v=9" defer></script>
+<script src="script.js?v=10" defer></script>
 <script>
 function switchTab(tabName) {
     const tabTerminal = document.getElementById('tabTerminal'); 
