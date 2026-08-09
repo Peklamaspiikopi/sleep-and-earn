@@ -197,11 +197,27 @@
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(5px); }
         .modal-content { background: #1a1c23; border: 1px solid #00b0ff; box-shadow: 0 0 25px rgba(0, 176, 255, 0.4); padding: 20px; border-radius: 20px; width: 85%; max-width: 320px; text-align: center; }
         #wakeVideo { width: 1px; height: 1px; opacity: 0; position: absolute; pointer-events: none; }
+        
+        /* Оверлей затемнения экрана */
+        #dimOverlay { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background-color: rgba(0, 0, 0, 0); 
+            pointer-events: none; 
+            z-index: 999; 
+            transition: background-color 0.3s ease; 
+        }
     </style>
     <script src="https://adsgram.ai"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
+
+<!-- Оверлей для затемнения экрана -->
+<div id="dimOverlay"></div>
 
 <video id="wakeVideo" loop playsinline muted>
     <source src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAAptZGF0AAAAAA==" type="video/mp4">
@@ -263,6 +279,12 @@
         </div>
         
         <button class="btn" id="startBtn">Запустить терминал</button>
+
+        <!-- Ползунок регулировки затемнения экрана -->
+        <div class="card" style="padding: 12px; text-align: center;">
+            <label for="dimSlider" id="tDimLabel" style="font-size: 12px; color: #9aa0a6; display: block; margin-bottom: 8px; font-weight: 600;">🌙 Затемнение экрана</label>
+            <input type="range" id="dimSlider" min="0" max="85" value="0" style="width: 100%; accent-color: #00b0ff; cursor: pointer;">
+        </div>
     </div>
 
     <!-- КАБИНЕТ -->
