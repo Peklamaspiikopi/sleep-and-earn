@@ -108,8 +108,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (refLinkInput) refLinkInput.value = fullRefLink;
 
     let isAutoMode = localStorage.getItem('sleep_auto_mode') === 'true';
-    let maxManualLimit = 120; // 2 часа в минутах
-    let maxAutoLimit = 180;   // 3 часа в минутах
+    let maxManualLimit = 120;
+    let maxAutoLimit = 180;
     let maxLimitMinutes = isAutoMode ? maxAutoLimit : maxManualLimit; 
     
     let userData = {
@@ -268,6 +268,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const dimLabelEl = document.getElementById('tDimLabel');
         if (dimLabelEl) dimLabelEl.innerText = t.dimLabel;
 
+        // Перевод карточек в кабинете
         const statCourseTitle = document.getElementById('statCourseTitle');
         const statCourseVal = document.getElementById('statCourseVal');
         const statVideoTitle = document.getElementById('statVideoTitle');
@@ -577,7 +578,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             auto_limit: userData.auto_limit
         });
 
-        // БЕЗОПАСНОСТЬ: Если лимит исчерпан, ПОЛНОСТЬЮ ОСТАНАВЛИВАЕМ терминал без авто-перезапуска
         if (limitMinutes <= 0) {
             stopFarming(currentLang === 'ru' ? "Суточный лимит исчерпан! Возвращайтесь завтра." : "Daily limit reached! Come back tomorrow.");
             if (startBtn) {
