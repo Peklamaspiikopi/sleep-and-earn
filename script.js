@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    // Настройки подключения к Supabase (уже вшиты ваши ключи из текущего кода)
     const SUPABASE_URL = window.ENV_SUPABASE_URL || "https://dpbrrirjnsobmtojzwtx.supabase.co";
     const SUPABASE_KEY = window.ENV_SUPABASE_KEY || "";
     const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
@@ -191,6 +190,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (langEn) langEn.classList.toggle('active', lang === 'en');
 
         const t = translations[lang];
+        
         const setText = (id, text) => { const el = document.getElementById(id); if (el) el.innerHTML = text; };
         
         setText('tAlert', t.alert);
@@ -250,16 +250,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         toggleModeUI();
     };
 
-    let videoController = null;
-    let bannerController = null;
-
-    if (window.Adsgram) {
-        videoController = window.Adsgram.init({ blockId: "41922" });
-        bannerController = window.Adsgram.init({ blockId: "int-41924" });
-    }
-
     let timerInterval = null;
-    let selectedSessionSeconds = 180 * 60; 
+    let selectedSessionSeconds = 180 * 60; // По умолчанию 3 часа для авто
     let currentSeconds = selectedSessionSeconds; 
     let isFarming = false;
     let wakeLock = null;
@@ -270,6 +262,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modeToggle = document.getElementById('modeToggle');
     const timerDisplay = document.getElementById('timer');
     const wakeVideo = document.getElementById('wakeVideo');
+    const adsterraBannerContainer = document.getElementById('adsterraBannerContainer');
 
     let dimOverlay = document.getElementById('dimOverlay');
     const dimSlider = document.getElementById('dimSlider');
@@ -314,12 +307,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 else presetMins = 180; 
             }
             selectedSessionSeconds = presetMins * 60;
+            if (adsterraBannerContainer && isFarming) adsterraBannerContainer.style.display = 'block';
         } else {
             if (presetBox) presetBox.style.display = 'none';
             if (modeLabel) modeLabel.innerText = t.modeVideo;
             maxLimitMinutes = maxManualLimit;
             limitMinutes = userData.manual_limit;
-            selectedSessionSeconds = 5 * 60; 
+            selectedSessionSeconds = 5 * 60; // Ручной режим строго 5 минут
+            if (adsterraBannerContainer) adsterraBannerContainer.style.display = 'none';
         }
 
         if (!isFarming) {
@@ -433,6 +428,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 startBtn.classList.add('btn-stop');
                 if (timerContainer) timerContainer.classList.add('active');
                 
+                if (isAutoMode && adsterraBannerContainer) {
+                    adsterraBannerContainer.style.display = 'block';
+                }
+
                 if (modeToggle) modeToggle.disabled = true;
                 const presetContainer = document.getElementById('presetOptionsContainer');
                 if (presetContainer) presetContainer.style.pointerEvents = 'none';
@@ -476,40 +475,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         userData.manual_limit = limitMinutes;
         updateLimitDisplay();
-        await updateSupabase({ manual_limit: userData.manual_limit });
+        await updateSupabase({
+            manual_limit: userData.manual_limit
+        });
     }
 
     function handleTimerCompletion() {
         const rewardAmount = isAutoMode ? 40 : 7;
-
-        if (isAutoMode) {
-            if (bannerController) {
-                bannerController.show()
-                    .then(() => { grantReward(rewardAmount); })
-                    .catch((err) => { handleAdError(err); });
-            } else {
-                grantReward(rewardAmount);
-            }
-        } else {
-            const msg = currentLang === 'ru' 
-                ? `Сессия завершена! Посмотреть рекламу и получить +${rewardAmount} монет?` 
-                : `Session finished! Watch an ad to claim +${rewardAmount} coins?`;
-
-            if (confirm(msg)) {
-                if (videoController) {
-                    videoController.show()
-                        .then((result) => {
-                            if (result.done) { grantReward(rewardAmount); }
-                            else { handleAdError("Ad closed"); }
-                        })
-                        .catch((err) => { handleAdError(err); });
-                } else {
-                    grantReward(rewardAmount);
-                }
-            } else {
-                stopFarming(currentLang === 'ru' ? "Сессия завершена." : "Session finished.");
-            }
-        }
+        grantReward(rewardAmount);
     }
 
     async function grantReward(reward) {
@@ -524,17 +497,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         stopFarming(currentLang === 'ru' ? "🎉 Сессия успешно завершена, монеты зачислены!" : "🎉 Session completed successfully, coins credited!");
     }
 
-    function handleAdError(error) {
-        if (!isAutoMode) {
-            alert(translations[currentLang].adErrorAlert);
-        }
-        stopFarming(currentLang === 'ru' ? "Сессия завершена." : "Session finished.");
-    }
-
     function stopFarming(message) {
         if (timerInterval) clearInterval(timerInterval);
         isFarming = false;
         
+        if (adsterraBannerContainer) adsterraBannerContainer.style.display = 'none';
+
         if (modeToggle) modeToggle.disabled = false;
         const presetContainer = document.getElementById('presetOptionsContainer');
         if (presetContainer) presetContainer.style.pointerEvents = 'auto';
@@ -564,34 +532,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (timerInterval) clearInterval(timerInterval);
             disableScreenProtection();
             alert(translations[currentLang].backgroundWarning);
-            stopFilingCleanup(currentLang === 'ru' ? "Терминал остановлен: нельзя покидать приложение!" : "Terminal stopped: cannot leave the app!");
+            stopFarming(currentLang === 'ru' ? "Терминал остановлен: нельзя покидать приложение!" : "Terminal stopped: cannot leave the app!");
         }
     });
-
-    function stopFilingCleanup(message) {
-        isFarming = false;
-        if (timerInterval) clearInterval(timerInterval);
-        if (modeToggle) modeToggle.disabled = false;
-        const presetContainer = document.getElementById('presetOptionsContainer');
-        if (presetContainer) presetContainer.style.pointerEvents = 'auto';
-
-        const t = translations[currentLang];
-        if (startBtn) {
-            if (limitMinutes > 0) {
-                startBtn.innerText = t.startBtn;
-                startBtn.disabled = false;
-            } else {
-                startBtn.innerText = t.limitBtn;
-                startBtn.disabled = true;
-            }
-            startBtn.classList.remove('btn-stop');
-        }
-        if (timerContainer) timerContainer.classList.remove('active');
-        disableScreenProtection();
-        currentSeconds = selectedSessionSeconds;
-        updateTimerDisplay();
-        if (message) alert(message);
-    }
 
     const promoBtn = document.getElementById('promoBtn');
     if (promoBtn) {
