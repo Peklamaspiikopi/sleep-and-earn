@@ -187,8 +187,21 @@
         .faq-section li { margin-bottom: 6px; }
 
         #wakeVideo { width: 1px; height: 1px; opacity: 0; position: absolute; pointer-events: none; }
+        
+        /* Стили для контейнера авто-баннера */
+        #bannerContainer {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            background: #161820;
+            border: 1px solid rgba(0, 176, 255, 0.3);
+            border-radius: 14px;
+            padding: 8px;
+            margin-top: 6px;
+            min-height: 270px;
+            overflow: hidden;
+        }
     </style>
-    <script src="https://adsgram.ai"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -203,16 +216,6 @@
     <div class="modal-content">
         <div style="font-size: 18px; color: #00b0ff; font-weight: 800; margin-bottom: 10px; text-shadow: 0 0 8px rgba(0, 176, 255, 0.6);" id="tModalTitle">🚀 Первый запуск!</div>
         <div style="font-size: 13px; color: #9aa0a6; line-height: 1.5; margin-bottom: 15px; text-align: left;" id="tModalText">Привет! Это первый запуск терминала...</div>
-        
-        <div class="faq-section">
-            <strong style="color: #00b0ff;">Monetization FAQ:</strong>
-            <ul>
-                <li><strong>Ad not loading?</strong> Disable third-party ad blockers (AdBlock) or switch your VPN server.</li>
-                <li><strong>Why might ads fail?</strong> Unofficial Telegram apps may strip ad scripts. Use the official client.</li>
-                <li><strong>Clear cache:</strong> Go to <em>Telegram Settings -> Data and Storage -> Clear Cache</em>.</li>
-            </ul>
-        </div>
-
         <button class="btn" id="tModalBtn" onclick="closeModal()">Понятно</button>
     </div>
 </div>
@@ -259,6 +262,22 @@
             </div>
         </div>
         
+        <!-- Контейнер для отображения авто-баннера (HighPerformanceFormat) во время работы авто-режима -->
+        <div id="bannerContainer">
+            <div id="bannerSlot">
+                <script>
+                  atOptions = {
+                    'key' : 'a82330d41b1a7f88b41345b34cd66248',
+                    'format' : 'iframe',
+                    'height' : 250,
+                    'width' : 300,
+                    'params' : {}
+                  };
+                </script>
+                <script src="https://www.highperformanceformat.com/a82330d41b1a7f88b41345b34cd66248/invoke.js"></script>
+            </div>
+        </div>
+
         <div class="card balance-card">
             <div class="balance-label" id="tBalanceLabel">Ваш баланс</div>
             <div class="balance-value"><span id="balance">0</span> <span id="tCoinUnit" style="font-size: 18px;">Монет</span></div>
@@ -270,8 +289,8 @@
         
         <button class="btn" id="startBtn">Запустить терминал</button>
 
-        <!-- Кнопка принудительного запуска рекламы для проверки -->
-        <button class="btn" id="testAdBtn" style="background: #333; border: 1px solid #555; font-size: 11px; padding: 8px; margin-top: 4px;" onclick="triggerTestAd()">🧪 Тест рекламы</button>
+        <!-- Кнопка вызова ручной рекламы (EffectiveCPMNetwork) -->
+        <button class="btn" id="testAdBtn" style="background: #1c1e24; border: 1px solid #00b0ff; font-size: 12px; padding: 10px; margin-top: 4px; color: #00b0ff;" onclick="triggerManualAd()">📺 Смотреть видео (+7 Монет)</button>
 
         <div class="card" style="padding: 12px; text-align: center; margin-top: 4px;">
             <label for="dimSlider" id="tDimLabel" style="font-size: 12px; color: #9aa0a6; display: block; margin-bottom: 8px; font-weight: 600;">🌙 Затемнение экрана</label>
@@ -335,7 +354,7 @@
     </div>
 </div>
 
-<script src="script.js?v=15" defer></script>
+<script src="script.js?v=16" defer></script>
 <script>
 function switchTab(tabName) {
     const tabTerminal = document.getElementById('tabTerminal'); 
