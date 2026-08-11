@@ -37,7 +37,6 @@
         .tab-content { display: none; flex-direction: column; gap: 12px; }
         .tab-content.active { display: flex; }
 
-        /* General Card Base */
         .card { background: #1a1c23; border: 1px solid #2a2d37; border-radius: 16px; padding: 14px; text-align: left; }
         
         .alert-box { 
@@ -161,7 +160,6 @@
             box-shadow: 0 0 15px rgba(224, 64, 251, 0.6), 0 0 30px rgba(170, 0, 255, 0.3);
             text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
         }
-        .btn-withdraw:active { transform: scale(0.98); box-shadow: 0 0 10px rgba(224, 64, 251, 0.4); }
         
         .ref-card { border-color: rgba(0, 176, 255, 0.4); box-shadow: 0 0 12px rgba(0, 176, 255, 0.1); background: rgba(0, 176, 255, 0.04); }
         .ref-box { display: flex; gap: 6px; margin-top: 8px; }
@@ -184,7 +182,6 @@
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(5px); }
         .modal-content { background: #1a1c23; border: 1px solid #00b0ff; box-shadow: 0 0 25px rgba(0, 176, 255, 0.4); padding: 20px; border-radius: 20px; width: 85%; max-width: 320px; text-align: center; }
         
-        /* Стили для блока FAQ внутри модального окна */
         .faq-section { background: rgba(255, 255, 255, 0.05); padding: 10px; border-radius: 8px; margin: 10px 0; font-size: 11px; line-height: 1.4; text-align: left; }
         .faq-section ul { padding-left: 15px; margin: 4px 0 0 0; }
         .faq-section li { margin-bottom: 6px; }
@@ -207,7 +204,6 @@
         <div style="font-size: 18px; color: #00b0ff; font-weight: 800; margin-bottom: 10px; text-shadow: 0 0 8px rgba(0, 176, 255, 0.6);" id="tModalTitle">🚀 Первый запуск!</div>
         <div style="font-size: 13px; color: #9aa0a6; line-height: 1.5; margin-bottom: 15px; text-align: left;" id="tModalText">Привет! Это первый запуск терминала...</div>
         
-        <!-- Встроенный FAQ на английском языке -->
         <div class="faq-section">
             <strong style="color: #00b0ff;">Monetization FAQ:</strong>
             <ul>
@@ -237,14 +233,13 @@
             <span id="tAlert"><b>Экран гаснет?</b> Во избежание пауз продлите время работы дисплея в настройках телефона или используйте софт для удержания активного экрана.</span>
         </div>
 
-        <!-- Предупреждение о честности сессий -->
         <div class="honesty-card" id="tFairPlayWarning">
-            ⚠️ <b>Важно:</b> Для честного начисления наград приложение должно быть открыто на экране (нельзя сворачивать и гасить экран). Использование ботов и автокликеров запрещено.
+            ⚠️ <b>Важно:</b> Для честного начисления наград приложение должно быть открыто на экране. Использование ботов и автокликеров запрещено.
         </div>
 
         <div class="card limit-card">
-            <span id="tLimitLabel">⏱️ Суточный лимит:</span>
-            <span><b><span id="limitHours">7.0</span> <span id="tHrsUnit">ч.</span></b> / <span id="maxLimitHours">7.0</span> <span id="tHrsUnitMax">ч.</span></span>
+            <span id="tLimitLabel">⏱️ Доступно роликов:</span>
+            <span><b><span id="limitHours">20</span> / <span id="maxLimitHours">20</span></b></span>
         </div>
         
         <div class="card toggle-card">
@@ -270,12 +265,15 @@
         </div>
         
         <div class="timer-circle" id="timerContainer">
-            <div class="timer-display" id="timer">03:00:00</div>
+            <div class="timer-display" id="timer">00:05:00</div>
         </div>
         
         <button class="btn" id="startBtn">Запустить терминал</button>
 
-        <div class="card" style="padding: 12px; text-align: center;">
+        <!-- Кнопка принудительного запуска рекламы для проверки -->
+        <button class="btn" id="testAdBtn" style="background: #333; border: 1px solid #555; font-size: 11px; padding: 8px; margin-top: 4px;" onclick="triggerTestAd()">🧪 Тест рекламы</button>
+
+        <div class="card" style="padding: 12px; text-align: center; margin-top: 4px;">
             <label for="dimSlider" id="tDimLabel" style="font-size: 12px; color: #9aa0a6; display: block; margin-bottom: 8px; font-weight: 600;">🌙 Затемнение экрана</label>
             <input type="range" id="dimSlider" min="0" max="85" value="0" style="width: 100%; accent-color: #00b0ff; cursor: pointer;">
         </div>
@@ -306,7 +304,7 @@
             </div>
             <div class="stat-item">
                 <div class="stat-item-title" id="statBannerTitle">🤖 АВТО-БАННЕР</div>
-                <div class="stat-item-val" id="statBannerVal" style="color:#00b0ff; text-shadow:0 0 6px rgba(0,176,255,0.4);">+2 Монеты</div>
+                <div class="stat-item-val" id="statBannerVal" style="color:#00b0ff; text-shadow:0 0 6px rgba(0,176,255,0.4);">+40 Монет</div>
             </div>
             <div class="stat-item">
                 <div class="stat-item-title" id="statRefTitle">👥 РЕФЕРАЛЫ</div>
@@ -315,7 +313,7 @@
         </div>
         
         <div class="honesty-card" id="tHonesty">
-            🛡️ <b>Правило честности:</b> Мы за прозрачное сотрудничество. Любые накрутки фиксируются системой. Предоставляем 1 предупреждение без блокировки аккаунта.
+            🛡️ <b>Правило честности:</b> Мы за прозрачное сотрудничество. Любые накрутки фиксируются системой.
         </div>
         
         <div class="withdraw-limit-card" id="tWithdrawLimit">
@@ -337,7 +335,7 @@
     </div>
 </div>
 
-<script src="script.js?v=11" defer></script>
+<script src="script.js?v=15" defer></script>
 <script>
 function switchTab(tabName) {
     const tabTerminal = document.getElementById('tabTerminal'); 
