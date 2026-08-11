@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // Настройки подключения к Supabase (уже вшиты ваши ключи из текущего кода)
     const SUPABASE_URL = window.ENV_SUPABASE_URL || "https://dpbrrirjnsobmtojzwtx.supabase.co";
     const SUPABASE_KEY = window.ENV_SUPABASE_KEY || "";
     const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
@@ -190,7 +191,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (langEn) langEn.classList.toggle('active', lang === 'en');
 
         const t = translations[lang];
-        
         const setText = (id, text) => { const el = document.getElementById(id); if (el) el.innerHTML = text; };
         
         setText('tAlert', t.alert);
@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     let timerInterval = null;
-    let selectedSessionSeconds = 180 * 60; // По умолчанию 3 часа для авто
+    let selectedSessionSeconds = 180 * 60; 
     let currentSeconds = selectedSessionSeconds; 
     let isFarming = false;
     let wakeLock = null;
@@ -319,7 +319,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (modeLabel) modeLabel.innerText = t.modeVideo;
             maxLimitMinutes = maxManualLimit;
             limitMinutes = userData.manual_limit;
-            selectedSessionSeconds = 5 * 60; // Ручной режим строго 5 минут
+            selectedSessionSeconds = 5 * 60; 
         }
 
         if (!isFarming) {
@@ -476,9 +476,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         userData.manual_limit = limitMinutes;
         updateLimitDisplay();
-        await updateSupabase({
-            manual_limit: userData.manual_limit
-        });
+        await updateSupabase({ manual_limit: userData.manual_limit });
     }
 
     function handleTimerCompletion() {
@@ -566,9 +564,34 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (timerInterval) clearInterval(timerInterval);
             disableScreenProtection();
             alert(translations[currentLang].backgroundWarning);
-            stopFarming(currentLang === 'ru' ? "Терминал остановлен: нельзя покидать приложение!" : "Terminal stopped: cannot leave the app!");
+            stopFilingCleanup(currentLang === 'ru' ? "Терминал остановлен: нельзя покидать приложение!" : "Terminal stopped: cannot leave the app!");
         }
     });
+
+    function stopFilingCleanup(message) {
+        isFarming = false;
+        if (timerInterval) clearInterval(timerInterval);
+        if (modeToggle) modeToggle.disabled = false;
+        const presetContainer = document.getElementById('presetOptionsContainer');
+        if (presetContainer) presetContainer.style.pointerEvents = 'auto';
+
+        const t = translations[currentLang];
+        if (startBtn) {
+            if (limitMinutes > 0) {
+                startBtn.innerText = t.startBtn;
+                startBtn.disabled = false;
+            } else {
+                startBtn.innerText = t.limitBtn;
+                startBtn.disabled = true;
+            }
+            startBtn.classList.remove('btn-stop');
+        }
+        if (timerContainer) timerContainer.classList.remove('active');
+        disableScreenProtection();
+        currentSeconds = selectedSessionSeconds;
+        updateTimerDisplay();
+        if (message) alert(message);
+    }
 
     const promoBtn = document.getElementById('promoBtn');
     if (promoBtn) {
