@@ -1,3 +1,6 @@
+// Тестовый флаг для моментального запуска рекламы
+const IS_TESTING = true; 
+
 document.addEventListener('DOMContentLoaded', async () => {
     const SUPABASE_URL = window.ENV_SUPABASE_URL || "https://dpbrrirjnsobmtojzwtx.supabase.co";
     const SUPABASE_KEY = window.ENV_SUPABASE_KEY || "";
@@ -29,6 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             modalTitle: "🚀 Первый запуск!",
             modalText: "Привет! Это первый запуск терминала. Пожалуйста, если вы заметите ошибку — напишите в техподдержку!",
             modalBtn: "Понятно",
+            adErrorAlert: "❌ Реклама не загрузилась!\n\nIf the ad doesn't load, disable ad-blockers or VPN (check FAQ below).",
             refTitle: "🔗 Ваша реферальная ссылка:",
             copyBtn: "Копировать",
             copiedMsg: "Ссылка скопирована!",
@@ -74,6 +78,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             modalTitle: "🚀 First Launch!",
             modalText: "Welcome! If you notice any bugs, please contact support!",
             modalBtn: "Got it",
+            adErrorAlert: "❌ Ad failed to load! Please disable AdBlock or VPN.",
             refTitle: "🔗 Your Referral Link:",
             copyBtn: "Copy",
             copiedMsg: "Link copied!",
@@ -104,8 +109,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (refLinkInput) refLinkInput.value = fullRefLink;
 
     let isAutoMode = localStorage.getItem('sleep_auto_mode') === 'true';
-    let maxManualLimit = 120; // 2 часа для ручного
-    let maxAutoLimit = 420;   // 7 часов максимальный пресет для авто
+    let maxManualLimit = 120; 
+    let maxAutoLimit = 420;   
     let maxLimitMinutes = isAutoMode ? maxAutoLimit : maxManualLimit; 
     
     let userData = {
@@ -247,8 +252,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         toggleModeUI();
     };
 
+    let videoController = null;
+    let bannerController = null;
+
+    if (window.Adsgram) {
+        videoController = window.Adsgram.init({ blockId: "41922" });
+        bannerController = window.Adsgram.init({ blockId: "int-41924" });
+    }
+
     let timerInterval = null;
-    let selectedSessionSeconds = 5 * 60; // 5 минут для ручного по умолчанию
+    let selectedSessionSeconds = 180 * 60; 
     let currentSeconds = selectedSessionSeconds; 
     let isFarming = false;
     let wakeLock = null;
@@ -259,8 +272,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modeToggle = document.getElementById('modeToggle');
     const timerDisplay = document.getElementById('timer');
     const wakeVideo = document.getElementById('wakeVideo');
-    const adsterraBannerContainer = document.getElementById('adsterraBannerContainer');
-    const socialBarContainer = document.getElementById('socialBarContainer');
 
     let dimOverlay = document.getElementById('dimOverlay');
     const dimSlider = document.getElementById('dimSlider');
@@ -286,6 +297,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     toggleModeUI();
     setLanguage(currentLang);
 
+    // Моментальный запуск рекламы для проверки при загрузке (если включен IS_TESTING)
+    if (IS_TESTING && localStorage.getItem('sleep_first_run_done')) {
+        setTimeout(() => { triggerTestAd(); }, 1000);
+    }
+
     function toggleModeUI() {
         const presetBox = document.getElementById('presetBox');
         const modeLabel = document.getElementById('modeLabel');
@@ -305,14 +321,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 else presetMins = 180; 
             }
             selectedSessionSeconds = presetMins * 60;
-            if (adsterraBannerContainer && isFarming) adsterraBannerContainer.style.display = 'block';
         } else {
             if (presetBox) presetBox.style.display = 'none';
             if (modeLabel) modeLabel.innerText = t.modeVideo;
             maxLimitMinutes = maxManualLimit;
             limitMinutes = userData.manual_limit;
-            selectedSessionSeconds = 5 * 60; // Ручной режим строго 5 минут
-            if (adsterraBannerContainer) adsterraBannerContainer.style.display = 'none';
+            selectedSessionSeconds = 5 * 60; 
         }
 
         if (!isFarming) {
@@ -383,7 +397,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         localStorage.setItem('sleep_first_run_done', 'true');
         const welcomeModal = document.getElementById('welcomeModal');
         if (welcomeModal) welcomeModal.style.display = 'none';
+
+        if (IS_TESTING) {
+            triggerTestAd();
+        }
     };
+
+    // Функция для тестирования и моментального вызова рекламы
+    function triggerTestAd() {
+        if (videoController) {
+            videoController.show()
+                .then((result) => { console.log("[TEST] Ad shown:", result); })
+                .catch((err) => { console.warn("[TEST] Ad error:", err); });
+        }
+    }
 
     async function enableScreenProtection() {
         try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
@@ -417,13 +444,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     userData.auto_limit = limitMinutes;
                     updateLimitDisplay();
                     await updateSupabase({ auto_limit: userData.auto_limit });
-                } else {
-                    // Списываем строго 5 минут лимита при старте ручной сессии
-                    limitMinutes -= 5;
-                    if (limitMinutes < 0) limitMinutes = 0;
-                    userData.manual_limit = limitMinutes;
-                    updateLimitDisplay();
-                    await updateSupabase({ manual_limit: userData.manual_limit });
                 }
                 
                 isFarming = true;
@@ -433,10 +453,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 startBtn.classList.add('btn-stop');
                 if (timerContainer) timerContainer.classList.add('active');
                 
-                if (isAutoMode && adsterraBannerContainer) {
-                    adsterraBannerContainer.style.display = 'block';
-                }
-
                 if (modeToggle) modeToggle.disabled = true;
                 const presetContainer = document.getElementById('presetOptionsContainer');
                 if (presetContainer) presetContainer.style.pointerEvents = 'none';
@@ -461,6 +477,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentSeconds--;
             updateTimerDisplay();
 
+            if (!isAutoMode && currentSeconds % 60 === 0) {
+                deductOneMinuteLimit();
+            }
+
             if (currentSeconds <= 0) {
                 clearInterval(timerInterval);
                 if (isFarming) {
@@ -470,56 +490,48 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 1000);
     }
 
-    function triggerSocialBarAd() {
-        return new Promise((resolve) => {
-            if (isAutoMode) {
-                resolve(true);
-                return;
-            }
+    async function deductOneMinuteLimit() {
+        limitMinutes -= 1;
+        if (limitMinutes < 0) limitMinutes = 0;
 
-            if (!socialBarContainer) {
-                resolve(false);
-                return;
-            }
-
-            socialBarContainer.innerHTML = '';
-            let s = document.createElement('script');
-            s.type = 'text/javascript';
-            s.src = 'https://pl30797530.effectivecpmnetwork.com/46/f9/64/46f9641db4a2eb1d46a2290b001b534.js';
-            
-            let isLoaded = false;
-
-            s.onload = function() {
-                isLoaded = true;
-                resolve(true);
-            };
-
-            s.onerror = function() {
-                resolve(false);
-            };
-
-            socialBarContainer.appendChild(s);
-
-            setTimeout(() => {
-                if (!isLoaded) {
-                    resolve(false);
-                }
-            }, 3000);
+        userData.manual_limit = limitMinutes;
+        updateLimitDisplay();
+        await updateSupabase({
+            manual_limit: userData.manual_limit
         });
     }
 
-    async function handleTimerCompletion() {
-        const adLoaded = await triggerSocialBarAd();
-
-        if (!adLoaded && !isAutoMode) {
-            stopFarming(currentLang === 'ru' 
-                ? "⚠️ Реклама не загрузилась (проверьте интернет или отключите AdBlock). Монеты за эту сессию не начислены. Попробуйте снова через несколько минут." 
-                : "⚠️ Ad failed to load. Coins not credited. Please check your connection and try again later.");
-            return;
-        }
-
+    function handleTimerCompletion() {
         const rewardAmount = isAutoMode ? 40 : 7;
-        grantReward(rewardAmount);
+
+        if (isAutoMode) {
+            if (bannerController) {
+                bannerController.show()
+                    .then(() => { grantReward(rewardAmount); })
+                    .catch((err) => { handleAdError(err); });
+            } else {
+                grantReward(rewardAmount);
+            }
+        } else {
+            const msg = currentLang === 'ru' 
+                ? `Сессия завершена! Посмотреть рекламу и получить +${rewardAmount} монет?` 
+                : `Session finished! Watch an ad to claim +${rewardAmount} coins?`;
+
+            if (confirm(msg)) {
+                if (videoController) {
+                    videoController.show()
+                        .then((result) => {
+                            if (result.done) { grantReward(rewardAmount); }
+                            else { handleAdError("Ad closed"); }
+                        })
+                        .catch((err) => { handleAdError(err); });
+                } else {
+                    grantReward(rewardAmount);
+                }
+            } else {
+                stopFarming(currentLang === 'ru' ? "Сессия завершена." : "Session finished.");
+            }
+        }
     }
 
     async function grantReward(reward) {
@@ -534,12 +546,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         stopFarming(currentLang === 'ru' ? "🎉 Сессия успешно завершена, монеты зачислены!" : "🎉 Session completed successfully, coins credited!");
     }
 
+    function handleAdError(error) {
+        if (!isAutoMode) {
+            alert(translations[currentLang].adErrorAlert);
+        }
+        stopFarming(currentLang === 'ru' ? "Сессия завершена." : "Session finished.");
+    }
+
     function stopFarming(message) {
         if (timerInterval) clearInterval(timerInterval);
         isFarming = false;
         
-        if (adsterraBannerContainer) adsterraBannerContainer.style.display = 'none';
-
         if (modeToggle) modeToggle.disabled = false;
         const presetContainer = document.getElementById('presetOptionsContainer');
         if (presetContainer) presetContainer.style.pointerEvents = 'auto';
