@@ -185,7 +185,6 @@
         .modal-content { background: #1a1c23; border: 1px solid #00b0ff; box-shadow: 0 0 25px rgba(0, 176, 255, 0.4); padding: 20px; border-radius: 20px; width: 85%; max-width: 320px; text-align: center; }
         #wakeVideo { width: 1px; height: 1px; opacity: 0; position: absolute; pointer-events: none; }
     </style>
-    <!-- Adsterra Banner Option Script configuration (if needed globally) -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -220,7 +219,6 @@
             <span id="tAlert"><b>Экран гаснет?</b> Во избежание пауз продлите время работы дисплея в настройках телефона или используйте софт для удержания активного экрана.</span>
         </div>
 
-        <!-- Предупреждение о честности сессий -->
         <div class="honesty-card" id="tFairPlayWarning">
             ⚠️ <b>Важно:</b> Для честного начисления наград приложение должно быть открыто на экране (нельзя сворачивать и гасить экран). Использование ботов и автокликеров запрещено.
         </div>
@@ -253,7 +251,7 @@
         </div>
         
         <div class="timer-circle" id="timerContainer">
-            <div class="timer-display" id="timer">03:00:00</div>
+            <div class="timer-display" id="timer">05:00</div>
         </div>
         
         <button class="btn" id="startBtn">Запустить терминал</button>
@@ -271,6 +269,9 @@
             </script>
             <script type="text/javascript" src="//www.highperformanceformat.com/a82330d41b1a7f88b41345b34cd66248/invoke.js"></script>
         </div>
+
+        <!-- Контейнер для вызова рекламы Social Bar в ручном режиме по окончании сессии -->
+        <div id="socialBarContainer" style="display: none;"></div>
 
         <div class="card" style="padding: 12px; text-align: center;">
             <label for="dimSlider" id="tDimLabel" style="font-size: 12px; color: #9aa0a6; display: block; margin-bottom: 8px; font-weight: 600;">🌙 Затемнение экрана</label>
@@ -334,10 +335,10 @@
     </div>
 </div>
 
-<!-- Adsterra Social Bar script для ручного режима -->
+<!-- Adsterra Social Bar script глобальный для подгрузки -->
 <script type="text/javascript" src="https://pl30797530.effectivecpmnetwork.com/46/f9/64/46f9641db4a2eb1d46a2290b001b534.js"></script>
 
-<script src="script.js?v=11" defer></script>
+<script src="script.js?v=13" defer></script>
 <script>
 function switchTab(tabName) {
     const tabTerminal = document.getElementById('tabTerminal'); 
