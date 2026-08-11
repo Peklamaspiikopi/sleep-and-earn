@@ -29,7 +29,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             modalTitle: "🚀 Первый запуск!",
             modalText: "Привет! Это первый запуск терминала. Пожалуйста, если вы заметите ошибку — напишите в техподдержку!",
             modalBtn: "Понятно",
-            adErrorAlert: "❌ Реклама не загрузилась!\n\nЕсли у вас включен VPN или AdBlock, отключите их.",
             refTitle: "🔗 Ваша реферальная ссылка:",
             copyBtn: "Копировать",
             copiedMsg: "Ссылка скопирована!",
@@ -75,7 +74,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             modalTitle: "🚀 First Launch!",
             modalText: "Welcome! If you notice any bugs, please contact support!",
             modalBtn: "Got it",
-            adErrorAlert: "❌ Ad failed to load! Please disable AdBlock or VPN.",
             refTitle: "🔗 Your Referral Link:",
             copyBtn: "Copy",
             copiedMsg: "Link copied!",
@@ -190,7 +188,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (langEn) langEn.classList.toggle('active', lang === 'en');
 
         const t = translations[lang];
-        
         const setText = (id, text) => { const el = document.getElementById(id); if (el) el.innerHTML = text; };
         
         setText('tAlert', t.alert);
@@ -251,7 +248,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     let timerInterval = null;
-    let selectedSessionSeconds = 180 * 60; // По умолчанию 3 часа для авто
+    let selectedSessionSeconds = 5 * 60; // 5 минут для ручного по умолчанию
     let currentSeconds = selectedSessionSeconds; 
     let isFarming = false;
     let wakeLock = null;
@@ -263,6 +260,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const timerDisplay = document.getElementById('timer');
     const wakeVideo = document.getElementById('wakeVideo');
     const adsterraBannerContainer = document.getElementById('adsterraBannerContainer');
+    const socialBarContainer = document.getElementById('socialBarContainer');
 
     let dimOverlay = document.getElementById('dimOverlay');
     const dimSlider = document.getElementById('dimSlider');
@@ -419,6 +417,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     userData.auto_limit = limitMinutes;
                     updateLimitDisplay();
                     await updateSupabase({ auto_limit: userData.auto_limit });
+                } else {
+                    // Списываем строго 5 минут лимита при старте ручной сессии
+                    limitMinutes -= 5;
+                    if (limitMinutes < 0) limitMinutes = 0;
+                    userData.manual_limit = limitMinutes;
+                    updateLimitDisplay();
+                    await updateSupabase({ manual_limit: userData.manual_limit });
                 }
                 
                 isFarming = true;
@@ -456,10 +461,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentSeconds--;
             updateTimerDisplay();
 
-            if (!isAutoMode && currentSeconds % 60 === 0) {
-                deductOneMinuteLimit();
-            }
-
             if (currentSeconds <= 0) {
                 clearInterval(timerInterval);
                 if (isFarming) {
@@ -469,18 +470,54 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 1000);
     }
 
-    async function deductOneMinuteLimit() {
-        limitMinutes -= 1;
-        if (limitMinutes < 0) limitMinutes = 0;
+    function triggerSocialBarAd() {
+        return new Promise((resolve) => {
+            if (isAutoMode) {
+                resolve(true);
+                return;
+            }
 
-        userData.manual_limit = limitMinutes;
-        updateLimitDisplay();
-        await updateSupabase({
-            manual_limit: userData.manual_limit
+            if (!socialBarContainer) {
+                resolve(false);
+                return;
+            }
+
+            socialBarContainer.innerHTML = '';
+            let s = document.createElement('script');
+            s.type = 'text/javascript';
+            s.src = 'https://pl30797530.effectivecpmnetwork.com/46/f9/64/46f9641db4a2eb1d46a2290b001b534.js';
+            
+            let isLoaded = false;
+
+            s.onload = function() {
+                isLoaded = true;
+                resolve(true);
+            };
+
+            s.onerror = function() {
+                resolve(false);
+            };
+
+            socialBarContainer.appendChild(s);
+
+            setTimeout(() => {
+                if (!isLoaded) {
+                    resolve(false);
+                }
+            }, 3000);
         });
     }
 
-    function handleTimerCompletion() {
+    async function handleTimerCompletion() {
+        const adLoaded = await triggerSocialBarAd();
+
+        if (!adLoaded && !isAutoMode) {
+            stopFarming(currentLang === 'ru' 
+                ? "⚠️ Реклама не загрузилась (проверьте интернет или отключите AdBlock). Монеты за эту сессию не начислены. Попробуйте снова через несколько минут." 
+                : "⚠️ Ad failed to load. Coins not credited. Please check your connection and try again later.");
+            return;
+        }
+
         const rewardAmount = isAutoMode ? 40 : 7;
         grantReward(rewardAmount);
     }
