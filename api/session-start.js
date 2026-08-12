@@ -27,7 +27,7 @@ module.exports = async (req, res) => {
     .from('users')
     .select('*')
     .eq('telegram_id', telegramId)
-    .single();
+    .maybeSingle();
 
   if (!user) {
     const { data: newUser, error: insertErr } = await supabaseAdmin
@@ -44,8 +44,19 @@ module.exports = async (req, res) => {
       }])
       .select()
       .single();
-    if (insertErr) return res.status(500).json({ error: 'Не удалось создать пользователя' });
-    user = newUser;
+
+    if (insertErr) {
+      const { data: existingUser } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('telegram_id', telegramId)
+        .maybeSingle();
+      user = existingUser;
+    } else {
+      user = newUser;
+    }
+
+    if (!user) return res.status(500).json({ error: 'Не удалось создать или найти пользователя' });
   }
 
   if (user.last_reset !== today) {
@@ -94,4 +105,3 @@ module.exports = async (req, res) => {
 
   return res.status(200).json({ sessionId, manual_limit: newLimit });
 };
-
