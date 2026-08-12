@@ -46,11 +46,13 @@ module.exports = async (req, res) => {
       .single();
 
     if (insertErr) {
-      const { data: existingUser } = await supabaseAdmin
+      console.error('INSERT ERROR (session-start):', JSON.stringify(insertErr));
+      const { data: existingUser, error: selectErr } = await supabaseAdmin
         .from('users')
         .select('*')
         .eq('telegram_id', telegramId)
         .maybeSingle();
+      if (selectErr) console.error('RESELECT ERROR (session-start):', JSON.stringify(selectErr));
       user = existingUser;
     } else {
       user = newUser;
