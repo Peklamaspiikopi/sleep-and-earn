@@ -23,10 +23,10 @@ module.exports = async (req, res) => {
     .from('users')
     .select('*')
     .eq('telegram_id', telegramId)
-    .single();
+    .maybeSingle();
 
   if (!user) {
-    const { data: newUser } = await supabaseAdmin
+    const { data: newUser, error: insertErr } = await supabaseAdmin
       .from('users')
       .insert([{
         telegram_id: telegramId,
@@ -40,8 +40,25 @@ module.exports = async (req, res) => {
       }])
       .select()
       .single();
-    user = newUser;
-  } else if (user.last_reset !== today) {
+
+    if (insertErr) {
+      // Запись могла уже существовать (гонка/повторная попытка) — просто читаем её
+      const { data: existingUser } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('telegram_id', telegramId)
+        .maybeSingle();
+      user = existingUser;
+    } else {
+      user = newUser;
+    }
+
+    if (!user) {
+      return res.status(500).json({ error: 'Не удалось создать или найти пользователя' });
+    }
+  }
+
+  if (user.last_reset !== today) {
     const { data: resetUser } = await supabaseAdmin
       .from('users')
       .update({ manual_limit: MAX_MANUAL_PER_DAY, last_reset: today })
