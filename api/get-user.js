@@ -42,12 +42,14 @@ module.exports = async (req, res) => {
       .single();
 
     if (insertErr) {
+      console.error('INSERT ERROR (get-user):', JSON.stringify(insertErr));
       // Запись могла уже существовать (гонка/повторная попытка) — просто читаем её
-      const { data: existingUser } = await supabaseAdmin
+      const { data: existingUser, error: selectErr } = await supabaseAdmin
         .from('users')
         .select('*')
         .eq('telegram_id', telegramId)
         .maybeSingle();
+      if (selectErr) console.error('RESELECT ERROR (get-user):', JSON.stringify(selectErr));
       user = existingUser;
     } else {
       user = newUser;
