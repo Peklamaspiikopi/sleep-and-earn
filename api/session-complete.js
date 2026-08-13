@@ -1,16 +1,17 @@
 // api/session-complete.js
 //
-// Начисляет награду за ролик и, если это 5-й ролик за день —
-// запускает всю логику "активного дня": бонус +10, продвижение
-// стрика, рост уровня награды, сундук раз в неделю, обработку
-// пропущенных дней через токены-страховки.
+// Начисляет награду за ролик и, если это 5-й ролик за день — запускает
+// логику "активного дня": бонус по недельной лестнице (или сундук на
+// 7-й день), продвижение стрика, рост уровня награды, рост дневного
+// лимита роликов, обработку пропущенных дней через токены-страховки.
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
 const { ensureDailyReset } = require('../lib/userDaily');
 const {
-  daysBetween, rollBox, applyRewardMilestones,
-  DAILY_ACTIVE_BONUS, POST8_GROWTH_ACTIVE_DAYS, REWARD_CAP,
+  daysBetween, dailyBonusForStreak, applyRewardMilestones,
+  POST8_GROWTH_ACTIVE_DAYS, REWARD_CAP,
+  LIMIT_GROWTH_ACTIVE_DAYS, LIMIT_CAP,
 } = require('../lib/streakLogic');
 
 module.exports = async (req, res) => {
@@ -61,12 +62,21 @@ module.exports = async (req, res) => {
   const updates = { balance: newBalance, ads_watched_today: newAdsToday };
   const dayInfo = { dayCompleted: false };
 
+  function applyLimitGrowth() {
+    if ((user.manual_limit_max || 20) >= LIMIT_CAP) return;
+    const newActiveDaysLimit = (user.active_days_since_limit_bump || 0) + 1;
+    if (newActiveDaysLimit >= LIMIT_GROWTH_ACTIVE_DAYS) {
+      updates.manual_limit_max = (user.manual_limit_max || 20) + 1;
+      updates.active_days_since_limit_bump = 0;
+      dayInfo.limitBump = updates.manual_limit_max;
+    } else {
+      updates.active_days_since_limit_bump = newActiveDaysLimit;
+    }
+  }
+
   // Пятый ролик за день — засчитываем активный день (если ещё не засчитан сегодня)
   if (newAdsToday === 5 && user.last_active_date !== today && !(user.pending_miss_days > 0)) {
-    newBalance += DAILY_ACTIVE_BONUS;
-    updates.balance = newBalance;
     dayInfo.dayCompleted = true;
-    dayInfo.dailyBonus = DAILY_ACTIVE_BONUS;
 
     const gap = user.last_active_date ? daysBetween(user.last_active_date, today) - 1 : 0;
 
@@ -76,6 +86,12 @@ module.exports = async (req, res) => {
       updates.last_active_date = today;
       updates.video_reward = applyRewardMilestones(user.video_reward, newStreak);
       dayInfo.streak = newStreak;
+
+      const bonus = dailyBonusForStreak(newStreak);
+      newBalance += bonus.reward;
+      updates.balance = newBalance;
+      dayInfo.dailyBonus = bonus.reward;
+      dayInfo.isBox = bonus.isBox;
 
       if (updates.video_reward >= 8 && !user.reward_locked_permanent) {
         const newActiveDays = (user.active_days_since_level8 || 0) + 1;
@@ -87,12 +103,7 @@ module.exports = async (req, res) => {
         }
       }
 
-      if (newStreak % 7 === 0) {
-        const boxReward = rollBox();
-        updates.balance += boxReward;
-        newBalance += boxReward;
-        dayInfo.box = boxReward;
-      }
+      applyLimitGrowth();
     } else {
       const tokensAvailable = user.streak_freeze_tokens || 0;
       const tokensUsed = Math.min(gap, tokensAvailable);
@@ -106,6 +117,14 @@ module.exports = async (req, res) => {
         updates.video_reward = applyRewardMilestones(user.video_reward, newStreak);
         dayInfo.streak = newStreak;
         dayInfo.tokensUsed = tokensUsed;
+
+        const bonus = dailyBonusForStreak(newStreak);
+        newBalance += bonus.reward;
+        updates.balance = newBalance;
+        dayInfo.dailyBonus = bonus.reward;
+        dayInfo.isBox = bonus.isBox;
+
+        applyLimitGrowth();
       } else {
         updates.pending_miss_days = remainingGap;
         dayInfo.pendingMissDays = remainingGap;
