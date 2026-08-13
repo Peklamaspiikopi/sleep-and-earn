@@ -84,13 +84,18 @@ module.exports = async (req, res) => {
 
   const { data: activeSession } = await supabaseAdmin
     .from('sessions')
-    .select('id')
+    .select('id, expires_at')
     .eq('telegram_id', telegramId)
     .eq('status', 'active')
     .maybeSingle();
 
   if (activeSession) {
-    return res.status(409).json({ error: 'Уже есть незавершённая сессия' });
+    if (new Date(activeSession.expires_at).getTime() < Date.now()) {
+      // Сессия зависла (например, юзер закрыл приложение) — считаем её протухшей
+      await supabaseAdmin.from('sessions').update({ status: 'expired' }).eq('id', activeSession.id);
+    } else {
+      return res.status(409).json({ error: 'Уже есть незавершённая сессия' });
+    }
   }
 
   // Пауза между роликами — случайная 75-120 сек, чтобы не выглядеть как бот
