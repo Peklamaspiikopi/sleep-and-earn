@@ -7,6 +7,7 @@
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
 const { ensureDailyReset, MAX_MANUAL_PER_DAY } = require('../lib/userDaily');
+const { daysToNextReward, daysToNextLimit } = require('../lib/streakLogic');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -40,6 +41,7 @@ module.exports = async (req, res) => {
         streak_freeze_tokens: 0,
         pending_miss_days: 0,
         active_days_since_level8: 0,
+        active_days_since_limit_bump: 0,
         reward_locked_permanent: false,
         last_reset: today,
         loyalty_started_at: today,
@@ -77,6 +79,8 @@ module.exports = async (req, res) => {
     streak_count: user.streak_count || 0,
     streak_freeze_tokens: user.streak_freeze_tokens || 0,
     pending_miss_days: user.pending_miss_days || 0,
+    days_to_next_reward: daysToNextReward(user),
+    days_to_next_limit: daysToNextLimit(user),
     ref_count: user.ref_count,
     ref_earn: user.ref_earn,
   });
