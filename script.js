@@ -37,9 +37,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             statCourseTitle: "💎 КУРС",
             statCourseVal: "1 Монета = $0.0001",
             statVideoTitle: "📺 ВИДЕО-РОЛИК",
-            statVideoVal: "растущая награда",
-            statRefTitle: "👥 РЕФЕРАЛЫ",
-            statRefVal: "+15% от вывода",
+            tRefBonusText: "+15% от суммы вывода каждого приглашённого",
+            videoRewardUnit: "Монет",
             tAdsProgressLabel: "Роликов сегодня:",
             tDailyStreakLabel: "Активных дней подряд:",
             tTokensLabel: "Токены-страховки:",
@@ -85,9 +84,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             statCourseTitle: "💎 RATE",
             statCourseVal: "1 Coin = $0.0001",
             statVideoTitle: "📺 VIDEO",
-            statVideoVal: "growing reward",
-            statRefTitle: "👥 REFERRALS",
-            statRefVal: "+15% of payout",
+            tRefBonusText: "+15% of payout from each invited friend",
+            videoRewardUnit: "Coins",
             tAdsProgressLabel: "Videos today:",
             tDailyStreakLabel: "Active days streak:",
             tTokensLabel: "Insurance tokens:",
@@ -155,10 +153,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         renderWeekLadder();
         renderProgressHints();
+        updateVideoRewardDisplay();
 
         updateWatchButton();
         updateTokenButton();
         updateMissedDayCard();
+    }
+
+    function updateVideoRewardDisplay() {
+        const el = document.getElementById('statVideoVal');
+        if (el) el.innerText = `${userState.video_reward} ${translations[currentLang].videoRewardUnit}`;
     }
 
     function renderWeekLadder() {
@@ -215,9 +219,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         setText('statCourseTitle', t.statCourseTitle);
         setText('statCourseVal', t.statCourseVal);
         setText('statVideoTitle', t.statVideoTitle);
-        setText('statVideoVal', t.statVideoVal);
-        setText('statRefTitle', t.statRefTitle);
-        setText('statRefVal', t.statRefVal);
+        setText('tRefBonusText', t.tRefBonusText);
+        updateVideoRewardDisplay();
         setText('tAdsProgressLabel', t.tAdsProgressLabel);
         setText('tDailyStreakLabel', t.tDailyStreakLabel);
         setText('tTokensLabel', t.tTokensLabel);
