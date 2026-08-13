@@ -13,7 +13,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             limitLabel: "🎬 Осталось роликов сегодня:",
             balanceLabel: "Ваш баланс",
             coinUnit: "Монет",
-            watchBtn: "Смотреть ролик (+7 монет)",
+            watchBtnPrefix: "Смотреть ролик",
+            coinWord: "монет",
             limitBtn: "Лимит на сегодня исчерпан",
             watchingBtn: "Загрузка ролика...",
             honesty: "🛡️ <b>Правило честности:</b> Мы за прозрачное сотрудничество. Любые накрутки фиксируются системой.",
@@ -23,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             navTerminal: "Терминал",
             navCabinet: "Кабинет",
             modalTitle: "🚀 Первый запуск!",
-            modalText: "Привет! Смотри рекламу и получай монеты. Заходи каждый день — бонус растёт!",
+            modalText: "Привет! Смотри рекламу и получай монеты. Заходи каждый день, смотри по 5 роликов — награда растёт!",
             modalBtn: "Понятно",
             adErrorAlert: "❌ Реклама не загрузилась.\n\nЕсли включён VPN или AdBlock — отключите их и попробуйте снова.",
             refTitle: "🔗 Ваша реферальная ссылка:",
@@ -32,25 +33,33 @@ document.addEventListener('DOMContentLoaded', async () => {
             refCountLabel: "Приглашено:",
             refEarnLabel: "Доход:",
             refCoinUnit: "монет",
-            confirmWatch: "Посмотреть рекламный ролик за +7 монет?",
+            confirmWatch: "Посмотреть рекламный ролик за",
             statCourseTitle: "💎 КУРС",
             statCourseVal: "1 Монета = $0.0001",
             statVideoTitle: "📺 ВИДЕО-РОЛИК",
-            statVideoVal: "+7 Монет",
+            statVideoVal: "растущая награда",
             statRefTitle: "👥 РЕФЕРАЛЫ",
             statRefVal: "+15% от вывода",
-            dailyTitle: "🎁 Ежедневный бонус",
-            dailyStreak: "День стрика:",
-            dailyClaim: "Забрать бонус",
-            dailyClaimed: "Уже забрано сегодня",
-            dailyGot: (r, s) => `🎉 Бонус +${r} монет! Стрик: ${s} дн.`,
+            tAdsProgressLabel: "Роликов сегодня:",
+            tDailyStreakLabel: "Активных дней подряд:",
+            tTokensLabel: "Токены-страховки:",
+            buyTokenBtn: "Купить токен (150 монет)",
+            tMissedTitle: "⚠️ Пропущены дни",
+            buyMissedDayBtn: "Купить день (150 монет)",
+            declineMissedDayBtn: "Отказаться (сброс стрика)",
+            missedDayText: (n) => `Не хватило токенов, чтобы закрыть все пропуски. Осталось незакрытых дней: ${n}.`,
+            dailyBonusMsg: (r) => `🎉 Активный день засчитан! +${r} монет`,
+            streakUpMsg: (s) => `Стрик: ${s} дн.`,
+            boxMsg: (r) => `🎁 Сундук! +${r} монет!`,
+            levelUpMsg: (lvl) => `⬆️ Награда за ролик выросла до ${lvl} монет!`,
         },
         en: {
             alert: "<b>Screen turning off?</b> Extend display timeout in your phone settings.",
             limitLabel: "🎬 Videos left today:",
             balanceLabel: "Your balance",
             coinUnit: "Coins",
-            watchBtn: "Watch video (+7 coins)",
+            watchBtnPrefix: "Watch video",
+            coinWord: "coins",
             limitBtn: "Daily limit reached",
             watchingBtn: "Loading video...",
             honesty: "🛡️ <b>Fair Play:</b> We stand for transparent cooperation. Any cheating is logged.",
@@ -60,7 +69,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             navTerminal: "Terminal",
             navCabinet: "Cabinet",
             modalTitle: "🚀 First Launch!",
-            modalText: "Welcome! Watch ads to earn coins. Come back daily — bonus grows!",
+            modalText: "Welcome! Watch ads to earn coins. Watch 5 videos a day, every day — your reward grows!",
             modalBtn: "Got it",
             adErrorAlert: "❌ Ad failed to load. Please disable AdBlock or VPN and try again.",
             refTitle: "🔗 Your Referral Link:",
@@ -69,18 +78,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             refCountLabel: "Invited:",
             refEarnLabel: "Earned:",
             refCoinUnit: "coins",
-            confirmWatch: "Watch an ad video for +7 coins?",
+            confirmWatch: "Watch an ad video for",
             statCourseTitle: "💎 RATE",
             statCourseVal: "1 Coin = $0.0001",
             statVideoTitle: "📺 VIDEO",
-            statVideoVal: "+7 Coins",
+            statVideoVal: "growing reward",
             statRefTitle: "👥 REFERRALS",
             statRefVal: "+15% of payout",
-            dailyTitle: "🎁 Daily Bonus",
-            dailyStreak: "Streak day:",
-            dailyClaim: "Claim bonus",
-            dailyClaimed: "Already claimed today",
-            dailyGot: (r, s) => `🎉 Bonus +${r} coins! Streak: ${s} days.`,
+            tAdsProgressLabel: "Videos today:",
+            tDailyStreakLabel: "Active days streak:",
+            tTokensLabel: "Insurance tokens:",
+            buyTokenBtn: "Buy token (150 coins)",
+            tMissedTitle: "⚠️ Missed days",
+            buyMissedDayBtn: "Buy day (150 coins)",
+            declineMissedDayBtn: "Decline (reset streak)",
+            missedDayText: (n) => `Not enough tokens to cover all missed days. Unresolved days left: ${n}.`,
+            dailyBonusMsg: (r) => `🎉 Active day counted! +${r} coins`,
+            streakUpMsg: (s) => `Streak: ${s} days`,
+            boxMsg: (r) => `🎁 Chest! +${r} coins!`,
+            levelUpMsg: (lvl) => `⬆️ Video reward increased to ${lvl} coins!`,
         }
     };
 
@@ -104,7 +120,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         return data;
     }
 
-    let userState = { balance: 0, manual_limit: 20, max_manual_limit: 20, ref_count: 0, ref_earn: 0, streak_count: 0, bonus_claimed_today: false };
+    let userState = {
+        balance: 0, manual_limit: 20, max_manual_limit: 20, video_reward: 5,
+        ads_watched_today: 0, streak_count: 0, streak_freeze_tokens: 0,
+        pending_miss_days: 0, ref_count: 0, ref_earn: 0,
+    };
 
     async function refreshUser() {
         try {
@@ -116,22 +136,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderUser() {
-        const balanceEl = document.getElementById('balance');
-        const limitEl = document.getElementById('limitCount');
-        const maxLimitEl = document.getElementById('maxLimitCount');
-        const refCountEl = document.getElementById('refCount');
-        const refEarnEl = document.getElementById('refEarn');
-        const streakEl = document.getElementById('streakDay');
-
-        if (balanceEl) balanceEl.innerText = userState.balance;
-        if (limitEl) limitEl.innerText = userState.manual_limit;
-        if (maxLimitEl) maxLimitEl.innerText = userState.max_manual_limit;
-        if (refCountEl) refCountEl.innerText = userState.ref_count;
-        if (refEarnEl) refEarnEl.innerText = userState.ref_earn;
-        if (streakEl) streakEl.innerText = userState.streak_count;
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+        set('balance', userState.balance);
+        set('limitCount', userState.manual_limit);
+        set('maxLimitCount', userState.max_manual_limit);
+        set('refCount', userState.ref_count);
+        set('refEarn', userState.ref_earn);
+        set('adsToday', Math.min(userState.ads_watched_today, 5));
+        set('streakDay', userState.streak_count);
+        set('tokenCount', userState.streak_freeze_tokens);
 
         updateWatchButton();
-        updateDailyButton();
+        updateTokenButton();
+        updateMissedDayCard();
     }
 
     // ==== Язык ====
@@ -167,14 +184,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         setText('statVideoVal', t.statVideoVal);
         setText('statRefTitle', t.statRefTitle);
         setText('statRefVal', t.statRefVal);
-        setText('tDailyTitle', t.dailyTitle);
-        setText('tDailyStreakLabel', t.dailyStreak);
+        setText('tAdsProgressLabel', t.tAdsProgressLabel);
+        setText('tDailyStreakLabel', t.tDailyStreakLabel);
+        setText('tTokensLabel', t.tTokensLabel);
+        setText('buyTokenBtn', t.buyTokenBtn);
+        setText('tMissedTitle', t.tMissedTitle);
+        setText('buyMissedDayBtn', t.buyMissedDayBtn);
+        setText('declineMissedDayBtn', t.declineMissedDayBtn);
 
         const promoInput = document.getElementById('promoInput');
         if (promoInput) promoInput.placeholder = t.promoPlaceholder;
 
         updateWatchButton();
-        updateDailyButton();
     };
 
     // ==== Реклама (Adsgram) ====
@@ -202,14 +223,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     function updateWatchButton() {
         if (!watchBtn) return;
         const t = translations[currentLang];
-        if (isWatching) {
+        if (userState.pending_miss_days > 0) {
+            watchBtn.innerText = currentLang === 'ru' ? 'Сначала реши вопрос с пропусками' : 'Resolve missed days first';
+            watchBtn.disabled = true;
+        } else if (isWatching) {
             watchBtn.innerText = t.watchingBtn;
             watchBtn.disabled = true;
         } else if (userState.manual_limit <= 0) {
             watchBtn.innerText = t.limitBtn;
             watchBtn.disabled = true;
         } else {
-            watchBtn.innerText = t.watchBtn;
+            watchBtn.innerText = `${t.watchBtnPrefix} (+${userState.video_reward} ${t.coinWord})`;
             watchBtn.disabled = false;
         }
     }
@@ -221,10 +245,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (wakeLock) { wakeLock.release(); wakeLock = null; }
     }
 
+    function showDayCompletionResults(result) {
+        const t = translations[currentLang];
+        const lines = [];
+        if (result.dayCompleted) {
+            lines.push(t.dailyBonusMsg(result.dailyBonus));
+            if (result.streak) lines.push(t.streakUpMsg(result.streak));
+            if (result.box) lines.push(t.boxMsg(result.box));
+            if (result.pendingMissDays) {
+                lines.push(currentLang === 'ru'
+                    ? `⚠️ Не все пропуски закрыты токенами, осталось: ${result.pendingMissDays}`
+                    : `⚠️ Not all missed days covered by tokens, remaining: ${result.pendingMissDays}`);
+            }
+            alert(lines.join('\n'));
+        }
+    }
+
     if (watchBtn) {
         watchBtn.addEventListener('click', async () => {
-            if (isWatching || userState.manual_limit <= 0) return;
-            if (!confirm(translations[currentLang].confirmWatch)) return;
+            if (isWatching || userState.manual_limit <= 0 || userState.pending_miss_days > 0) return;
+            if (!confirm(`${translations[currentLang].confirmWatch} +${userState.video_reward}?`)) return;
 
             isWatching = true;
             updateWatchButton();
@@ -237,7 +277,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 alert(e.message);
                 isWatching = false;
                 disableScreenProtection();
-                updateWatchButton();
+                await refreshUser();
                 return;
             }
 
@@ -248,7 +288,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 try {
                     const result = await api('session-complete', { sessionId: session.sessionId });
                     userState.balance = result.balance;
-                    renderUser();
+                    await refreshUser();
+                    showDayCompletionResults(result);
                 } catch (e) {
                     alert(e.message);
                 } finally {
@@ -258,7 +299,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             };
 
-            const finishFail = async (err) => {
+            const finishFail = async () => {
                 try { await api('session-cancel', { sessionId: session.sessionId }); } catch (e) {}
                 await refreshUser();
                 alert(translations[currentLang].adErrorAlert);
@@ -272,38 +313,67 @@ document.addEventListener('DOMContentLoaded', async () => {
                     .then((result) => { if (result?.done !== false) finishSuccess(); else finishFail(); })
                     .catch(finishFail);
             } else {
-                // Резервный путь, если Adsgram не подключился — просто ждём минимальное время
                 setTimeout(finishSuccess, 13000);
             }
         });
     }
 
-    // ==== Ежедневный бонус ====
-    const dailyBtn = document.getElementById('dailyBonusBtn');
-    function updateDailyButton() {
-        if (!dailyBtn) return;
-        const t = translations[currentLang];
-        if (userState.bonus_claimed_today) {
-            dailyBtn.innerText = t.dailyClaimed;
-            dailyBtn.disabled = true;
-        } else {
-            dailyBtn.innerText = t.dailyClaim;
-            dailyBtn.disabled = false;
-        }
+    // ==== Покупка токена-страховки ====
+    const buyTokenBtn = document.getElementById('buyTokenBtn');
+    function updateTokenButton() {
+        if (!buyTokenBtn) return;
+        buyTokenBtn.disabled = userState.streak_freeze_tokens >= 7 || userState.balance < 150;
     }
-    if (dailyBtn) {
-        dailyBtn.addEventListener('click', async () => {
-            dailyBtn.disabled = true;
+    if (buyTokenBtn) {
+        buyTokenBtn.addEventListener('click', async () => {
             try {
-                const result = await api('daily-bonus');
+                const result = await api('buy-streak-token');
                 userState.balance = result.balance;
-                userState.streak_count = result.streak;
-                userState.bonus_claimed_today = true;
+                userState.streak_freeze_tokens = result.tokens;
                 renderUser();
-                alert(translations[currentLang].dailyGot(result.reward, result.streak));
             } catch (e) {
                 alert(e.message);
-                dailyBtn.disabled = false;
+            }
+        });
+    }
+
+    // ==== Карточка пропущенных дней ====
+    const missedDayCard = document.getElementById('missedDayCard');
+    const missedDayText = document.getElementById('missedDayText');
+    function updateMissedDayCard() {
+        if (!missedDayCard) return;
+        if (userState.pending_miss_days > 0) {
+            missedDayCard.style.display = 'block';
+            if (missedDayText) missedDayText.innerText = translations[currentLang].missedDayText(userState.pending_miss_days);
+        } else {
+            missedDayCard.style.display = 'none';
+        }
+    }
+    const buyMissedDayBtn = document.getElementById('buyMissedDayBtn');
+    if (buyMissedDayBtn) {
+        buyMissedDayBtn.addEventListener('click', async () => {
+            try {
+                const result = await api('buy-missed-day');
+                userState.balance = result.balance;
+                userState.pending_miss_days = result.pendingMissDays;
+                await refreshUser();
+                if (result.resolved) {
+                    alert(currentLang === 'ru' ? '✅ Все пропуски закрыты, стрик продолжается!' : '✅ All missed days covered, streak continues!');
+                }
+            } catch (e) {
+                alert(e.message);
+            }
+        });
+    }
+    const declineMissedDayBtn = document.getElementById('declineMissedDayBtn');
+    if (declineMissedDayBtn) {
+        declineMissedDayBtn.addEventListener('click', async () => {
+            if (!confirm(currentLang === 'ru' ? 'Точно отказаться? Стрик сбросится.' : 'Are you sure? Streak will reset.')) return;
+            try {
+                await api('decline-missed-day');
+                await refreshUser();
+            } catch (e) {
+                alert(e.message);
             }
         });
     }
