@@ -1,17 +1,18 @@
 // api/session-start.js
 //
-// Раньше здесь было несколько режимов, включая многочасовые "авто"
-// сессии на ночь — их убрали полностью. Остался только один честный
-// режим: юзер реально смотрит один рекламный ролик за раз.
+// Честный ручной режим просмотра рекламы. Между роликами — случайная
+// пауза 75-120 секунд на сервере (обойти с клиента нельзя), чтобы
+// не выглядеть как бот для рекламной сети.
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
+const { ensureDailyReset, MAX_MANUAL_PER_DAY } = require('../lib/userDaily');
 const crypto = require('crypto');
 
-const MANUAL_REWARD = 7;
-const MIN_WATCH_SECONDS = 12;      // минимальное честное время просмотра ролика
-const SESSION_TTL_SECONDS = 120;   // сколько времени есть, чтобы завершить сессию
-const MAX_MANUAL_PER_DAY = 20;     // сколько роликов в день можно посмотреть
+const MIN_WATCH_SECONDS = 12;
+const SESSION_TTL_SECONDS = 120;
+const COOLDOWN_MIN_SECONDS = 75;
+const COOLDOWN_MAX_SECONDS = 120;
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -38,8 +39,16 @@ module.exports = async (req, res) => {
         ref_count: 0,
         ref_earn: 0,
         manual_limit: MAX_MANUAL_PER_DAY,
+        manual_limit_max: MAX_MANUAL_PER_DAY,
+        video_reward: 5,
         streak_count: 0,
+        ads_watched_today: 0,
+        streak_freeze_tokens: 0,
+        pending_miss_days: 0,
+        active_days_since_level8: 0,
+        reward_locked_permanent: false,
         last_reset: today,
+        loyalty_started_at: today,
         flagged: false,
       }])
       .select()
@@ -47,12 +56,11 @@ module.exports = async (req, res) => {
 
     if (insertErr) {
       console.error('INSERT ERROR (session-start):', JSON.stringify(insertErr));
-      const { data: existingUser, error: selectErr } = await supabaseAdmin
+      const { data: existingUser } = await supabaseAdmin
         .from('users')
         .select('*')
         .eq('telegram_id', telegramId)
         .maybeSingle();
-      if (selectErr) console.error('RESELECT ERROR (session-start):', JSON.stringify(selectErr));
       user = existingUser;
     } else {
       user = newUser;
@@ -61,15 +69,13 @@ module.exports = async (req, res) => {
     if (!user) return res.status(500).json({ error: 'Не удалось создать или найти пользователя' });
   }
 
-  if (user.last_reset !== today) {
-    const { data: resetUser, error: resetErr } = await supabaseAdmin
-      .from('users')
-      .update({ manual_limit: MAX_MANUAL_PER_DAY, last_reset: today })
-      .eq('telegram_id', telegramId)
-      .select()
-      .single();
-    if (resetErr) return res.status(500).json({ error: 'Ошибка сброса лимита' });
-    user = resetUser;
+  user = await ensureDailyReset(supabaseAdmin, user, telegramId, today);
+
+  if (user.pending_miss_days > 0) {
+    return res.status(423).json({
+      error: 'Сначала реши вопрос с пропущенными днями',
+      pendingMissDays: user.pending_miss_days,
+    });
   }
 
   if (user.manual_limit <= 0) {
@@ -87,23 +93,43 @@ module.exports = async (req, res) => {
     return res.status(409).json({ error: 'Уже есть незавершённая сессия' });
   }
 
+  // Пауза между роликами — случайная 75-120 сек, чтобы не выглядеть как бот
+  const { data: lastSession } = await supabaseAdmin
+    .from('sessions')
+    .select('completed_at')
+    .eq('telegram_id', telegramId)
+    .not('completed_at', 'is', null)
+    .order('completed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (lastSession && lastSession.completed_at) {
+    const cooldown = COOLDOWN_MIN_SECONDS + Math.random() * (COOLDOWN_MAX_SECONDS - COOLDOWN_MIN_SECONDS);
+    const elapsed = (Date.now() - new Date(lastSession.completed_at).getTime()) / 1000;
+    if (elapsed < cooldown) {
+      const wait = Math.ceil(cooldown - elapsed);
+      return res.status(429).json({ error: `Подожди ещё ${wait} сек. перед следующим роликом`, retryAfter: wait });
+    }
+  }
+
   const newLimit = user.manual_limit - 1;
   await supabaseAdmin.from('users').update({ manual_limit: newLimit }).eq('telegram_id', telegramId);
 
   const sessionId = crypto.randomUUID();
   const startedAt = new Date();
   const expiresAt = new Date(startedAt.getTime() + SESSION_TTL_SECONDS * 1000);
+  const reward = user.video_reward || 5;
 
   await supabaseAdmin.from('sessions').insert([{
     id: sessionId,
     telegram_id: telegramId,
     mode: 'manual',
     duration_seconds: MIN_WATCH_SECONDS,
-    reward: MANUAL_REWARD,
+    reward,
     started_at: startedAt.toISOString(),
     expires_at: expiresAt.toISOString(),
     status: 'active',
   }]);
 
-  return res.status(200).json({ sessionId, manual_limit: newLimit });
+  return res.status(200).json({ sessionId, manual_limit: newLimit, reward });
 };
