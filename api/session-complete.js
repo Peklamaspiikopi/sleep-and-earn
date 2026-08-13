@@ -1,10 +1,17 @@
 // api/session-complete.js
 //
-// Проверяет, что с начала сессии реально прошло минимальное время
-// (нельзя нажать "готово" мгновенно) и что сессия не протухла.
+// Начисляет награду за ролик и, если это 5-й ролик за день —
+// запускает всю логику "активного дня": бонус +10, продвижение
+// стрика, рост уровня награды, сундук раз в неделю, обработку
+// пропущенных дней через токены-страховки.
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
+const { ensureDailyReset } = require('../lib/userDaily');
+const {
+  daysBetween, rollBox, applyRewardMilestones,
+  DAILY_ACTIVE_BONUS, POST8_GROWTH_ACTIVE_DAYS, REWARD_CAP,
+} = require('../lib/streakLogic');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -37,20 +44,87 @@ module.exports = async (req, res) => {
     return res.status(410).json({ error: 'Время сессии истекло' });
   }
 
-  const { data: user } = await supabaseAdmin
+  let { data: user } = await supabaseAdmin
     .from('users')
-    .select('balance')
+    .select('*')
     .eq('telegram_id', telegramId)
     .single();
 
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
 
-  const newBalance = user.balance + session.reward;
+  const today = new Date().toISOString().slice(0, 10);
+  user = await ensureDailyReset(supabaseAdmin, user, telegramId, today);
 
-  await supabaseAdmin.from('users').update({ balance: newBalance }).eq('telegram_id', telegramId);
-  await supabaseAdmin.from('sessions')
+  let newBalance = user.balance + session.reward;
+  const newAdsToday = (user.ads_watched_today || 0) + 1;
+
+  const updates = { balance: newBalance, ads_watched_today: newAdsToday };
+  const dayInfo = { dayCompleted: false };
+
+  // Пятый ролик за день — засчитываем активный день (если ещё не засчитан сегодня)
+  if (newAdsToday === 5 && user.last_active_date !== today && !(user.pending_miss_days > 0)) {
+    newBalance += DAILY_ACTIVE_BONUS;
+    updates.balance = newBalance;
+    dayInfo.dayCompleted = true;
+    dayInfo.dailyBonus = DAILY_ACTIVE_BONUS;
+
+    const gap = user.last_active_date ? daysBetween(user.last_active_date, today) - 1 : 0;
+
+    if (gap <= 0) {
+      const newStreak = (user.streak_count || 0) + 1;
+      updates.streak_count = newStreak;
+      updates.last_active_date = today;
+      updates.video_reward = applyRewardMilestones(user.video_reward, newStreak);
+      dayInfo.streak = newStreak;
+
+      if (updates.video_reward >= 8 && !user.reward_locked_permanent) {
+        const newActiveDays = (user.active_days_since_level8 || 0) + 1;
+        updates.active_days_since_level8 = newActiveDays;
+        if (newActiveDays >= POST8_GROWTH_ACTIVE_DAYS && updates.video_reward < REWARD_CAP) {
+          updates.video_reward = updates.video_reward + 1;
+          updates.active_days_since_level8 = 0;
+          if (updates.video_reward >= REWARD_CAP) updates.reward_locked_permanent = true;
+        }
+      }
+
+      if (newStreak % 7 === 0) {
+        const boxReward = rollBox();
+        updates.balance += boxReward;
+        newBalance += boxReward;
+        dayInfo.box = boxReward;
+      }
+    } else {
+      const tokensAvailable = user.streak_freeze_tokens || 0;
+      const tokensUsed = Math.min(gap, tokensAvailable);
+      updates.streak_freeze_tokens = tokensAvailable - tokensUsed;
+      const remainingGap = gap - tokensUsed;
+
+      if (remainingGap === 0) {
+        const newStreak = (user.streak_count || 0) + 1;
+        updates.streak_count = newStreak;
+        updates.last_active_date = today;
+        updates.video_reward = applyRewardMilestones(user.video_reward, newStreak);
+        dayInfo.streak = newStreak;
+        dayInfo.tokensUsed = tokensUsed;
+      } else {
+        updates.pending_miss_days = remainingGap;
+        dayInfo.pendingMissDays = remainingGap;
+        dayInfo.tokensUsed = tokensUsed;
+      }
+    }
+  }
+
+  const { error: updateErr } = await supabaseAdmin
+    .from('users')
+    .update(updates)
+    .eq('telegram_id', telegramId);
+
+  if (updateErr) return res.status(500).json({ error: 'Не удалось начислить награду' });
+
+  await supabaseAdmin
+    .from('sessions')
     .update({ status: 'completed', completed_at: new Date().toISOString() })
     .eq('id', sessionId);
 
-  return res.status(200).json({ balance: newBalance, reward: session.reward });
+  return res.status(200).json({ balance: newBalance, reward: session.reward, ...dayInfo });
 };
