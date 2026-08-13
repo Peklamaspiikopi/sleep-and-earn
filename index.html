@@ -74,6 +74,13 @@
         .daily-streak { font-size: 12px; color: #ab47bc; margin-bottom: 10px; }
         .daily-streak b { font-size: 16px; color: #e1bee7; }
 
+        .week-ladder { display: flex; gap: 4px; margin: 10px 0; }
+        .week-day { flex: 1; background: #1a1420; border: 1px solid rgba(171,71,188,0.3); border-radius: 8px; padding: 6px 2px; text-align: center; }
+        .week-day.active { border-color: #e040fb; box-shadow: 0 0 10px rgba(224,64,251,0.5); background: rgba(224,64,251,0.12); }
+        .week-day-num { font-size: 9px; color: #8a909a; }
+        .week-day-reward { font-size: 11px; font-weight: 700; color: #e1bee7; margin-top: 2px; }
+        .progress-hint { font-size: 11px; color: #8a909a; margin-bottom: 4px; }
+
         .balance-card {
             text-align: center; padding: 16px;
             background: linear-gradient(145deg, #1c1f28, #161820);
@@ -166,7 +173,21 @@
             <div class="daily-title" id="tDailyTitle">🎁 Активность дня</div>
             <div class="daily-streak"><span id="tAdsProgressLabel">Роликов сегодня:</span> <b id="adsToday">0</b>/5</div>
             <div class="daily-streak"><span id="tDailyStreakLabel">Активных дней подряд:</span> <b id="streakDay">0</b></div>
-            <div class="daily-streak"><span id="tTokensLabel">Токены-страховки:</span> <b id="tokenCount">0</b>/7</div>
+
+            <div class="week-ladder" id="weekLadder">
+                <div class="week-day" data-day="1"><div class="week-day-num">1</div><div class="week-day-reward">10</div></div>
+                <div class="week-day" data-day="2"><div class="week-day-num">2</div><div class="week-day-reward">15</div></div>
+                <div class="week-day" data-day="3"><div class="week-day-num">3</div><div class="week-day-reward">20</div></div>
+                <div class="week-day" data-day="4"><div class="week-day-num">4</div><div class="week-day-reward">25</div></div>
+                <div class="week-day" data-day="5"><div class="week-day-num">5</div><div class="week-day-reward">30</div></div>
+                <div class="week-day" data-day="6"><div class="week-day-num">6</div><div class="week-day-reward">35</div></div>
+                <div class="week-day" data-day="7"><div class="week-day-num">7</div><div class="week-day-reward">🎁</div></div>
+            </div>
+
+            <div class="progress-hint" id="tNextRewardHint">До роста награды за ролик: —</div>
+            <div class="progress-hint" id="tNextLimitHint">До +1 ролика в день: —</div>
+
+            <div class="daily-streak" style="margin-top:10px;"><span id="tTokensLabel">Токены-страховки:</span> <b id="tokenCount">0</b>/7</div>
             <button class="btn" id="buyTokenBtn" style="margin-top:8px;">Купить токен (150 монет)</button>
         </div>
 
