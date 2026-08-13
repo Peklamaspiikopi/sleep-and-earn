@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', async () => {
+  document.addEventListener('DOMContentLoaded', async () => {
 
     // ==== Telegram ====
     const tg = window.Telegram?.WebApp;
@@ -52,6 +52,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             streakUpMsg: (s) => `Стрик: ${s} дн.`,
             boxMsg: (r) => `🎁 Сундук! +${r} монет!`,
             levelUpMsg: (lvl) => `⬆️ Награда за ролик выросла до ${lvl} монет!`,
+            nextRewardLabel: "До роста награды за ролик:",
+            nextLimitLabel: "До +1 ролика в день:",
+            activeDaysWord: "активных дней",
         },
         en: {
             alert: "<b>Screen turning off?</b> Extend display timeout in your phone settings.",
@@ -97,6 +100,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             streakUpMsg: (s) => `Streak: ${s} days`,
             boxMsg: (r) => `🎁 Chest! +${r} coins!`,
             levelUpMsg: (lvl) => `⬆️ Video reward increased to ${lvl} coins!`,
+            nextRewardLabel: "Until video reward grows:",
+            nextLimitLabel: "Until +1 daily video:",
+            activeDaysWord: "active days",
         }
     };
 
@@ -124,6 +130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         balance: 0, manual_limit: 20, max_manual_limit: 20, video_reward: 5,
         ads_watched_today: 0, streak_count: 0, streak_freeze_tokens: 0,
         pending_miss_days: 0, ref_count: 0, ref_earn: 0,
+        days_to_next_reward: null, days_to_next_limit: null,
     };
 
     async function refreshUser() {
@@ -146,10 +153,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         set('streakDay', userState.streak_count);
         set('tokenCount', userState.streak_freeze_tokens);
 
+        renderWeekLadder();
+        renderProgressHints();
+
         updateWatchButton();
         updateTokenButton();
         updateMissedDayCard();
     }
+
+    function renderWeekLadder() {
+        const nextPos = (userState.streak_count % 7) + 1;
+        document.querySelectorAll('.week-day').forEach(el => {
+            const day = parseInt(el.dataset.day, 10);
+            el.classList.toggle('active', day === nextPos);
+        });
+    }
+
+    function renderProgressHints() {
+        const t = translations[currentLang];
+        const rewardEl = document.getElementById('tNextRewardHint');
+        const limitEl = document.getElementById('tNextLimitHint');
+        if (rewardEl) {
+            rewardEl.innerText = userState.days_to_next_reward === null
+                ? (currentLang === 'ru' ? 'Награда за ролик достигла максимума!' : 'Video reward is maxed out!')
+                : `${t.nextRewardLabel} ${userState.days_to_next_reward} ${t.activeDaysWord}`;
+        }
+        if (limitEl) {
+            limitEl.innerText = userState.days_to_next_limit === null
+                ? (currentLang === 'ru' ? 'Дневной лимит роликов достиг максимума!' : 'Daily video limit is maxed out!')
+                : `${t.nextLimitLabel} ${userState.days_to_next_limit} ${t.activeDaysWord}`;
+        }
 
     // ==== Язык ====
     window.setLanguage = function (lang) {
