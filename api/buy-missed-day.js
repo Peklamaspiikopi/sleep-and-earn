@@ -1,11 +1,12 @@
-// api/decline-missed-day.js
+// api/buy-missed-day.js
 //
-// Юзер отказывается выкупать пропущенные дни — стрик сбрасывается
-// на 1, награда 9-11 откатывается на -1 (не ниже 8), 12 не трогаем.
+// Выкупает ОДИН пропущенный день за 150 монет (вызывается повторно,
+// если пропущено несколько дней). Когда все пропуски закрыты —
+// стрик продолжается как ни в чём не бывало.
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
-const { applyRewardDecay } = require('../lib/streakLogic');
+const { BUY_MISSED_DAY_COST, applyRewardMilestones } = require('../lib/streakLogic');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -22,19 +23,31 @@ module.exports = async (req, res) => {
 
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
 
+  if (!user.pending_miss_days || user.pending_miss_days <= 0) {
+    return res.status(400).json({ error: 'Нет пропущенных дней для выкупа' });
+  }
+  if (user.balance < BUY_MISSED_DAY_COST) {
+    return res.status(400).json({ error: 'Недостаточно монет' });
+  }
+
+  const newBalance = user.balance - BUY_MISSED_DAY_COST;
+  const newPending = user.pending_miss_days - 1;
   const today = new Date().toISOString().slice(0, 10);
-  const newReward = applyRewardDecay(user);
 
-  await supabaseAdmin
-    .from('users')
-    .update({
-      pending_miss_days: 0,
-      streak_count: 1,
-      last_active_date: today,
-      video_reward: newReward,
-      active_days_since_level8: 0,
-    })
-    .eq('telegram_id', auth.telegramId);
+  const updates = { balance: newBalance, pending_miss_days: newPending };
 
-  return res.status(200).json({ streak: 1, video_reward: newReward });
+  if (newPending === 0) {
+    const newStreak = (user.streak_count || 0) + 1;
+    updates.streak_count = newStreak;
+    updates.last_active_date = today;
+    updates.video_reward = applyRewardMilestones(user.video_reward, newStreak);
+  }
+
+  await supabaseAdmin.from('users').update(updates).eq('telegram_id', auth.telegramId);
+
+  return res.status(200).json({
+    balance: newBalance,
+    pendingMissDays: newPending,
+    resolved: newPending === 0,
+  });
 };
