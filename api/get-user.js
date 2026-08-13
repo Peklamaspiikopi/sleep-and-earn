@@ -1,13 +1,12 @@
 // api/get-user.js
 //
-// Раньше клиент напрямую читал/писал таблицу users через Supabase
-// anon-ключ. Теперь клиент вообще не подключается к Supabase — все
-// данные идут только через эти серверные функции.
+// Клиент вообще не подключается к Supabase — все данные идут только
+// через эти серверные функции. Здесь же создаётся новый пользователь
+// при первом заходе, и выполняется дневной сброс счётчиков.
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
-
-const MAX_MANUAL_PER_DAY = 20;
+const { ensureDailyReset, MAX_MANUAL_PER_DAY } = require('../lib/userDaily');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -34,8 +33,16 @@ module.exports = async (req, res) => {
         ref_count: 0,
         ref_earn: 0,
         manual_limit: MAX_MANUAL_PER_DAY,
+        manual_limit_max: MAX_MANUAL_PER_DAY,
+        video_reward: 5,
         streak_count: 0,
+        ads_watched_today: 0,
+        streak_freeze_tokens: 0,
+        pending_miss_days: 0,
+        active_days_since_level8: 0,
+        reward_locked_permanent: false,
         last_reset: today,
+        loyalty_started_at: today,
         flagged: false,
       }])
       .select()
@@ -43,7 +50,6 @@ module.exports = async (req, res) => {
 
     if (insertErr) {
       console.error('INSERT ERROR (get-user):', JSON.stringify(insertErr));
-      // Запись могла уже существовать (гонка/повторная попытка) — просто читаем её
       const { data: existingUser, error: selectErr } = await supabaseAdmin
         .from('users')
         .select('*')
@@ -60,23 +66,18 @@ module.exports = async (req, res) => {
     }
   }
 
-  if (user.last_reset !== today) {
-    const { data: resetUser } = await supabaseAdmin
-      .from('users')
-      .update({ manual_limit: MAX_MANUAL_PER_DAY, last_reset: today })
-      .eq('telegram_id', telegramId)
-      .select()
-      .single();
-    user = resetUser;
-  }
+  user = await ensureDailyReset(supabaseAdmin, user, telegramId, today);
 
   return res.status(200).json({
     balance: user.balance,
     manual_limit: user.manual_limit,
-    max_manual_limit: MAX_MANUAL_PER_DAY,
+    max_manual_limit: user.manual_limit_max || MAX_MANUAL_PER_DAY,
+    video_reward: user.video_reward || 5,
+    ads_watched_today: user.ads_watched_today || 0,
+    streak_count: user.streak_count || 0,
+    streak_freeze_tokens: user.streak_freeze_tokens || 0,
+    pending_miss_days: user.pending_miss_days || 0,
     ref_count: user.ref_count,
     ref_earn: user.ref_earn,
-    streak_count: user.streak_count,
-    bonus_claimed_today: user.last_bonus_date === today,
   });
 };
