@@ -1,4 +1,4 @@
-  document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', async () => {
 
     // ==== Telegram ====
     const tg = window.Telegram?.WebApp;
@@ -183,6 +183,7 @@
                 ? (currentLang === 'ru' ? 'Дневной лимит роликов достиг максимума!' : 'Daily video limit is maxed out!')
                 : `${t.nextLimitLabel} ${userState.days_to_next_limit} ${t.activeDaysWord}`;
         }
+    }
 
     // ==== Язык ====
     window.setLanguage = function (lang) {
