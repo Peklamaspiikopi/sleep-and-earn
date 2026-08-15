@@ -2,22 +2,30 @@
 //
 // Клиент вообще не подключается к Supabase — все данные идут только
 // через эти серверные функции. Здесь же создаётся новый пользователь
-// при первом заходе, и выполняется дневной сброс счётчиков.
+// при первом заходе, и выполняется дневной сброс счётчиков по
+// часовому поясу самого пользователя.
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
-const { ensureDailyReset, MAX_MANUAL_PER_DAY } = require('../lib/userDaily');
+const { ensureDailyReset, getLocalDateString, MAX_MANUAL_PER_DAY } = require('../lib/userDaily');
 const { daysToNextReward, daysToNextLimit } = require('../lib/streakLogic');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { initData } = req.body || {};
+  const { initData, startParam, timezone } = req.body || {};
   const auth = verifyTelegramInitData(initData, process.env.TELEGRAM_BOT_TOKEN);
   if (!auth.ok) return res.status(401).json({ error: auth.error });
 
   const telegramId = auth.telegramId;
-  const today = new Date().toISOString().slice(0, 10);
+  const tz = (typeof timezone === 'string' && timezone) ? timezone : 'UTC';
+  const today = getLocalDateString(tz);
+
+  let referredBy = null;
+  if (startParam && typeof startParam === 'string' && startParam.startsWith('ref_')) {
+    const candidate = startParam.slice(4);
+    if (candidate && candidate !== telegramId) referredBy = candidate;
+  }
 
   let { data: user } = await supabaseAdmin
     .from('users')
@@ -43,6 +51,9 @@ module.exports = async (req, res) => {
         active_days_since_level8: 0,
         active_days_since_limit_bump: 0,
         reward_locked_permanent: false,
+        referred_by: referredBy,
+        referral_credited: false,
+        timezone: tz,
         last_reset: today,
         loyalty_started_at: today,
         flagged: false,
@@ -66,9 +77,19 @@ module.exports = async (req, res) => {
     if (!user) {
       return res.status(500).json({ error: 'Не удалось создать или найти пользователя' });
     }
+  } else if (user.timezone !== tz) {
+    // Обновляем таймзону, если поменялась (юзер сменил регион/телефон)
+    const { data: tzUser } = await supabaseAdmin
+      .from('users')
+      .update({ timezone: tz })
+      .eq('telegram_id', telegramId)
+      .select()
+      .single();
+    if (tzUser) user = tzUser;
   }
 
-  user = await ensureDailyReset(supabaseAdmin, user, telegramId, today);
+  const resetResult = await ensureDailyReset(supabaseAdmin, user, telegramId, tz);
+  user = resetResult.user;
 
   return res.status(200).json({
     balance: user.balance,
