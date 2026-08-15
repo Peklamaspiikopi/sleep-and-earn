@@ -5,6 +5,7 @@
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
+const { logTransaction } = require('../lib/transactions');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -57,6 +58,7 @@ module.exports = async (req, res) => {
 
   await supabaseAdmin.from('users').update({ balance: newBalance }).eq('telegram_id', telegramId);
   await supabaseAdmin.from('promo_redemptions').insert([{ telegram_id: telegramId, code: normalizedCode }]);
+  await logTransaction(supabaseAdmin, telegramId, 'promo', promo.reward, newBalance, normalizedCode);
 
   return res.status(200).json({ balance: newBalance, reward: promo.reward });
 };
