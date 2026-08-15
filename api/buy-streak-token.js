@@ -5,6 +5,7 @@
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
+const { logTransaction } = require('../lib/transactions');
 const { TOKEN_COST, TOKEN_CAP } = require('../lib/streakLogic');
 
 module.exports = async (req, res) => {
@@ -37,6 +38,8 @@ module.exports = async (req, res) => {
     .from('users')
     .update({ balance: newBalance, streak_freeze_tokens: newTokens })
     .eq('telegram_id', auth.telegramId);
+
+  await logTransaction(supabaseAdmin, auth.telegramId, 'token_purchase', -TOKEN_COST, newBalance, null);
 
   return res.status(200).json({ balance: newBalance, tokens: newTokens });
 };
