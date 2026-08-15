@@ -4,7 +4,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tg = window.Telegram?.WebApp;
     if (tg) { tg.ready(); tg.expand(); }
     const initData = tg?.initData || "";
-    let botUsername = "SleepEarnSupport_bot";
+    let botUsername = "mintrostreakly_bot";
+    let miniAppShortName = "MintroStrk";
 
     // ==== Переводы ====
     const translations = {
@@ -108,9 +109,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         (tg?.initDataUnsafe?.user?.language_code === 'en' ? 'en' : 'ru');
 
     let myTelegramID = String(tg?.initDataUnsafe?.user?.id || "");
-    let fullRefLink = myTelegramID ? `https://t.me/${botUsername}?start=ref_${myTelegramID}` : "";
+    let fullRefLink = myTelegramID ? `https://t.me/${botUsername}/${miniAppShortName}?startapp=ref_${myTelegramID}` : "";
     const refLinkInput = document.getElementById('myRefLink');
     if (refLinkInput) refLinkInput.value = fullRefLink;
+
+    const startParam = tg?.initDataUnsafe?.start_param || null;
+    let userTimezone = 'UTC';
+    try { userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (e) {}
 
     // ==== Вызов серверных функций ====
     async function api(path, body = {}) {
@@ -133,7 +138,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function refreshUser() {
         try {
-            userState = await api('get-user');
+            userState = await api('get-user', { startParam, timezone: userTimezone });
             renderUser();
         } catch (e) {
             console.error(e);
@@ -438,17 +443,67 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==== Вывод средств ====
     const withdrawBtn = document.getElementById('withdrawBtn');
     if (withdrawBtn) {
-        withdrawBtn.addEventListener('click', () => {
+        withdrawBtn.addEventListener('click', async () => {
             if (userState.balance < 2000) {
                 alert(currentLang === 'ru'
                     ? "Недостаточно монет! Мин. вывод 2000 монет (~0.1 TON)."
                     : "Insufficient coins! Min withdrawal is 2000 coins.");
-            } else {
+                return;
+            }
+            if (!confirm(currentLang === 'ru'
+                ? `Вывести ${userState.balance} монет? Заявка уйдёт на обработку.`
+                : `Withdraw ${userState.balance} coins? The request will be processed.`)) return;
+            try {
+                const result = await api('request-withdrawal');
+                userState.balance = result.balance;
+                renderUser();
                 alert(currentLang === 'ru'
-                    ? `Заявка доступна!\n\nНапишите администратору @${botUsername} для получения выплаты.`
-                    : `Send request to @${botUsername} to receive payout.`);
+                    ? `✅ Заявка на ${result.amount} монет отправлена, ожидай обработки.`
+                    : `✅ Request for ${result.amount} coins sent, awaiting processing.`);
+            } catch (e) {
+                alert(e.message);
             }
         });
+    }
+
+    // ==== История операций ====
+    const historyList = document.getElementById('historyList');
+    const historyLabels = {
+        video_reward: { ru: '📺 Просмотр ролика', en: '📺 Video watched' },
+        daily_bonus: { ru: '🎁 Дневной бонус', en: '🎁 Daily bonus' },
+        box: { ru: '🎁 Сундук', en: '🎁 Chest' },
+        promo: { ru: '🏷️ Промокод', en: '🏷️ Promo code' },
+        token_purchase: { ru: '🛡️ Покупка токена', en: '🛡️ Token purchase' },
+        missed_day_purchase: { ru: '📅 Выкуп дня', en: '📅 Day buyback' },
+        withdrawal_request: { ru: '💸 Заявка на вывод', en: '💸 Withdrawal request' },
+        referral_bonus: { ru: '👥 Реферальный бонус', en: '👥 Referral bonus' },
+    };
+    async function loadHistory() {
+        if (!historyList) return;
+        historyList.innerHTML = currentLang === 'ru' ? 'Загрузка...' : 'Loading...';
+        try {
+            const result = await api('get-history', { offset: 0 });
+            if (!result.items || result.items.length === 0) {
+                historyList.innerHTML = currentLang === 'ru' ? 'Пока пусто' : 'Nothing yet';
+                return;
+            }
+            historyList.innerHTML = result.items.map(item => {
+                const label = (historyLabels[item.type] && historyLabels[item.type][currentLang]) || item.type;
+                const sign = item.amount >= 0 ? '+' : '';
+                const color = item.amount >= 0 ? '#00e676' : '#ff8a80';
+                const date = new Date(item.created_at).toLocaleString(currentLang === 'ru' ? 'ru-RU' : 'en-US', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:12px;">
+                    <span>${label}<br><span style="color:#6c727f;font-size:10px;">${date}</span></span>
+                    <span style="color:${color};font-weight:700;">${sign}${item.amount}</span>
+                </div>`;
+            }).join('');
+        } catch (e) {
+            historyList.innerHTML = e.message;
+        }
+    }
+    const historyNavBtn = document.getElementById('btnNavHistory');
+    if (historyNavBtn) {
+        historyNavBtn.addEventListener('click', () => { switchTab('history'); loadHistory(); });
     }
 
     // ==== Копирование реф. ссылки ====
