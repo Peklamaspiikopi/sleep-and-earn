@@ -253,28 +253,32 @@
         <button class="btn btn-withdraw" id="withdrawBtn">Заказать вывод средств</button>
     </div>
 
+    <!-- ИСТОРИЯ -->
+    <div class="tab-content" id="tabHistory">
+        <div class="card" style="text-align:left;">
+            <div style="font-size: 13px; font-weight: 700; color: #00b0ff; margin-bottom: 10px;">📜 История операций</div>
+            <div id="historyList" style="max-height: 60vh; overflow-y: auto;"></div>
+        </div>
+    </div>
+
     <!-- Нижнее меню -->
     <div class="nav-bar">
         <button class="nav-btn active" id="btnNavTerminal" onclick="switchTab('terminal')">🛌 <span id="tNavTerminal">Терминал</span></button>
         <button class="nav-btn" id="btnNavFinance" onclick="switchTab('finance')">💼 <span id="tNavCabinet">Кабинет</span></button>
+        <button class="nav-btn" id="btnNavHistory">📜 <span id="tNavHistory">История</span></button>
     </div>
 </div>
 
-<script src="script.js?v=11" defer></script>
+<script src="script.js?v=12" defer></script>
 <script>
 function switchTab(tabName) {
-    const tabTerminal = document.getElementById('tabTerminal');
-    const tabFinance = document.getElementById('tabFinance');
-    const btnTerminal = document.getElementById('btnNavTerminal');
-    const btnFinance = document.getElementById('btnNavFinance');
-
-    if (tabName === 'terminal') {
-        tabTerminal.classList.add('active'); tabFinance.classList.remove('active');
-        btnTerminal.classList.add('active'); btnFinance.classList.remove('active');
-    } else {
-        tabTerminal.classList.remove('active'); tabFinance.classList.add('active');
-        btnTerminal.classList.remove('active'); btnFinance.classList.add('active');
-    }
+    const tabs = { terminal: 'tabTerminal', finance: 'tabFinance', history: 'tabHistory' };
+    const btns = { terminal: 'btnNavTerminal', finance: 'btnNavFinance', history: 'btnNavHistory' };
+    Object.keys(tabs).forEach(key => {
+        const isActive = key === tabName;
+        document.getElementById(tabs[key]).classList.toggle('active', isActive);
+        document.getElementById(btns[key]).classList.toggle('active', isActive);
+    });
 }
 </script>
 </body>
