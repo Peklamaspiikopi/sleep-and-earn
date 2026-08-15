@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sleep & Earn</title>
+    <title>MintoStrk</title>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
         body {
@@ -140,7 +140,7 @@
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(5px); }
         .modal-content { background: #1a1c23; border: 1px solid #00b0ff; box-shadow: 0 0 25px rgba(0, 176, 255, 0.4); padding: 20px; border-radius: 20px; width: 85%; max-width: 320px; text-align: center; }
     </style>
-    <script src="https://adsgram.ai"></script>
+    <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -155,7 +155,7 @@
 
 <div class="container">
     <div class="header">
-        <h1>Sleep & Earn</h1>
+        <h1>MintoStrk</h1>
         <div class="lang-switch">
             <button class="lang-btn active" id="langRu" onclick="setLanguage('ru')">RU</button>
             <button class="lang-btn" id="langEn" onclick="setLanguage('en')">EN</button>
@@ -186,16 +186,7 @@
 
             <div class="progress-hint" id="tNextRewardHint">До роста награды за ролик: —</div>
             <div class="progress-hint" id="tNextLimitHint">До +1 ролика в день: —</div>
-
-            <div class="daily-streak" style="margin-top:10px;"><span id="tTokensLabel">Токены-страховки:</span> <b id="tokenCount">0</b>/7</div>
-            <button class="btn" id="buyTokenBtn" style="margin-top:8px;">Купить токен (150 монет)</button>
-        </div>
-
-        <div class="card daily-card" id="missedDayCard" style="display:none; border-color: rgba(255,82,82,0.5);">
-            <div class="daily-title" id="tMissedTitle" style="color:#ff8a80;">⚠️ Пропущены дни</div>
-            <div class="daily-streak" id="missedDayText"></div>
-            <button class="btn" id="buyMissedDayBtn" style="margin-top:8px; background:linear-gradient(135deg,#00b0ff,#00e5ff);">Купить день (150 монет)</button>
-            <button class="btn" id="declineMissedDayBtn" style="margin-top:8px; background:#3a3d47;">Отказаться (сброс стрика)</button>
+            <div class="progress-hint" id="tNextBigBoxHint">До большой коробки: —</div>
         </div>
 
         <div class="card limit-card">
