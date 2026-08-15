@@ -42,10 +42,9 @@ module.exports = async (req, res) => {
         video_reward: 5,
         streak_count: 0,
         ads_watched_today: 0,
-        streak_freeze_tokens: 0,
-        pending_miss_days: 0,
         active_days_since_level8: 0,
         active_days_since_limit_bump: 0,
+        active_days_since_big_box: 0,
         reward_locked_permanent: false,
         timezone: 'UTC',
         last_reset: new Date().toISOString().slice(0, 10),
@@ -80,13 +79,6 @@ module.exports = async (req, res) => {
     if (waitMinutes > 0) {
       return res.status(429).json({ error: `Лимит обновился недавно, попробуй через ${waitMinutes} мин.`, retryAfterMinutes: waitMinutes });
     }
-  }
-
-  if (user.pending_miss_days > 0) {
-    return res.status(423).json({
-      error: 'Сначала реши вопрос с пропущенными днями',
-      pendingMissDays: user.pending_miss_days,
-    });
   }
 
   if (user.manual_limit <= 0) {
