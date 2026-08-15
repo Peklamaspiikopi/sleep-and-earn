@@ -6,6 +6,7 @@
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
+const { logTransaction } = require('../lib/transactions');
 const { BUY_MISSED_DAY_COST, applyRewardMilestones } = require('../lib/streakLogic');
 
 module.exports = async (req, res) => {
@@ -44,6 +45,8 @@ module.exports = async (req, res) => {
   }
 
   await supabaseAdmin.from('users').update(updates).eq('telegram_id', auth.telegramId);
+
+  await logTransaction(supabaseAdmin, auth.telegramId, 'missed_day_purchase', -BUY_MISSED_DAY_COST, newBalance, null);
 
   return res.status(200).json({
     balance: newBalance,
