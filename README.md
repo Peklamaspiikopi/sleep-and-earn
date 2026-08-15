@@ -1,1 +1,1 @@
-# sleep-and-earn
+# MintroStrk
