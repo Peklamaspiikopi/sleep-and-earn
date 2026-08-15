@@ -13,6 +13,7 @@ const {
   POST8_GROWTH_ACTIVE_DAYS, REWARD_CAP,
   LIMIT_GROWTH_ACTIVE_DAYS, LIMIT_CAP,
 } = require('../lib/streakLogic');
+const { logTransaction } = require('../lib/transactions');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -53,8 +54,9 @@ module.exports = async (req, res) => {
 
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
 
-  const today = new Date().toISOString().slice(0, 10);
-  user = await ensureDailyReset(supabaseAdmin, user, telegramId, today);
+  const resetResult = await ensureDailyReset(supabaseAdmin, user, telegramId, user.timezone);
+  user = resetResult.user;
+  const today = resetResult.today;
 
   let newBalance = user.balance + session.reward;
   const newAdsToday = (user.ads_watched_today || 0) + 1;
@@ -144,6 +146,11 @@ module.exports = async (req, res) => {
     .from('sessions')
     .update({ status: 'completed', completed_at: new Date().toISOString() })
     .eq('id', sessionId);
+
+  await logTransaction(supabaseAdmin, telegramId, 'video_reward', session.reward, newBalance, null);
+  if (dayInfo.dailyBonus) {
+    await logTransaction(supabaseAdmin, telegramId, dayInfo.isBox ? 'box' : 'daily_bonus', dayInfo.dailyBonus, newBalance, `Активный день ${dayInfo.streak}`);
+  }
 
   return res.status(200).json({ balance: newBalance, reward: session.reward, ...dayInfo });
 };
