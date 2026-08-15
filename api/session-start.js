@@ -6,7 +6,7 @@
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
-const { ensureDailyReset, MAX_MANUAL_PER_DAY } = require('../lib/userDaily');
+const { ensureDailyReset, postResetCooldownRemaining, MAX_MANUAL_PER_DAY } = require('../lib/userDaily');
 const crypto = require('crypto');
 
 const MIN_WATCH_SECONDS = 12;
@@ -22,7 +22,6 @@ module.exports = async (req, res) => {
   if (!auth.ok) return res.status(401).json({ error: auth.error });
 
   const telegramId = auth.telegramId;
-  const today = new Date().toISOString().slice(0, 10);
 
   let { data: user } = await supabaseAdmin
     .from('users')
@@ -46,9 +45,11 @@ module.exports = async (req, res) => {
         streak_freeze_tokens: 0,
         pending_miss_days: 0,
         active_days_since_level8: 0,
+        active_days_since_limit_bump: 0,
         reward_locked_permanent: false,
-        last_reset: today,
-        loyalty_started_at: today,
+        timezone: 'UTC',
+        last_reset: new Date().toISOString().slice(0, 10),
+        loyalty_started_at: new Date().toISOString().slice(0, 10),
         flagged: false,
       }])
       .select()
@@ -69,7 +70,17 @@ module.exports = async (req, res) => {
     if (!user) return res.status(500).json({ error: 'Не удалось создать или найти пользователя' });
   }
 
-  user = await ensureDailyReset(supabaseAdmin, user, telegramId, today);
+  const resetResult = await ensureDailyReset(supabaseAdmin, user, telegramId, user.timezone);
+  user = resetResult.user;
+
+  // Первый ролик сразу после сброса лимита — просим подождать немного,
+  // чтобы это не выглядело как бот, который бьёт лимит ровно в 00:00
+  if (user.ads_watched_today === 0) {
+    const waitMinutes = postResetCooldownRemaining(user);
+    if (waitMinutes > 0) {
+      return res.status(429).json({ error: `Лимит обновился недавно, попробуй через ${waitMinutes} мин.`, retryAfterMinutes: waitMinutes });
+    }
+  }
 
   if (user.pending_miss_days > 0) {
     return res.status(423).json({
