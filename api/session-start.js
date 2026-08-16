@@ -46,6 +46,7 @@ module.exports = async (req, res) => {
         active_days_since_limit_bump: 0,
         active_days_since_big_box: 0,
         reward_locked_permanent: false,
+        age_confirmed: false,
         timezone: 'UTC',
         last_reset: new Date().toISOString().slice(0, 10),
         loyalty_started_at: new Date().toISOString().slice(0, 10),

@@ -50,6 +50,7 @@ module.exports = async (req, res) => {
         active_days_since_limit_bump: 0,
         active_days_since_big_box: 0,
         reward_locked_permanent: false,
+        age_confirmed: false,
         referred_by: referredBy,
         referral_credited: false,
         timezone: tz,
@@ -104,5 +105,6 @@ module.exports = async (req, res) => {
     min_withdrawal: minWithdrawalFor(user),
     ref_count: user.ref_count,
     ref_earn: user.ref_earn,
+    age_confirmed: !!user.age_confirmed,
   });
 };

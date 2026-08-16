@@ -24,9 +24,14 @@ const { minWithdrawalFor } = require('../lib/streakLogic');
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { initData } = req.body || {};
+  const { initData, payoutAddress } = req.body || {};
   const auth = verifyTelegramInitData(initData, process.env.TELEGRAM_BOT_TOKEN);
   if (!auth.ok) return res.status(401).json({ error: auth.error });
+
+  const address = String(payoutAddress || '').trim();
+  if (!address) {
+    return res.status(400).json({ error: 'Укажи адрес кошелька для вывода' });
+  }
 
   const telegramId = auth.telegramId;
 
@@ -70,7 +75,7 @@ module.exports = async (req, res) => {
     return res.status(409).json({ error: 'Баланс изменился, попробуй ещё раз' });
   }
 
-  await supabaseAdmin.from('withdrawal_requests').insert([{ telegram_id: telegramId, amount, status: 'pending' }]);
+  await supabaseAdmin.from('withdrawal_requests').insert([{ telegram_id: telegramId, amount, status: 'pending', payout_address: address }]);
   await logTransaction(supabaseAdmin, telegramId, 'withdrawal_request', -amount, 0, null);
 
   return res.status(200).json({ balance: 0, amount });
