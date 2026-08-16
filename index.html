@@ -145,6 +145,14 @@
 </head>
 <body>
 
+<div class="modal-overlay" id="ageGateModal" style="display:none; z-index:9999;">
+    <div class="modal-content">
+        <div style="font-size: 18px; color: #ff5252; font-weight: 800; margin-bottom: 10px;" id="tAgeGateTitle">⚠️ Внимание!</div>
+        <div style="font-size: 13px; color: #9aa0a6; line-height: 1.5; margin-bottom: 15px; text-align: left;" id="tAgeGateText">MintoStrk доступен только пользователям 18+. Продолжая, вы подтверждаете, что вам есть 18 лет и вы согласны с условиями использования.</div>
+        <button class="btn" id="ageGateBtn">Подтверждаю, мне есть 18</button>
+    </div>
+</div>
+
 <div class="modal-overlay" id="welcomeModal">
     <div class="modal-content">
         <div style="font-size: 18px; color: #00b0ff; font-weight: 800; margin-bottom: 10px; text-shadow: 0 0 8px rgba(0, 176, 255, 0.6);" id="tModalTitle">🚀 Первый запуск!</div>
@@ -240,6 +248,10 @@
         <div class="promo-box">
             <input type="text" id="promoInput" class="promo-input" placeholder="Введите промокод...">
             <button class="promo-btn" id="promoBtn">ОК</button>
+        </div>
+
+        <div class="promo-box" style="margin-top:10px;">
+            <input type="text" id="payoutAddressInput" class="promo-input" placeholder="Адрес TON-кошелька для вывода" style="flex:1;">
         </div>
 
         <button class="btn btn-withdraw" id="withdrawBtn">Заказать вывод средств</button>

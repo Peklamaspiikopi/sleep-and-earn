@@ -27,6 +27,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             modalTitle: "🚀 Первый запуск!",
             modalText: "Привет! Смотри рекламу и получай монеты. Заходи каждый день, смотри по 5 роликов — награда растёт!",
             modalBtn: "Понятно",
+            ageGateTitle: "⚠️ Внимание!",
+            ageGateText: "MintoStrk доступен только пользователям 18+. Продолжая, вы подтверждаете, что вам есть 18 лет и вы согласны с условиями использования.",
+            ageGateBtn: "Подтверждаю, мне есть 18",
             adErrorAlert: "❌ Реклама не загрузилась.\n\nЕсли включён VPN или AdBlock — отключите их и попробуйте снова.",
             refTitle: "🔗 Ваша реферальная ссылка:",
             copyBtn: "Копировать",
@@ -72,6 +75,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             modalTitle: "🚀 First Launch!",
             modalText: "Welcome! Watch ads to earn coins. Watch 5 videos a day, every day — your reward grows!",
             modalBtn: "Got it",
+            ageGateTitle: "⚠️ Attention!",
+            ageGateText: "MintoStrk is available to users 18+ only. By continuing, you confirm you are 18 or older and agree to the terms of use.",
+            ageGateBtn: "I confirm, I'm 18+",
             adErrorAlert: "❌ Ad failed to load. Please disable AdBlock or VPN and try again.",
             refTitle: "🔗 Your Referral Link:",
             copyBtn: "Copy",
@@ -248,6 +254,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         setText('tModalTitle', t.modalTitle);
         setText('tModalText', t.modalText);
         setText('tModalBtn', t.modalBtn);
+        setText('tAgeGateTitle', t.ageGateTitle);
+        setText('tAgeGateText', t.ageGateText);
+        setText('ageGateBtn', t.ageGateBtn);
         setText('tRefTitle', t.refTitle);
         setText('copyRefBtn', t.copyBtn);
         setText('tRefCountLabel', t.refCountLabel);
@@ -381,7 +390,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             const finishFail = async () => {
-                try { await api('session-cancel', { sessionId: session.sessionId }); } catch (e) {}
+                let cancelled = false;
+                for (let attempt = 0; attempt < 2 && !cancelled; attempt++) {
+                    try {
+                        await api('session-cancel', { sessionId: session.sessionId });
+                        cancelled = true;
+                    } catch (e) {
+                        console.error('session-cancel failed, attempt', attempt, e);
+                    }
+                }
                 await refreshUser();
                 alert(translations[currentLang].adErrorAlert);
                 isWatching = false;
@@ -430,13 +447,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                     : `Insufficient coins! Min withdrawal is ${minW} coins.`);
                 return;
             }
+            const addressInput = document.getElementById('payoutAddressInput');
+            const payoutAddress = addressInput ? addressInput.value.trim() : '';
+            if (!payoutAddress) {
+                alert(currentLang === 'ru'
+                    ? 'Укажи адрес TON-кошелька для вывода'
+                    : 'Enter your TON wallet address to withdraw');
+                return;
+            }
             if (!confirm(currentLang === 'ru'
-                ? `Вывести ${userState.balance} монет? Заявка уйдёт на обработку.`
-                : `Withdraw ${userState.balance} coins? The request will be processed.`)) return;
+                ? `Вывести ${userState.balance} монет на ${payoutAddress}? Заявка уйдёт на обработку.`
+                : `Withdraw ${userState.balance} coins to ${payoutAddress}? The request will be processed.`)) return;
             try {
-                const result = await api('request-withdrawal');
+                const result = await api('request-withdrawal', { payoutAddress });
                 userState.balance = result.balance;
                 renderUser();
+                if (addressInput) addressInput.value = '';
                 alert(currentLang === 'ru'
                     ? `✅ Заявка на ${result.amount} монет отправлена, ожидай обработки.`
                     : `✅ Request for ${result.amount} coins sent, awaiting processing.`);
@@ -499,4 +525,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==== Старт ====
     setLanguage(currentLang);
     await refreshUser();
+
+    // ==== Возрастной гейт (18+) ====
+    // Показывается один раз, до входа в интерфейс. Пропустить нельзя —
+    // подтверждение записывается в базу через confirm-age.
+    if (!userState.age_confirmed) {
+        const ageGateModal = document.getElementById('ageGateModal');
+        if (ageGateModal) ageGateModal.style.display = 'flex';
+        const ageGateBtn = document.getElementById('ageGateBtn');
+        if (ageGateBtn) {
+            ageGateBtn.addEventListener('click', async () => {
+                try {
+                    await api('confirm-age');
+                } catch (e) {
+                    console.error('confirm-age failed', e);
+                }
+                userState.age_confirmed = true;
+                if (ageGateModal) ageGateModal.style.display = 'none';
+            }, { once: true });
+        }
+    }
 });
