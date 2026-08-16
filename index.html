@@ -171,7 +171,7 @@
 
         <div class="card daily-card">
             <div class="daily-title" id="tDailyTitle">🎁 Активность дня</div>
-            <div class="daily-streak"><span id="tAdsProgressLabel">Роликов сегодня:</span> <b id="adsToday">0</b>/5</div>
+            <div class="daily-streak"><span id="tAdsProgressLabel">Роликов сегодня:</span> <b id="adsToday">0</b>/<span id="adsRequired">5</span></div>
             <div class="daily-streak"><span id="tDailyStreakLabel">Активных дней подряд:</span> <b id="streakDay">0</b></div>
 
             <div class="week-ladder" id="weekLadder">
@@ -181,12 +181,13 @@
                 <div class="week-day" data-day="4"><div class="week-day-num">4</div><div class="week-day-reward">25</div></div>
                 <div class="week-day" data-day="5"><div class="week-day-num">5</div><div class="week-day-reward">30</div></div>
                 <div class="week-day" data-day="6"><div class="week-day-num">6</div><div class="week-day-reward">35</div></div>
-                <div class="week-day" data-day="7"><div class="week-day-num">7</div><div class="week-day-reward">🎁</div></div>
+                <div class="week-day" data-day="7"><div class="week-day-num">7</div><div class="week-day-reward" id="weekDay7Reward">🎁</div></div>
             </div>
 
             <div class="progress-hint" id="tNextRewardHint">До роста награды за ролик: —</div>
             <div class="progress-hint" id="tNextLimitHint">До +1 ролика в день: —</div>
             <div class="progress-hint" id="tNextBigBoxHint">До большой коробки: —</div>
+            <div class="progress-hint" id="tBoxesLockedNote" style="display:none; color:#ffb74d; margin-top:6px;"></div>
         </div>
 
         <div class="card limit-card">

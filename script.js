@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             limitBtn: "Лимит на сегодня исчерпан",
             watchingBtn: "Загрузка ролика...",
             honesty: "🛡️ <b>Правило честности:</b> Мы за прозрачное сотрудничество. Любые накрутки фиксируются системой.",
-            withdrawLimit: "🔒 Минимальный вывод: <b>2000 Монет (~0.1 TON)</b>",
+            withdrawLimit: (min) => `🔒 Минимальный вывод: <b>${min} Монет</b>`,
             promoPlaceholder: "Введите промокод...",
             withdrawBtn: "Заказать вывод средств",
             navTerminal: "Терминал",
@@ -51,6 +51,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             nextLimitLabel: "До +1 ролика в день:",
             nextBigBoxLabel: "До большой коробки:",
             activeDaysWord: "активных дней",
+            weeklyBoxLockedNote: "🔒 Сундук откроется на 7 уровне награды за ролик — станет доступен диапазон 20-200 монет.",
+            bigBoxLockedNote: "🔒 Большая коробка откроется на 10 уровне награды за ролик — и сразу же выдастся первая.",
         },
         en: {
             alert: "<b>Screen turning off?</b> Extend display timeout in your phone settings.",
@@ -62,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             limitBtn: "Daily limit reached",
             watchingBtn: "Loading video...",
             honesty: "🛡️ <b>Fair Play:</b> We stand for transparent cooperation. Any cheating is logged.",
-            withdrawLimit: "🔒 Min Withdrawal: <b>2000 Coins (~0.1 TON)</b>",
+            withdrawLimit: (min) => `🔒 Min Withdrawal: <b>${min} Coins</b>`,
             promoPlaceholder: "Enter promo code...",
             withdrawBtn: "Request Withdrawal",
             navTerminal: "Terminal",
@@ -94,6 +96,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             nextLimitLabel: "Until +1 daily video:",
             nextBigBoxLabel: "Until big box:",
             activeDaysWord: "active days",
+            weeklyBoxLockedNote: "🔒 The chest unlocks at video-reward level 7 — a 20-200 coin range opens up.",
+            bigBoxLockedNote: "🔒 The big box unlocks at video-reward level 10 — and the first one is granted right away.",
         }
     };
 
@@ -122,11 +126,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     let userState = {
-        balance: 0, manual_limit: 20, max_manual_limit: 20, video_reward: 5,
-        ads_watched_today: 0, streak_count: 0,
-        ref_count: 0, ref_earn: 0,
+        balance: 0, manual_limit: 20, max_manual_limit: 20, video_reward: 1,
+        ads_watched_today: 0, ads_required_today: 15, streak_count: 0,
+        ref_count: 0, ref_earn: 0, min_withdrawal: 2000,
         days_to_next_reward: null, days_to_next_limit: null, days_to_next_big_box: null,
     };
+
+    // Зеркало серверной лестницы наград (lib/streakLogic.js) — только
+    // для отображения, реальные начисления считает сервер.
+    function weeklyLadderFor(reward) {
+        if (reward <= 3) return { values: [5, 10, 15, 20, 25, 30], boxUnlocked: false };
+        if (reward <= 6) return { values: [10, 15, 20, 25, 30, 35], boxUnlocked: false };
+        if (reward <= 9) return { values: [15, 20, 25, 30, 35, 40], boxUnlocked: true };
+        return { values: [20, 25, 30, 35, 40, 45], boxUnlocked: true };
+    }
 
     async function refreshUser() {
         try {
@@ -144,8 +157,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         set('maxLimitCount', userState.max_manual_limit);
         set('refCount', userState.ref_count);
         set('refEarn', userState.ref_earn);
-        set('adsToday', Math.min(userState.ads_watched_today, 5));
+        set('adsToday', Math.min(userState.ads_watched_today, userState.ads_required_today));
+        set('adsRequired', userState.ads_required_today);
         set('streakDay', userState.streak_count);
+
+        const withdrawLimitEl = document.getElementById('tWithdrawLimit');
+        if (withdrawLimitEl) withdrawLimitEl.innerHTML = translations[currentLang].withdrawLimit(userState.min_withdrawal || 2000);
 
         renderWeekLadder();
         renderProgressHints();
@@ -161,10 +178,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function renderWeekLadder() {
         const nextPos = (userState.streak_count % 7) + 1;
+        const { values, boxUnlocked } = weeklyLadderFor(userState.video_reward || 1);
         document.querySelectorAll('.week-day').forEach(el => {
             const day = parseInt(el.dataset.day, 10);
             el.classList.toggle('active', day === nextPos);
+            if (day >= 1 && day <= 6) {
+                const rewardEl = el.querySelector('.week-day-reward');
+                if (rewardEl) rewardEl.innerText = values[day - 1];
+            }
         });
+        const day7El = document.getElementById('weekDay7Reward');
+        if (day7El) day7El.innerText = boxUnlocked ? '🎁' : '🔒';
+
+        const note = document.getElementById('tBoxesLockedNote');
+        if (note) {
+            const t = translations[currentLang];
+            if (!boxUnlocked) {
+                note.style.display = 'block';
+                note.innerText = t.weeklyBoxLockedNote;
+            } else if ((userState.video_reward || 1) < 10) {
+                note.style.display = 'block';
+                note.innerText = t.bigBoxLockedNote;
+            } else {
+                note.style.display = 'none';
+            }
+        }
     }
 
     function renderProgressHints() {
@@ -183,7 +221,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         const bigBoxEl = document.getElementById('tNextBigBoxHint');
         if (bigBoxEl) {
-            bigBoxEl.innerText = `${t.nextBigBoxLabel} ${userState.days_to_next_big_box} ${t.activeDaysWord}`;
+            bigBoxEl.innerText = userState.days_to_next_big_box === null
+                ? (currentLang === 'ru' ? 'Большая коробка: откроется на 10 уровне награды' : 'Big box: unlocks at reward level 10')
+                : `${t.nextBigBoxLabel} ${userState.days_to_next_big_box} ${t.activeDaysWord}`;
         }
     }
 
@@ -202,7 +242,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         setText('tBalanceLabel', t.balanceLabel);
         setText('tCoinUnit', t.coinUnit);
         setText('tHonesty', t.honesty);
-        setText('tWithdrawLimit', t.withdrawLimit);
         setText('withdrawBtn', t.withdrawBtn);
         setText('tNavTerminal', t.navTerminal);
         setText('tNavCabinet', t.navCabinet);
@@ -287,9 +326,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         const t = translations[currentLang];
         const lines = [];
         if (result.dayCompleted) {
-            lines.push(result.isBox ? t.boxMsg(result.dailyBonus) : t.dailyBonusMsg(result.dailyBonus));
+            if (result.isBox && result.boxLocked) {
+                lines.push(currentLang === 'ru' ? '🔒 Сундук пока закрыт — прокачай уровень награды, чтобы открыть' : '🔒 Chest is still locked — level up your reward to unlock it');
+            } else {
+                lines.push(result.isBox ? t.boxMsg(result.dailyBonus) : t.dailyBonusMsg(result.dailyBonus));
+            }
             if (result.streak) lines.push(t.streakUpMsg(result.streak));
-            if (result.bigBox) lines.push(t.bigBoxMsg(result.bigBox));
+            if (result.levelUp) lines.push(t.levelUpMsg(result.levelUp));
+            if (result.bigBox) {
+                lines.push(result.bigBoxFirstUnlock
+                    ? (currentLang === 'ru' ? `🎉📦 Большая коробка разблокирована! +${result.bigBox} монет!` : `🎉📦 Big box unlocked! +${result.bigBox} coins!`)
+                    : t.bigBoxMsg(result.bigBox));
+            }
             alert(lines.join('\n'));
         }
     }
@@ -375,10 +423,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const withdrawBtn = document.getElementById('withdrawBtn');
     if (withdrawBtn) {
         withdrawBtn.addEventListener('click', async () => {
-            if (userState.balance < 2000) {
+            const minW = userState.min_withdrawal || 2000;
+            if (userState.balance < minW) {
                 alert(currentLang === 'ru'
-                    ? "Недостаточно монет! Мин. вывод 2000 монет (~0.1 TON)."
-                    : "Insufficient coins! Min withdrawal is 2000 coins.");
+                    ? `Недостаточно монет! Мин. вывод ${minW} монет.`
+                    : `Insufficient coins! Min withdrawal is ${minW} coins.`);
                 return;
             }
             if (!confirm(currentLang === 'ru'
