@@ -1,8 +1,12 @@
 // api/session-cancel.js
 //
 // Если реклама не загрузилась или юзер закрыл её раньше времени —
-// возвращаем списанный лимит обратно. Раньше в проекте был баг:
-// лимит терялся зря даже без начисления награды.
+// возвращаем списанный лимит обратно.
+//
+// Захват сессии — атомарный (UPDATE ... WHERE status='active'), чтобы
+// если отмена придёт дважды подряд (или наложится на session-complete
+// для той же сессии), только один из запросов реально сработал и
+// вернул лимит — а не оба, задваивая бесплатный ролик.
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
@@ -18,12 +22,16 @@ module.exports = async (req, res) => {
 
   const { data: session } = await supabaseAdmin
     .from('sessions')
-    .select('*')
+    .update({ status: 'cancelled', completed_at: new Date().toISOString() })
     .eq('id', sessionId)
     .eq('telegram_id', telegramId)
-    .single();
+    .eq('status', 'active')
+    .select()
+    .maybeSingle();
 
-  if (!session || session.status !== 'active') {
+  if (!session) {
+    // Либо уже отменена/завершена кем-то другим (или этим же запросом
+    // повторно) — в обоих случаях лимит второй раз возвращать не нужно.
     return res.status(200).json({ ok: true, alreadyClosed: true });
   }
 
@@ -39,10 +47,6 @@ module.exports = async (req, res) => {
       .update({ manual_limit: user.manual_limit + 1 })
       .eq('telegram_id', telegramId);
   }
-
-  await supabaseAdmin.from('sessions')
-    .update({ status: 'cancelled', completed_at: new Date().toISOString() })
-    .eq('id', sessionId);
 
   return res.status(200).json({ ok: true });
 };

@@ -5,12 +5,21 @@
 // Одобрение заявки (перевод статуса в 'paid') делается вручную в
 // Supabase Table Editor — после этого бонус рефереру начислится
 // автоматически (см. триггер в SQL-схеме).
+//
+// Минимальный порог вывода растёт вместе с уровнем награды за ролик
+// (см. minWithdrawalFor в lib/streakLogic.js) — самые активные игроки
+// выводят чуть реже, порог поднимается плавно, без резких скачков.
+//
+// Списание баланса — атомарное (optimistic locking): UPDATE идёт с
+// условием "баланс всё ещё равен тому, что мы прочитали". Если два
+// запроса пришли одновременно, второй просто не найдёт подходящую
+// строку для обновления (баланс уже не совпадает) и получит отказ —
+// вместо того чтобы оба создали заявку на одну и ту же сумму.
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
 const { logTransaction } = require('../lib/transactions');
-
-const MIN_WITHDRAWAL = 2000;
+const { minWithdrawalFor } = require('../lib/streakLogic');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -34,21 +43,35 @@ module.exports = async (req, res) => {
 
   const { data: user } = await supabaseAdmin
     .from('users')
-    .select('balance')
+    .select('balance, video_reward')
     .eq('telegram_id', telegramId)
     .single();
 
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
-  if (user.balance < MIN_WITHDRAWAL) {
-    return res.status(400).json({ error: `Минимальный вывод — ${MIN_WITHDRAWAL} монет` });
+
+  const minWithdrawal = minWithdrawalFor(user);
+  if (user.balance < minWithdrawal) {
+    return res.status(400).json({ error: `Минимальный вывод — ${minWithdrawal} монет`, minWithdrawal });
   }
 
   const amount = user.balance;
-  const newBalance = 0;
 
-  await supabaseAdmin.from('users').update({ balance: newBalance }).eq('telegram_id', telegramId);
+  // Атомарно: обнуляем баланс, только если он всё ещё равен amount —
+  // это и есть защита от гонки двух одновременных запросов.
+  const { data: claimed } = await supabaseAdmin
+    .from('users')
+    .update({ balance: 0 })
+    .eq('telegram_id', telegramId)
+    .eq('balance', amount)
+    .select()
+    .maybeSingle();
+
+  if (!claimed) {
+    return res.status(409).json({ error: 'Баланс изменился, попробуй ещё раз' });
+  }
+
   await supabaseAdmin.from('withdrawal_requests').insert([{ telegram_id: telegramId, amount, status: 'pending' }]);
-  await logTransaction(supabaseAdmin, telegramId, 'withdrawal_request', -amount, newBalance, null);
+  await logTransaction(supabaseAdmin, telegramId, 'withdrawal_request', -amount, 0, null);
 
-  return res.status(200).json({ balance: newBalance, amount });
+  return res.status(200).json({ balance: 0, amount });
 };

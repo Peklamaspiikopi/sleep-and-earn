@@ -8,7 +8,7 @@
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
 const { ensureDailyReset, getLocalDateString, MAX_MANUAL_PER_DAY } = require('../lib/userDaily');
-const { daysToNextReward, daysToNextLimit, daysToNextBigBox } = require('../lib/streakLogic');
+const { daysToNextReward, daysToNextLimit, daysToNextBigBox, minWithdrawalFor, minAdsRequired } = require('../lib/streakLogic');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -43,7 +43,7 @@ module.exports = async (req, res) => {
         ref_earn: 0,
         manual_limit: MAX_MANUAL_PER_DAY,
         manual_limit_max: MAX_MANUAL_PER_DAY,
-        video_reward: 5,
+        video_reward: 1,
         streak_count: 0,
         ads_watched_today: 0,
         active_days_since_level8: 0,
@@ -94,12 +94,14 @@ module.exports = async (req, res) => {
     balance: user.balance,
     manual_limit: user.manual_limit,
     max_manual_limit: user.manual_limit_max || MAX_MANUAL_PER_DAY,
-    video_reward: user.video_reward || 5,
+    video_reward: user.video_reward || 1,
     ads_watched_today: user.ads_watched_today || 0,
+    ads_required_today: minAdsRequired(user),
     streak_count: user.streak_count || 0,
     days_to_next_reward: daysToNextReward(user),
     days_to_next_limit: daysToNextLimit(user),
     days_to_next_big_box: daysToNextBigBox(user),
+    min_withdrawal: minWithdrawalFor(user),
     ref_count: user.ref_count,
     ref_earn: user.ref_earn,
   });

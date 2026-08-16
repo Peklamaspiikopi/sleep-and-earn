@@ -39,7 +39,7 @@ module.exports = async (req, res) => {
         ref_earn: 0,
         manual_limit: MAX_MANUAL_PER_DAY,
         manual_limit_max: MAX_MANUAL_PER_DAY,
-        video_reward: 5,
+        video_reward: 1,
         streak_count: 0,
         ads_watched_today: 0,
         active_days_since_level8: 0,
@@ -120,13 +120,28 @@ module.exports = async (req, res) => {
     }
   }
 
+  // Атомарное списание лимита: UPDATE проходит только если лимит всё
+  // ещё равен тому, что мы прочитали. Если два запроса пришли почти
+  // одновременно, второй просто не найдёт совпадения и получит отказ —
+  // вместо того чтобы оба создали отдельную сессию на один и тот же
+  // остаток лимита (бесплатный лишний ролик).
   const newLimit = user.manual_limit - 1;
-  await supabaseAdmin.from('users').update({ manual_limit: newLimit }).eq('telegram_id', telegramId);
+  const { data: claimed } = await supabaseAdmin
+    .from('users')
+    .update({ manual_limit: newLimit })
+    .eq('telegram_id', telegramId)
+    .eq('manual_limit', user.manual_limit)
+    .select()
+    .maybeSingle();
+
+  if (!claimed) {
+    return res.status(409).json({ error: 'Попробуй ещё раз' });
+  }
 
   const sessionId = crypto.randomUUID();
   const startedAt = new Date();
   const expiresAt = new Date(startedAt.getTime() + SESSION_TTL_SECONDS * 1000);
-  const reward = user.video_reward || 5;
+  const reward = user.video_reward || 1;
 
   await supabaseAdmin.from('sessions').insert([{
     id: sessionId,
