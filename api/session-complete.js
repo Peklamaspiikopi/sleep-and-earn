@@ -72,6 +72,31 @@ module.exports = async (req, res) => {
   user = resetResult.user;
   const today = resetResult.today;
 
+  // ---- Чекпоинт дилемм — отдельная, гораздо более простая ветка:
+  // фиксированная награда, не трогает стрик/уровни/лимиты видео ----
+  if (session.session_type === 'dilemma_checkpoint') {
+    const newBalanceDilemma = user.balance + session.reward;
+
+    const { error: updateErr } = await supabaseAdmin
+      .from('users')
+      .update({ balance: newBalanceDilemma })
+      .eq('telegram_id', telegramId);
+
+    if (updateErr) {
+      await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
+      return res.status(500).json({ error: 'Не удалось начислить награду' });
+    }
+
+    await supabaseAdmin
+      .from('sessions')
+      .update({ status: 'completed', completed_at: new Date().toISOString() })
+      .eq('id', sessionId);
+
+    await logTransaction(supabaseAdmin, telegramId, 'dilemma_checkpoint', session.reward, newBalanceDilemma, session.dilemma_topic);
+
+    return res.status(200).json({ balance: newBalanceDilemma, reward: session.reward, dilemmaTopic: session.dilemma_topic });
+  }
+
   let newBalance = user.balance + session.reward;
   const newAdsToday = (user.ads_watched_today || 0) + 1;
 

@@ -35,6 +35,25 @@ module.exports = async (req, res) => {
     return res.status(200).json({ ok: true, alreadyClosed: true });
   }
 
+  if (session.session_type === 'dilemma_checkpoint') {
+    // Возвращаем зарезервированный чекпоинт обратно, лимит роликов не трогаем
+    const { data: progress } = await supabaseAdmin
+      .from('dilemma_progress')
+      .select('pending_checkpoints')
+      .eq('telegram_id', telegramId)
+      .eq('topic', session.dilemma_topic)
+      .maybeSingle();
+
+    if (progress) {
+      await supabaseAdmin
+        .from('dilemma_progress')
+        .update({ pending_checkpoints: progress.pending_checkpoints + 1 })
+        .eq('telegram_id', telegramId)
+        .eq('topic', session.dilemma_topic);
+    }
+    return res.status(200).json({ ok: true });
+  }
+
   const { data: user } = await supabaseAdmin
     .from('users')
     .select('manual_limit')
