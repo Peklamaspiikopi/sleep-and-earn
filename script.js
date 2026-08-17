@@ -24,6 +24,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             withdrawBtn: "Заказать вывод средств",
             navTerminal: "Терминал",
             navCabinet: "Кабинет",
+            navDilemmas: "Дилеммы",
+            consequenceLabel: "Что произошло:",
+            checkpointReady: "🎁 Чекпоинт готов!",
+            checkpointBtn: "Посмотреть рекламу за монеты",
+            dilemmaNextBtn: "Дальше",
+            publicPayoutsTitle: "🛡️ Публичные выплаты (последние 50)",
             modalTitle: "🚀 Первый запуск!",
             modalText: "Привет! Смотри рекламу и получай монеты. Заходи каждый день, смотри по 5 роликов — награда растёт!",
             modalBtn: "Понятно",
@@ -72,6 +78,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             withdrawBtn: "Request Withdrawal",
             navTerminal: "Terminal",
             navCabinet: "Cabinet",
+            navDilemmas: "Dilemmas",
+            consequenceLabel: "What happened:",
+            checkpointReady: "🎁 Checkpoint ready!",
+            checkpointBtn: "Watch ad for coins",
+            dilemmaNextBtn: "Next",
+            publicPayoutsTitle: "🛡️ Public payouts (last 50)",
             modalTitle: "🚀 First Launch!",
             modalText: "Welcome! Watch ads to earn coins. Watch 5 videos a day, every day — your reward grows!",
             modalBtn: "Got it",
@@ -250,6 +262,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         setText('tHonesty', t.honesty);
         setText('withdrawBtn', t.withdrawBtn);
         setText('tNavTerminal', t.navTerminal);
+        setText('tNavDilemmas', t.navDilemmas);
+        setText('tConsequenceLabel', t.consequenceLabel);
+        setText('tCheckpointReady', t.checkpointReady);
+        setText('dilemmaCheckpointBtn', t.checkpointBtn);
+        setText('dilemmaNextBtn', t.dilemmaNextBtn);
+        setText('tPublicPayoutsTitle', t.publicPayoutsTitle);
         setText('tNavCabinet', t.navCabinet);
         setText('tModalTitle', t.modalTitle);
         setText('tModalText', t.modalText);
@@ -351,68 +369,75 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    async function watchAd({ sessionType = 'video', topic = null, onComplete }) {
+        if (isWatching) return;
+        isWatching = true;
+        updateWatchButton();
+        await enableScreenProtection();
+
+        let session;
+        try {
+            session = await api('session-start', { sessionType, topic });
+        } catch (e) {
+            alert(e.message);
+            isWatching = false;
+            disableScreenProtection();
+            await refreshUser();
+            updateWatchButton();
+            return;
+        }
+
+        if (sessionType === 'video') {
+            userState.manual_limit = session.manual_limit;
+            renderUser();
+        }
+
+        const finishSuccess = async () => {
+            try {
+                const result = await api('session-complete', { sessionId: session.sessionId });
+                userState.balance = result.balance;
+                await refreshUser();
+                if (onComplete) onComplete(result);
+            } catch (e) {
+                alert(e.message);
+            } finally {
+                isWatching = false;
+                disableScreenProtection();
+                updateWatchButton();
+            }
+        };
+
+        const finishFail = async () => {
+            let cancelled = false;
+            for (let attempt = 0; attempt < 2 && !cancelled; attempt++) {
+                try {
+                    await api('session-cancel', { sessionId: session.sessionId });
+                    cancelled = true;
+                } catch (e) {
+                    console.error('session-cancel failed, attempt', attempt, e);
+                }
+            }
+            await refreshUser();
+            alert(translations[currentLang].adErrorAlert);
+            isWatching = false;
+            disableScreenProtection();
+            updateWatchButton();
+        };
+
+        if (videoController) {
+            videoController.show()
+                .then((result) => { if (result?.done !== false) finishSuccess(); else finishFail(); })
+                .catch(finishFail);
+        } else {
+            setTimeout(finishSuccess, 13000);
+        }
+    }
+
     if (watchBtn) {
         watchBtn.addEventListener('click', async () => {
             if (isWatching || userState.manual_limit <= 0) return;
             if (!confirm(`${translations[currentLang].confirmWatch} +${userState.video_reward}?`)) return;
-
-            isWatching = true;
-            updateWatchButton();
-            await enableScreenProtection();
-
-            let session;
-            try {
-                session = await api('session-start');
-            } catch (e) {
-                alert(e.message);
-                isWatching = false;
-                disableScreenProtection();
-                await refreshUser();
-                return;
-            }
-
-            userState.manual_limit = session.manual_limit;
-            renderUser();
-
-            const finishSuccess = async () => {
-                try {
-                    const result = await api('session-complete', { sessionId: session.sessionId });
-                    userState.balance = result.balance;
-                    await refreshUser();
-                    showDayCompletionResults(result);
-                } catch (e) {
-                    alert(e.message);
-                } finally {
-                    isWatching = false;
-                    disableScreenProtection();
-                    updateWatchButton();
-                }
-            };
-
-            const finishFail = async () => {
-                let cancelled = false;
-                for (let attempt = 0; attempt < 2 && !cancelled; attempt++) {
-                    try {
-                        await api('session-cancel', { sessionId: session.sessionId });
-                        cancelled = true;
-                    } catch (e) {
-                        console.error('session-cancel failed, attempt', attempt, e);
-                    }
-                }
-                await refreshUser();
-                alert(translations[currentLang].adErrorAlert);
-                isWatching = false;
-                disableScreenProtection();
-                updateWatchButton();
-            };
-
-            if (videoController) {
-                videoController.show()
-                    .then((result) => { if (result?.done !== false) finishSuccess(); else finishFail(); })
-                    .catch(finishFail);
-            } else {
-                setTimeout(finishSuccess, 13000);
-            }
+            await watchAd({ sessionType: 'video', onComplete: showDayCompletionResults });
         });
     }
 
@@ -484,6 +509,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         missed_day_purchase: { ru: '📅 Выкуп дня', en: '📅 Day buyback' },
         withdrawal_request: { ru: '💸 Заявка на вывод', en: '💸 Withdrawal request' },
         referral_bonus: { ru: '👥 Реферальный бонус', en: '👥 Referral bonus' },
+        dilemma_checkpoint: { ru: '🎭 Чекпоинт дилемм', en: '🎭 Dilemma checkpoint' },
     };
     async function loadHistory() {
         if (!historyList) return;
@@ -510,7 +536,152 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const historyNavBtn = document.getElementById('btnNavHistory');
     if (historyNavBtn) {
-        historyNavBtn.addEventListener('click', () => { switchTab('history'); loadHistory(); });
+        historyNavBtn.addEventListener('click', () => { switchTab('history'); loadHistory(); loadPublicPayouts(); });
+    }
+
+    // ==== Публичные выплаты (доказательство реальных выводов) ====
+    async function loadPublicPayouts() {
+        const el = document.getElementById('publicPayoutsList');
+        if (!el) return;
+        el.innerText = currentLang === 'ru' ? 'Загрузка...' : 'Loading...';
+        try {
+            const result = await api('get-public-payouts');
+            if (!result.payouts || result.payouts.length === 0) {
+                el.innerText = currentLang === 'ru' ? 'Пока нет выплат' : 'No payouts yet';
+                return;
+            }
+            el.innerHTML = result.payouts.map(p => {
+                const date = new Date(p.paid_at).toLocaleDateString(currentLang === 'ru' ? 'ru-RU' : 'en-US');
+                return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
+                    <span>${p.masked_id}</span>
+                    <span style="color:#00e676;">+${p.amount}</span>
+                    <span style="color:#6c727f;">${date}</span>
+                </div>`;
+            }).join('');
+        } catch (e) {
+            el.innerText = e.message;
+        }
+    }
+
+    // ==== Дилеммы ====
+    let currentDilemma = null;
+    let currentDilemmaTopic = null;
+    const dilemmaTopicSwitcher = document.getElementById('dilemmaTopicSwitcher');
+    const dilemmaTitle = document.getElementById('dilemmaTitle');
+    const dilemmaText = document.getElementById('dilemmaText');
+    const dilemmaOptions = document.getElementById('dilemmaOptions');
+    const dilemmaConsequenceBox = document.getElementById('dilemmaConsequenceBox');
+    const dilemmaConsequenceText = document.getElementById('dilemmaConsequenceText');
+    const dilemmaNextBtn = document.getElementById('dilemmaNextBtn');
+    const dilemmaProgressLine = document.getElementById('dilemmaProgressLine');
+    const dilemmaCheckpointCard = document.getElementById('dilemmaCheckpointCard');
+    const dilemmaCheckpointBtn = document.getElementById('dilemmaCheckpointBtn');
+
+    const topicNames = {
+        work: { ru: '💼 Работа', en: '💼 Work' },
+        money: { ru: '💰 Деньги', en: '💰 Money' },
+    };
+
+    function renderDilemmaProgress(progress) {
+        if (!dilemmaProgressLine) return;
+        const label = currentLang === 'ru'
+            ? `Прогресс: ${progress.inCycle}/${progress.cycleLength} до чекпоинта · пройдено всего: ${progress.completedCount}`
+            : `Progress: ${progress.inCycle}/${progress.cycleLength} to checkpoint · total completed: ${progress.completedCount}`;
+        dilemmaProgressLine.innerText = label;
+
+        if (dilemmaCheckpointCard) {
+            dilemmaCheckpointCard.style.display = progress.pendingCheckpoints > 0 ? 'block' : 'none';
+        }
+    }
+
+    function renderDilemma(dilemma) {
+        currentDilemma = dilemma;
+        if (dilemmaTitle) dilemmaTitle.innerText = dilemma.title;
+        if (dilemmaText) dilemmaText.innerText = dilemma.scenarioText;
+        if (dilemmaConsequenceBox) dilemmaConsequenceBox.style.display = 'none';
+        if (dilemmaOptions) {
+            const opts = [
+                { key: 'a', text: dilemma.optionA },
+                { key: 'b', text: dilemma.optionB },
+                { key: 'c', text: dilemma.optionC },
+            ].filter(o => o.text);
+            dilemmaOptions.innerHTML = '';
+            opts.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'btn';
+                btn.style.background = '#2a2d37';
+                btn.innerText = opt.text;
+                btn.addEventListener('click', () => chooseDilemmaOption(opt.key));
+                dilemmaOptions.appendChild(btn);
+            });
+            dilemmaOptions.style.display = 'flex';
+        }
+    }
+
+    async function loadDilemma(topic) {
+        try {
+            const result = await api('get-dilemma', { topic });
+            currentDilemmaTopic = result.activeTopic;
+
+            if (dilemmaTopicSwitcher && result.topics) {
+                dilemmaTopicSwitcher.innerHTML = result.topics.map(t => {
+                    const name = (topicNames[t] && topicNames[t][currentLang]) || t;
+                    const active = t === currentDilemmaTopic;
+                    return `<button class="btn" data-topic="${t}" style="flex:1; padding:8px; font-size:12px; ${active ? '' : 'background:#2a2d37; opacity:0.7;'}">${name}</button>`;
+                }).join('');
+                dilemmaTopicSwitcher.querySelectorAll('button').forEach(b => {
+                    b.addEventListener('click', () => loadDilemma(b.dataset.topic));
+                });
+            }
+
+            if (!result.dilemma) {
+                if (dilemmaTitle) dilemmaTitle.innerText = currentLang === 'ru' ? 'Дилеммы скоро появятся' : 'Dilemmas coming soon';
+                if (dilemmaText) dilemmaText.innerText = '';
+                if (dilemmaOptions) dilemmaOptions.innerHTML = '';
+                return;
+            }
+
+            renderDilemma(result.dilemma);
+            renderDilemmaProgress(result.progress);
+        } catch (e) {
+            if (dilemmaText) dilemmaText.innerText = e.message;
+        }
+    }
+
+    async function chooseDilemmaOption(choice) {
+        if (!currentDilemma || !currentDilemmaTopic) return;
+        if (dilemmaOptions) dilemmaOptions.style.display = 'none';
+        try {
+            const result = await api('dilemma-choose', {
+                topic: currentDilemmaTopic,
+                dilemmaId: currentDilemma.id,
+                choice,
+            });
+            if (dilemmaConsequenceText) dilemmaConsequenceText.innerText = result.consequence;
+            if (dilemmaConsequenceBox) dilemmaConsequenceBox.style.display = 'block';
+            renderDilemmaProgress(result.progress);
+        } catch (e) {
+            alert(e.message);
+            if (dilemmaOptions) dilemmaOptions.style.display = 'flex';
+        }
+    }
+
+    if (dilemmaNextBtn) {
+        dilemmaNextBtn.addEventListener('click', () => loadDilemma(currentDilemmaTopic));
+    }
+
+    if (dilemmaCheckpointBtn) {
+        dilemmaCheckpointBtn.addEventListener('click', async () => {
+            if (isWatching) return;
+            await watchAd({
+                sessionType: 'dilemma_checkpoint',
+                topic: currentDilemmaTopic,
+                onComplete: (result) => {
+                    alert(currentLang === 'ru' ? `🎉 +${result.reward} монет!` : `🎉 +${result.reward} coins!`);
+                    loadDilemma(currentDilemmaTopic);
+                },
+            });
+        });
     }
 
     // ==== Копирование реф. ссылки ====
@@ -525,6 +696,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==== Старт ====
     setLanguage(currentLang);
     await refreshUser();
+    await loadDilemma(null);
 
     // ==== Возрастной гейт (18+) ====
     // Показывается один раз, до входа в интерфейс. Пропустить нельзя —
