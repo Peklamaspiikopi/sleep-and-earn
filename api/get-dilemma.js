@@ -12,7 +12,8 @@ const { CHECKPOINT_INTERVAL } = require('../lib/dilemmaLogic');
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { initData, topic } = req.body || {};
+  const { initData, topic, lang } = req.body || {};
+  const activeLang = lang === 'en' ? 'en' : 'ru';
   const auth = verifyTelegramInitData(initData, process.env.TELEGRAM_BOT_TOKEN);
   if (!auth.ok) return res.status(401).json({ error: auth.error });
 
@@ -21,6 +22,7 @@ module.exports = async (req, res) => {
   const { data: topicsRaw } = await supabaseAdmin
     .from('dilemmas')
     .select('topic')
+    .eq('lang', activeLang)
     .order('topic');
 
   const topics = [...new Set((topicsRaw || []).map(r => r.topic))];
@@ -32,6 +34,7 @@ module.exports = async (req, res) => {
     .from('dilemmas')
     .select('*')
     .eq('topic', activeTopic)
+    .eq('lang', activeLang)
     .order('order_index');
 
   if (!topicDilemmas || topicDilemmas.length === 0) {

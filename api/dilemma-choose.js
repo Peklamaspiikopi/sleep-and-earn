@@ -14,7 +14,8 @@ const { CHECKPOINT_INTERVAL } = require('../lib/dilemmaLogic');
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { initData, topic, dilemmaId, choice } = req.body || {};
+  const { initData, topic, dilemmaId, choice, lang } = req.body || {};
+  const activeLang = lang === 'en' ? 'en' : 'ru';
   const auth = verifyTelegramInitData(initData, process.env.TELEGRAM_BOT_TOKEN);
   if (!auth.ok) return res.status(401).json({ error: auth.error });
 
@@ -26,6 +27,7 @@ module.exports = async (req, res) => {
     .from('dilemmas')
     .select('*')
     .eq('topic', topic)
+    .eq('lang', activeLang)
     .order('order_index');
 
   if (!topicDilemmas || topicDilemmas.length === 0) {
