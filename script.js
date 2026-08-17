@@ -251,6 +251,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         localStorage.setItem('sleep_lang', lang);
         document.getElementById('langRu')?.classList.toggle('active', lang === 'ru');
         document.getElementById('langEn')?.classList.toggle('active', lang === 'en');
+        if (currentDilemmaTopic) {
+            loadDilemma(currentDilemmaTopic);
+        }
 
         const t = translations[lang];
         const setText = (id, text) => { const el = document.getElementById(id); if (el) el.innerHTML = text; };
@@ -339,6 +342,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             watchBtn.innerText = `${t.watchBtnPrefix} (+${userState.video_reward} ${t.coinWord})`;
             watchBtn.disabled = false;
+        }
+
+        const checkpointBtn = document.getElementById('dilemmaCheckpointBtn');
+        if (checkpointBtn) {
+            if (isWatching) {
+                checkpointBtn.innerText = t.watchingBtn;
+                checkpointBtn.disabled = true;
+            } else {
+                checkpointBtn.innerText = t.checkpointBtn;
+                checkpointBtn.disabled = false;
+            }
         }
     }
 
@@ -620,7 +634,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function loadDilemma(topic) {
         try {
-            const result = await api('get-dilemma', { topic });
+            const result = await api('get-dilemma', { topic, lang: currentLang });
             currentDilemmaTopic = result.activeTopic;
 
             if (dilemmaTopicSwitcher && result.topics) {
@@ -656,6 +670,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 topic: currentDilemmaTopic,
                 dilemmaId: currentDilemma.id,
                 choice,
+                lang: currentLang,
             });
             if (dilemmaConsequenceText) dilemmaConsequenceText.innerText = result.consequence;
             if (dilemmaConsequenceBox) dilemmaConsequenceBox.style.display = 'block';
