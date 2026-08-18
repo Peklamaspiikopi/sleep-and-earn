@@ -6,9 +6,12 @@
 //
 // Используется для двух целей — обычный ролик за монеты (sessionType
 // 'video', по умолчанию) и чекпоинт дилемм (sessionType
-// 'dilemma_checkpoint') — оба идут через ОДИН общий кулдаун и защиту
-// от повторного/двойного запуска, чтобы дилеммы нельзя было
-// использовать как лазейку в обход антифрода основного раздела.
+// 'dilemma_checkpoint'). Оба типа тратят ОДИН общий суточный лимит
+// показов (manual_limit) — реклама из дилемм не даёт второй, отдельный
+// от основного раздела, канал показов. Это и честнее по отношению к
+// рекламной сети (не выглядит как аномально много показов на юзера в
+// день), и не даёт дилеммам стать более дешёвым способом получить те
+// же самые показы в обход дневного лимита.
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
@@ -95,19 +98,20 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Нет доступных чекпоинтов для получения монет' });
     }
     dilemmaProgress = progress;
-  } else {
+  }
+
+  // Дневной лимит показов — общий для обоих типов сессий
+  if (user.ads_watched_today === 0) {
     // Первый ролик сразу после сброса лимита — просим подождать немного,
     // чтобы это не выглядело как бот, который бьёт лимит ровно в 00:00
-    if (user.ads_watched_today === 0) {
-      const waitMinutes = postResetCooldownRemaining(user);
-      if (waitMinutes > 0) {
-        return res.status(429).json({ error: `Лимит обновился недавно, попробуй через ${waitMinutes} мин.`, retryAfterMinutes: waitMinutes });
-      }
+    const waitMinutes = postResetCooldownRemaining(user);
+    if (waitMinutes > 0) {
+      return res.status(429).json({ error: `Лимит обновился недавно, попробуй через ${waitMinutes} мин.`, retryAfterMinutes: waitMinutes });
     }
+  }
 
-    if (user.manual_limit <= 0) {
-      return res.status(400).json({ error: 'Дневной лимит роликов исчерпан' });
-    }
+  if (user.manual_limit <= 0) {
+    return res.status(400).json({ error: 'Дневной лимит роликов исчерпан' });
   }
 
   const { data: activeSession } = await supabaseAdmin
@@ -146,28 +150,27 @@ module.exports = async (req, res) => {
     }
   }
 
-  let newLimit = user.manual_limit;
-  if (type === 'video') {
-    // Атомарное списание лимита: UPDATE проходит только если лимит всё
-    // ещё равен тому, что мы прочитали. Если два запроса пришли почти
-    // одновременно, второй просто не найдёт совпадения и получит отказ —
-    // вместо того чтобы оба создали отдельную сессию на один и тот же
-    // остаток лимита (бесплатный лишний ролик).
-    newLimit = user.manual_limit - 1;
-    const { data: claimed } = await supabaseAdmin
-      .from('users')
-      .update({ manual_limit: newLimit })
-      .eq('telegram_id', telegramId)
-      .eq('manual_limit', user.manual_limit)
-      .select()
-      .maybeSingle();
+  // Атомарное списание дневного лимита — общее для видео и чекпоинтов.
+  // UPDATE проходит только если лимит всё ещё равен тому, что мы
+  // прочитали, иначе двойной клик мог бы создать две сессии на один
+  // и тот же остаток лимита (бесплатный лишний показ).
+  const newLimit = user.manual_limit - 1;
+  const { data: claimed } = await supabaseAdmin
+    .from('users')
+    .update({ manual_limit: newLimit })
+    .eq('telegram_id', telegramId)
+    .eq('manual_limit', user.manual_limit)
+    .select()
+    .maybeSingle();
 
-    if (!claimed) {
-      return res.status(409).json({ error: 'Попробуй ещё раз' });
-    }
-  } else {
-    // Атомарно резервируем один чекпоинт, чтобы двойной клик не позволил
-    // запустить два чекпоинт-ролика на один и тот же накопленный чекпоинт
+  if (!claimed) {
+    return res.status(409).json({ error: 'Попробуй ещё раз' });
+  }
+
+  if (type === 'dilemma_checkpoint') {
+    // Дополнительно атомарно резервируем один чекпоинт дилемм, чтобы
+    // двойной клик не позволил получить два чекпоинт-ролика на один и
+    // тот же накопленный чекпоинт
     const { data: claimedCheckpoint } = await supabaseAdmin
       .from('dilemma_progress')
       .update({ pending_checkpoints: dilemmaProgress.pending_checkpoints - 1 })
@@ -178,6 +181,8 @@ module.exports = async (req, res) => {
       .maybeSingle();
 
     if (!claimedCheckpoint) {
+      // Откатываем уже списанный лимит, раз чекпоинт зарезервировать не вышло
+      await supabaseAdmin.from('users').update({ manual_limit: user.manual_limit }).eq('telegram_id', telegramId).eq('manual_limit', newLimit);
       return res.status(409).json({ error: 'Попробуй ещё раз' });
     }
   }

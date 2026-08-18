@@ -72,31 +72,6 @@ module.exports = async (req, res) => {
   user = resetResult.user;
   const today = resetResult.today;
 
-  // ---- Чекпоинт дилемм — отдельная, гораздо более простая ветка:
-  // фиксированная награда, не трогает стрик/уровни/лимиты видео ----
-  if (session.session_type === 'dilemma_checkpoint') {
-    const newBalanceDilemma = user.balance + session.reward;
-
-    const { error: updateErr } = await supabaseAdmin
-      .from('users')
-      .update({ balance: newBalanceDilemma })
-      .eq('telegram_id', telegramId);
-
-    if (updateErr) {
-      await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
-      return res.status(500).json({ error: 'Не удалось начислить награду' });
-    }
-
-    await supabaseAdmin
-      .from('sessions')
-      .update({ status: 'completed', completed_at: new Date().toISOString() })
-      .eq('id', sessionId);
-
-    await logTransaction(supabaseAdmin, telegramId, 'dilemma_checkpoint', session.reward, newBalanceDilemma, session.dilemma_topic);
-
-    return res.status(200).json({ balance: newBalanceDilemma, reward: session.reward, dilemmaTopic: session.dilemma_topic });
-  }
-
   let newBalance = user.balance + session.reward;
   const newAdsToday = (user.ads_watched_today || 0) + 1;
 
@@ -194,7 +169,8 @@ module.exports = async (req, res) => {
     .update({ status: 'completed', completed_at: new Date().toISOString() })
     .eq('id', sessionId);
 
-  await logTransaction(supabaseAdmin, telegramId, 'video_reward', session.reward, newBalance, null);
+  const rewardType = session.session_type === 'dilemma_checkpoint' ? 'dilemma_checkpoint' : 'video_reward';
+  await logTransaction(supabaseAdmin, telegramId, rewardType, session.reward, newBalance, session.session_type === 'dilemma_checkpoint' ? session.dilemma_topic : null);
   if (dayInfo.dailyBonus) {
     await logTransaction(supabaseAdmin, telegramId, dayInfo.isBox ? 'box' : 'daily_bonus', dayInfo.dailyBonus, newBalance, `Активный день ${dayInfo.streak}`);
   }
@@ -202,5 +178,5 @@ module.exports = async (req, res) => {
     await logTransaction(supabaseAdmin, telegramId, 'big_box', dayInfo.bigBox, newBalance, `Большая коробка`);
   }
 
-  return res.status(200).json({ balance: newBalance, reward: session.reward, ...dayInfo });
+  return res.status(200).json({ balance: newBalance, reward: session.reward, dilemmaTopic: session.dilemma_topic, ...dayInfo });
 };

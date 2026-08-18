@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
   }
 
   if (session.session_type === 'dilemma_checkpoint') {
-    // Возвращаем зарезервированный чекпоинт обратно, лимит роликов не трогаем
+    // Возвращаем зарезервированный чекпоинт обратно
     const { data: progress } = await supabaseAdmin
       .from('dilemma_progress')
       .select('pending_checkpoints')
@@ -51,7 +51,8 @@ module.exports = async (req, res) => {
         .eq('telegram_id', telegramId)
         .eq('topic', session.dilemma_topic);
     }
-    return res.status(200).json({ ok: true });
+    // Плюс возвращаем суточный лимит показов — он теперь общий пул для
+    // видео и чекпоинтов дилемм, поэтому логика ниже не пропускается
   }
 
   const { data: user } = await supabaseAdmin
