@@ -298,12 +298,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ==== Реклама (Adsgram) ====
-    // Переключатель: пока боевой блок 43005 на модерации, поставьте
-    // USE_TEST_ADS = true и впишите ID тестовой платформы в TEST_BLOCK_ID —
+    // Переключатель: пока боевой блок 43383 (новая площадка) на модерации,
+    // стоит USE_TEST_ADS = true с ID тестовой платформы в TEST_BLOCK_ID —
     // так можно проверять показ рекламы прямо сейчас, не дожидаясь
     // одобрения. После модерации верните USE_TEST_ADS = false.
     const USE_TEST_ADS = true;
-    const PROD_BLOCK_ID = "43005";
+    const PROD_BLOCK_ID = "43383";
     const TEST_BLOCK_ID = "43046";
 
     let videoController = null;
