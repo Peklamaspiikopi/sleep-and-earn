@@ -349,6 +349,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (isWatching) {
                 checkpointBtn.innerText = t.watchingBtn;
                 checkpointBtn.disabled = true;
+            } else if (userState.manual_limit <= 0) {
+                checkpointBtn.innerText = t.limitBtn;
+                checkpointBtn.disabled = true;
             } else {
                 checkpointBtn.innerText = t.checkpointBtn;
                 checkpointBtn.disabled = false;
@@ -606,6 +609,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (dilemmaCheckpointCard) {
             dilemmaCheckpointCard.style.display = progress.pendingCheckpoints > 0 ? 'block' : 'none';
         }
+        updateWatchButton();
     }
 
     function renderDilemma(dilemma) {
