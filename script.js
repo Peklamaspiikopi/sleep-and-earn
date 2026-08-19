@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             honesty: "🛡️ <b>Правило честности:</b> Мы за прозрачное сотрудничество. Любые накрутки фиксируются системой.",
             withdrawLimit: (min) => `🔒 Минимальный вывод: <b>${min} Монет</b>`,
             promoPlaceholder: "Введите промокод...",
+            walletPlaceholder: "Адрес TON-кошелька для вывода",
             withdrawBtn: "Заказать вывод средств",
             navTerminal: "Терминал",
             navCabinet: "Кабинет",
@@ -31,7 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             dilemmaNextBtn: "Дальше",
             publicPayoutsTitle: "🛡️ Публичные выплаты (последние 50)",
             modalTitle: "🚀 Первый запуск!",
-            modalText: "Привет! Смотри рекламу и получай монеты. Заходи каждый день, смотри по 5 роликов — награда растёт!",
+            modalText: "Привет! Проходи дилеммы или включай терминал и начинай зарабатывать монеты. Заходи каждый день — награда растёт!",
             modalBtn: "Понятно",
             ageGateTitle: "⚠️ Внимание!",
             ageGateText: "MintoStrk доступен только пользователям 18+. Продолжая, вы подтверждаете, что вам есть 18 лет и вы согласны с <a href=\"terms.html\" target=\"_blank\" style=\"color:#00b0ff;\">условиями использования</a>.",
@@ -45,7 +46,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             refCoinUnit: "монет",
             confirmWatch: "Посмотреть рекламный ролик за",
             statCourseTitle: "💎 КУРС",
-            statCourseVal: "1 Монета = $0.0001",
             statVideoTitle: "📺 ВИДЕО-РОЛИК",
             tRefBonusText: "+15% пожизненно с каждого вывода приглашённого друга. Друг засчитывается в статистику только после своего первого вывода — так в счётчик не попадают неактивные приглашённые.",
             videoRewardUnit: "Монет",
@@ -75,6 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             honesty: "🛡️ <b>Fair Play:</b> We stand for transparent cooperation. Any cheating is logged.",
             withdrawLimit: (min) => `🔒 Min Withdrawal: <b>${min} Coins</b>`,
             promoPlaceholder: "Enter promo code...",
+            walletPlaceholder: "TON wallet address for withdrawal",
             withdrawBtn: "Request Withdrawal",
             navTerminal: "Terminal",
             navCabinet: "Cabinet",
@@ -85,7 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             dilemmaNextBtn: "Next",
             publicPayoutsTitle: "🛡️ Public payouts (last 50)",
             modalTitle: "🚀 First Launch!",
-            modalText: "Welcome! Watch ads to earn coins. Watch 5 videos a day, every day — your reward grows!",
+            modalText: "Welcome! Go through the dilemmas or turn on the terminal and start earning coins. Come back every day — your reward grows!",
             modalBtn: "Got it",
             ageGateTitle: "⚠️ Attention!",
             ageGateText: "MintoStrk is available to users 18+ only. By continuing, you confirm you are 18 or older and agree to the <a href=\"terms.html\" target=\"_blank\" style=\"color:#00b0ff;\">terms of use</a>.",
@@ -99,7 +100,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             refCoinUnit: "coins",
             confirmWatch: "Watch an ad video for",
             statCourseTitle: "💎 RATE",
-            statCourseVal: "1 Coin = $0.0001",
             statVideoTitle: "📺 VIDEO",
             tRefBonusText: "+15% for life from every withdrawal your invited friend makes. A friend only counts in your stats after their first withdrawal — so inactive invites don't inflate the numbers.",
             videoRewardUnit: "Coins",
@@ -182,6 +182,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const withdrawLimitEl = document.getElementById('tWithdrawLimit');
         if (withdrawLimitEl) withdrawLimitEl.innerHTML = translations[currentLang].withdrawLimit(userState.min_withdrawal || 2000);
 
+        updateCourseDisplay();
+
         renderWeekLadder();
         renderProgressHints();
         updateVideoRewardDisplay();
@@ -192,6 +194,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     function updateVideoRewardDisplay() {
         const el = document.getElementById('statVideoVal');
         if (el) el.innerText = `${userState.video_reward} ${translations[currentLang].videoRewardUnit}`;
+    }
+
+    function updateCourseDisplay() {
+        const el = document.getElementById('statCourseVal');
+        if (el && userState.min_withdrawal_ton != null) {
+            const coinLabel = currentLang === 'ru' ? 'Монет' : 'Coins';
+            el.innerText = `${userState.min_withdrawal} ${coinLabel} ≈ ${userState.min_withdrawal_ton} TON`;
+        }
     }
 
     function renderWeekLadder() {
@@ -284,15 +294,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         setText('tRefEarnLabel', t.refEarnLabel);
         setText('tRefCoinUnit', t.refCoinUnit);
         setText('statCourseTitle', t.statCourseTitle);
-        setText('statCourseVal', t.statCourseVal);
         setText('statVideoTitle', t.statVideoTitle);
         setText('tRefBonusText', t.tRefBonusText);
         updateVideoRewardDisplay();
         setText('tAdsProgressLabel', t.tAdsProgressLabel);
         setText('tDailyStreakLabel', t.tDailyStreakLabel);
 
+        updateCourseDisplay();
+
         const promoInput = document.getElementById('promoInput');
         if (promoInput) promoInput.placeholder = t.promoPlaceholder;
+
+        const walletInput = document.getElementById('payoutAddressInput');
+        if (walletInput) walletInput.placeholder = t.walletPlaceholder;
 
         updateWatchButton();
     };
