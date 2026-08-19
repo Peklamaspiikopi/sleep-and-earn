@@ -316,8 +316,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // стоит USE_TEST_ADS = true с ID тестовой платформы в TEST_BLOCK_ID —
     // так можно проверять показ рекламы прямо сейчас, не дожидаясь
     // одобрения. После модерации верните USE_TEST_ADS = false.
-    const USE_TEST_ADS = true;
-    const PROD_BLOCK_ID = "43383";
+    const USE_TEST_ADS = false;
+    const PROD_BLOCK_ID = "43521";
     const TEST_BLOCK_ID = "43046";
 
     let videoController = null;
