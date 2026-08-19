@@ -9,6 +9,12 @@ const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
 const { ensureDailyReset, getLocalDateString, MAX_MANUAL_PER_DAY } = require('../lib/userDaily');
 const { daysToNextReward, daysToNextLimit, daysToNextBigBox, minWithdrawalFor, minAdsRequired } = require('../lib/streakLogic');
+const { getTonUsdRate } = require('../lib/tonRate');
+
+// Внутренний курс монеты: 1 монета = $0.0001 (примерно 1 копейка).
+// Это фиксированная продуктовая привязка, не рыночная — меняется
+// только рыночный курс TON, к которому мы её пересчитываем для вывода.
+const COIN_TO_USD = 0.0001;
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -91,6 +97,10 @@ module.exports = async (req, res) => {
   const resetResult = await ensureDailyReset(supabaseAdmin, user, telegramId, tz);
   user = resetResult.user;
 
+  const minWithdrawal = minWithdrawalFor(user);
+  const tonUsdRate = await getTonUsdRate();
+  const minWithdrawalTon = Number(((minWithdrawal * COIN_TO_USD) / tonUsdRate).toFixed(4));
+
   return res.status(200).json({
     balance: user.balance,
     manual_limit: user.manual_limit,
@@ -102,7 +112,8 @@ module.exports = async (req, res) => {
     days_to_next_reward: daysToNextReward(user),
     days_to_next_limit: daysToNextLimit(user),
     days_to_next_big_box: daysToNextBigBox(user),
-    min_withdrawal: minWithdrawalFor(user),
+    min_withdrawal: minWithdrawal,
+    min_withdrawal_ton: minWithdrawalTon,
     ref_count: user.ref_count,
     ref_earn: user.ref_earn,
     age_confirmed: !!user.age_confirmed,
