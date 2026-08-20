@@ -20,6 +20,7 @@ const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
 const { logTransaction } = require('../lib/transactions');
 const { minWithdrawalFor } = require('../lib/streakLogic');
+const { isValidTonAddress } = require('../lib/tonAddress');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -31,6 +32,9 @@ module.exports = async (req, res) => {
   const address = String(payoutAddress || '').trim();
   if (!address) {
     return res.status(400).json({ error: 'Укажи адрес кошелька для вывода' });
+  }
+  if (!isValidTonAddress(address)) {
+    return res.status(400).json({ error: 'Похоже, в адресе TON-кошелька опечатка — проверь и вставь ещё раз' });
   }
 
   const telegramId = auth.telegramId;

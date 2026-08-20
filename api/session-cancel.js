@@ -7,9 +7,17 @@
 // если отмена придёт дважды подряд (или наложится на session-complete
 // для той же сессии), только один из запросов реально сработал и
 // вернул лимит — а не оба, задваивая бесплатный ролик.
+//
+// Сам возврат (manual_limit, pending_checkpoints) — тоже атомарный,
+// через compare-and-swap с retry (см. lib/atomicIncrement.js), а не
+// просто "прочитать — прибавить — записать": хотя выше по стеку
+// двойной возврат одной и той же сессии уже исключён, атомарный
+// инкремент не полагается на эту защиту косвенно и корректен сам по
+// себе, даже если логика вызова изменится в будущем.
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
+const { atomicIncrement } = require('../lib/atomicIncrement');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -36,37 +44,25 @@ module.exports = async (req, res) => {
   }
 
   if (session.session_type === 'dilemma_checkpoint') {
-    // Возвращаем зарезервированный чекпоинт обратно
-    const { data: progress } = await supabaseAdmin
-      .from('dilemma_progress')
-      .select('pending_checkpoints')
-      .eq('telegram_id', telegramId)
-      .eq('topic', session.dilemma_topic)
-      .maybeSingle();
-
-    if (progress) {
-      await supabaseAdmin
-        .from('dilemma_progress')
-        .update({ pending_checkpoints: progress.pending_checkpoints + 1 })
-        .eq('telegram_id', telegramId)
-        .eq('topic', session.dilemma_topic);
-    }
+    // Возвращаем зарезервированный чекпоинт обратно — атомарно
+    await atomicIncrement(
+      supabaseAdmin,
+      'dilemma_progress',
+      { telegram_id: telegramId, topic: session.dilemma_topic },
+      'pending_checkpoints',
+      1
+    );
     // Плюс возвращаем суточный лимит показов — он теперь общий пул для
     // видео и чекпоинтов дилемм, поэтому логика ниже не пропускается
   }
 
-  const { data: user } = await supabaseAdmin
-    .from('users')
-    .select('manual_limit')
-    .eq('telegram_id', telegramId)
-    .single();
-
-  if (user) {
-    await supabaseAdmin
-      .from('users')
-      .update({ manual_limit: user.manual_limit + 1 })
-      .eq('telegram_id', telegramId);
-  }
+  await atomicIncrement(
+    supabaseAdmin,
+    'users',
+    { telegram_id: telegramId },
+    'manual_limit',
+    1
+  );
 
   return res.status(200).json({ ok: true });
 };
