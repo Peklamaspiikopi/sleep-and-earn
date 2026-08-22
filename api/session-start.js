@@ -49,7 +49,7 @@ module.exports = async (req, res) => {
         ref_earn: 0,
         manual_limit: MAX_MANUAL_PER_DAY,
         manual_limit_max: MAX_MANUAL_PER_DAY,
-        video_reward: 1,
+        video_reward: 10,
         streak_count: 0,
         ads_watched_today: 0,
         active_days_since_level8: 0,
@@ -190,7 +190,7 @@ module.exports = async (req, res) => {
   const sessionId = crypto.randomUUID();
   const startedAt = new Date();
   const expiresAt = new Date(startedAt.getTime() + SESSION_TTL_SECONDS * 1000);
-  const reward = user.video_reward || 1;
+  const reward = user.video_reward || 10;
 
   await supabaseAdmin.from('sessions').insert([{
     id: sessionId,

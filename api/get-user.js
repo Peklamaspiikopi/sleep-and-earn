@@ -10,11 +10,15 @@ const { supabaseAdmin } = require('../lib/supabaseAdmin');
 const { ensureDailyReset, getLocalDateString, MAX_MANUAL_PER_DAY } = require('../lib/userDaily');
 const { daysToNextReward, daysToNextLimit, daysToNextBigBox, minWithdrawalFor, minAdsRequired } = require('../lib/streakLogic');
 const { getTonUsdRate } = require('../lib/tonRate');
+const { BANNER_COOLDOWN_SECONDS, MAX_AD_PAYOUT_RATIO_DISPLAY } = require('../lib/economyConfig');
 
-// Внутренний курс монеты: 1 монета = $0.0001 (примерно 1 копейка).
-// Это фиксированная продуктовая привязка, не рыночная — меняется
-// только рыночный курс TON, к которому мы её пересчитываем для вывода.
-const COIN_TO_USD = 0.0001;
+// Внутренний курс монеты: 1 монета = $0.00001 (0.1 копейки — уменьшено
+// в 10 раз против исходных $0.0001, чтобы баннер (Interstitial,
+// вдвое дешевле по CPM, чем Rewarded-ролик) мог платить целое число
+// монет, а не "0.5 монеты"). Это фиксированная продуктовая привязка,
+// не рыночная — меняется только рыночный курс TON, к которому мы её
+// пересчитываем для вывода.
+const COIN_TO_USD = 0.00001;
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -49,7 +53,7 @@ module.exports = async (req, res) => {
         ref_earn: 0,
         manual_limit: MAX_MANUAL_PER_DAY,
         manual_limit_max: MAX_MANUAL_PER_DAY,
-        video_reward: 1,
+        video_reward: 10,
         streak_count: 0,
         ads_watched_today: 0,
         active_days_since_level8: 0,
@@ -101,11 +105,27 @@ module.exports = async (req, res) => {
   const tonUsdRate = await getTonUsdRate();
   const minWithdrawalTon = Number(((minWithdrawal * COIN_TO_USD) / tonUsdRate).toFixed(4));
 
+  let bannerCooldownRemaining = 0;
+  if (user.last_banner_watched_at) {
+    const elapsed = (Date.now() - new Date(user.last_banner_watched_at).getTime()) / 1000;
+    bannerCooldownRemaining = Math.max(0, Math.ceil(BANNER_COOLDOWN_SECONDS - elapsed));
+  }
+
+  // Личный счётчик "доход с рекламы X/50%" — сколько игрок реально
+  // получает от сгенерированной им же рекламной выручки. Показ жёстко
+  // ограничен потолком MAX_AD_PAYOUT_RATIO_DISPLAY на случай редкого
+  // везения с коробками (см. lib/economyConfig.js).
+  const lifetimeRevenue = user.lifetime_ad_revenue_usd || 0;
+  const lifetimePayoutUsd = (user.lifetime_ad_payout_coins || 0) * COIN_TO_USD;
+  const adPayoutRatio = lifetimeRevenue > 0
+    ? Math.min(MAX_AD_PAYOUT_RATIO_DISPLAY, Math.round((lifetimePayoutUsd / lifetimeRevenue) * 100))
+    : 0;
+
   return res.status(200).json({
     balance: user.balance,
     manual_limit: user.manual_limit,
     max_manual_limit: user.manual_limit_max || MAX_MANUAL_PER_DAY,
-    video_reward: user.video_reward || 1,
+    video_reward: user.video_reward || 10,
     ads_watched_today: user.ads_watched_today || 0,
     ads_required_today: minAdsRequired(user),
     streak_count: user.streak_count || 0,
@@ -114,6 +134,9 @@ module.exports = async (req, res) => {
     days_to_next_big_box: daysToNextBigBox(user),
     min_withdrawal: minWithdrawal,
     min_withdrawal_ton: minWithdrawalTon,
+    banner_cooldown_seconds: bannerCooldownRemaining,
+    ad_payout_ratio: adPayoutRatio,
+    max_ad_payout_ratio: MAX_AD_PAYOUT_RATIO_DISPLAY,
     ref_count: user.ref_count,
     ref_earn: user.ref_earn,
     age_confirmed: !!user.age_confirmed,

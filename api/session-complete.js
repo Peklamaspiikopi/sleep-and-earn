@@ -3,10 +3,9 @@
 // Начисляет награду за ролик и, если это N-й ролик за день (N = минимум
 // для активного дня, растёт вместе с дневным лимитом) — запускает
 // логику "активного дня": рост уровня награды, бонус по недельной
-// лестнице текущего тира (или сундук на 7-й день, если тир открыл его),
-// рост дневного лимита роликов, и для тира D (уровень 10+) — большую
-// коробку раз в 30 активных дней (с мгновенным первым открытием в
-// момент входа в тир 10).
+// лестнице (или сундук на 7-й день, если уже разблокирован), рост
+// дневного лимита роликов, и большую коробку раз в 30 активных дней
+// (с мгновенным первым открытием в момент разблокировки).
 //
 // Стрик НИКОГДА не сбрасывается и не откатывается: пропущенный день
 // просто не засчитывается, при следующей активности стрик продолжает
@@ -16,10 +15,11 @@ const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
 const { ensureDailyReset } = require('../lib/userDaily');
 const {
-  dailyBonusForStreak, rollBigBox, minAdsRequired,
-  REWARD_CAP, REWARD_GROWTH_DAYS,
+  dailyBonusForStreak, rollBigBox, minAdsRequired, tierIndexFor,
+  TIERS, TIER_GROWTH_DAYS, BOX_UNLOCK_TIER_IDX,
   LIMIT_GROWTH_ACTIVE_DAYS, LIMIT_CAP, BIG_BOX_INTERVAL_ACTIVE_DAYS,
 } = require('../lib/streakLogic');
+const { REVENUE_PER_VIDEO_AD } = require('../lib/economyConfig');
 const { logTransaction } = require('../lib/transactions');
 
 module.exports = async (req, res) => {
@@ -77,6 +77,7 @@ module.exports = async (req, res) => {
 
   const updates = { balance: newBalance, ads_watched_today: newAdsToday };
   const dayInfo = { dayCompleted: false };
+  let payoutThisAd = session.reward; // накапливаем всё, что реально начислилось за этот показ
 
   function applyLimitGrowth() {
     if ((user.manual_limit_max || 20) >= LIMIT_CAP) return;
@@ -103,17 +104,19 @@ module.exports = async (req, res) => {
     dayInfo.streak = newStreak;
 
     // ---- Рост уровня награды за ролик ----
-    let currentReward = user.video_reward || 1;
-    let justReachedTier10 = false;
-    if (currentReward < REWARD_CAP) {
-      const needed = REWARD_GROWTH_DAYS[currentReward];
+    let currentReward = user.video_reward || TIERS[0];
+    let tierIdx = tierIndexFor(currentReward);
+    let justUnlockedBoxTier = false;
+    if (tierIdx < TIERS.length - 1) {
+      const needed = TIER_GROWTH_DAYS[tierIdx];
       const progress = (user.active_days_since_level8 || 0) + 1;
       if (progress >= needed) {
-        currentReward += 1;
+        tierIdx += 1;
+        currentReward = TIERS[tierIdx];
         updates.video_reward = currentReward;
         updates.active_days_since_level8 = 0;
         dayInfo.levelUp = currentReward;
-        if (currentReward === 10) justReachedTier10 = true;
+        if (tierIdx === BOX_UNLOCK_TIER_IDX) justUnlockedBoxTier = true;
       } else {
         updates.active_days_since_level8 = progress;
       }
@@ -122,17 +125,19 @@ module.exports = async (req, res) => {
     // ---- Недельная лестница / сундук (по текущему, уже обновлённому тиру) ----
     const bonus = dailyBonusForStreak(newStreak, currentReward);
     newBalance += bonus.reward;
+    payoutThisAd += bonus.reward;
     updates.balance = newBalance;
     dayInfo.dailyBonus = bonus.reward;
     dayInfo.isBox = bonus.isBox;
     if (bonus.locked) dayInfo.boxLocked = true;
 
-    // ---- Большая коробка (только тир D, уровень 10+) ----
-    if (currentReward >= 10) {
-      if (justReachedTier10) {
-        // Первый вход в тир 10 — коробка открывается сразу, отсчёт начинается заново
+    // ---- Большая коробка (разблокирована с BOX_UNLOCK_TIER_IDX) ----
+    if (tierIdx >= BOX_UNLOCK_TIER_IDX) {
+      if (justUnlockedBoxTier) {
+        // Первый вход в этот тир — коробка открывается сразу, отсчёт начинается заново
         const bigBoxReward = rollBigBox();
         newBalance += bigBoxReward;
+        payoutThisAd += bigBoxReward;
         updates.balance = newBalance;
         updates.active_days_since_big_box = 0;
         dayInfo.bigBox = bigBoxReward;
@@ -142,6 +147,7 @@ module.exports = async (req, res) => {
         if (newActiveDaysBigBox >= BIG_BOX_INTERVAL_ACTIVE_DAYS) {
           const bigBoxReward = rollBigBox();
           newBalance += bigBoxReward;
+          payoutThisAd += bigBoxReward;
           updates.balance = newBalance;
           updates.active_days_since_big_box = 0;
           dayInfo.bigBox = bigBoxReward;
@@ -153,6 +159,13 @@ module.exports = async (req, res) => {
 
     applyLimitGrowth();
   }
+
+  // Личный счётчик "доход с рекламы X/50%" — накопленная выплата и
+  // накопленная сгенерированная выручка растут вместе с каждым
+  // показом, независимо от того, был ли это обычный день или день с
+  // бонусом/коробкой.
+  updates.lifetime_ad_payout_coins = (user.lifetime_ad_payout_coins || 0) + payoutThisAd;
+  updates.lifetime_ad_revenue_usd = (user.lifetime_ad_revenue_usd || 0) + REVENUE_PER_VIDEO_AD;
 
   const { error: updateErr } = await supabaseAdmin
     .from('users')
