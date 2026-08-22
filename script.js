@@ -47,6 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             confirmWatch: "Посмотреть рекламный ролик за",
             statCourseTitle: "💎 КУРС",
             statVideoTitle: "📺 ВИДЕО-РОЛИК",
+            statAdRatioTitle: "📊 ДОХОД С РЕКЛАМЫ",
             tRefBonusText: "+15% пожизненно с каждого вывода приглашённого друга. Друг засчитывается в статистику только после своего первого вывода — так в счётчик не попадают неактивные приглашённые.",
             videoRewardUnit: "Монет",
             tAdsProgressLabel: "Роликов сегодня:",
@@ -101,6 +102,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             confirmWatch: "Watch an ad video for",
             statCourseTitle: "💎 RATE",
             statVideoTitle: "📺 VIDEO",
+            statAdRatioTitle: "📊 AD INCOME SHARE",
             tRefBonusText: "+15% for life from every withdrawal your invited friend makes. A friend only counts in your stats after their first withdrawal — so inactive invites don't inflate the numbers.",
             videoRewardUnit: "Coins",
             tAdsProgressLabel: "Videos today:",
@@ -144,19 +146,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     let userState = {
-        balance: 0, manual_limit: 20, max_manual_limit: 20, video_reward: 1,
+        balance: 0, manual_limit: 20, max_manual_limit: 20, video_reward: 10,
         ads_watched_today: 0, ads_required_today: 15, streak_count: 0,
-        ref_count: 0, ref_earn: 0, min_withdrawal: 2000,
+        ref_count: 0, ref_earn: 0, min_withdrawal: 10000,
         days_to_next_reward: null, days_to_next_limit: null, days_to_next_big_box: null,
     };
 
     // Зеркало серверной лестницы наград (lib/streakLogic.js) — только
-    // для отображения, реальные начисления считает сервер.
+    // для отображения, реальные начисления считает сервер. Теперь
+    // одна лестница на всех, сундук открывается с 2-го уровня (16+).
     function weeklyLadderFor(reward) {
-        if (reward <= 3) return { values: [5, 10, 15, 20, 25, 30], boxUnlocked: false };
-        if (reward <= 6) return { values: [10, 15, 20, 25, 30, 35], boxUnlocked: false };
-        if (reward <= 9) return { values: [15, 20, 25, 30, 35, 40], boxUnlocked: true };
-        return { values: [20, 25, 30, 35, 40, 45], boxUnlocked: true };
+        return { values: [9, 14, 19, 24, 29, 34], boxUnlocked: reward >= 16 };
     }
 
     async function refreshUser() {
@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         set('streakDay', userState.streak_count);
 
         const withdrawLimitEl = document.getElementById('tWithdrawLimit');
-        if (withdrawLimitEl) withdrawLimitEl.innerHTML = translations[currentLang].withdrawLimit(userState.min_withdrawal || 2000);
+        if (withdrawLimitEl) withdrawLimitEl.innerHTML = translations[currentLang].withdrawLimit(userState.min_withdrawal || 10000);
 
         updateCourseDisplay();
 
@@ -202,11 +202,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const coinLabel = currentLang === 'ru' ? 'Монет' : 'Coins';
             el.innerText = `${userState.min_withdrawal} ${coinLabel} ≈ ${userState.min_withdrawal_ton} TON`;
         }
+        const ratioEl = document.getElementById('statAdRatioVal');
+        if (ratioEl && userState.ad_payout_ratio != null) {
+            ratioEl.innerText = `${userState.ad_payout_ratio}/${userState.max_ad_payout_ratio || 50}%`;
+        }
     }
 
     function renderWeekLadder() {
         const nextPos = (userState.streak_count % 7) + 1;
-        const { values, boxUnlocked } = weeklyLadderFor(userState.video_reward || 1);
+        const { values, boxUnlocked } = weeklyLadderFor(userState.video_reward || 10);
         document.querySelectorAll('.week-day').forEach(el => {
             const day = parseInt(el.dataset.day, 10);
             el.classList.toggle('active', day === nextPos);
@@ -224,7 +228,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!boxUnlocked) {
                 note.style.display = 'block';
                 note.innerText = t.weeklyBoxLockedNote;
-            } else if ((userState.video_reward || 1) < 10) {
+            } else if ((userState.video_reward || 10) < 16) {
                 note.style.display = 'block';
                 note.innerText = t.bigBoxLockedNote;
             } else {
@@ -294,6 +298,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setText('tRefEarnLabel', t.refEarnLabel);
         setText('tRefCoinUnit', t.refCoinUnit);
         setText('statCourseTitle', t.statCourseTitle);
+        setText('statAdRatioTitle', t.statAdRatioTitle);
         setText('statVideoTitle', t.statVideoTitle);
         setText('tRefBonusText', t.tRefBonusText);
         updateVideoRewardDisplay();
