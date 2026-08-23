@@ -63,6 +63,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             activeDaysWord: "активных дней",
             weeklyBoxLockedNote: "🔒 Сундук откроется на 7 уровне награды за ролик — станет доступен диапазон 20-200 монет.",
             bigBoxLockedNote: "🔒 Большая коробка откроется на 10 уровне награды за ролик — и сразу же выдастся первая.",
+            bannerBtnPrefix: "Быстрый баннер",
+            bannerWaitBtn: (mmss) => `Баннер через ${mmss}`,
+            bannerLoadingBtn: "Загрузка баннера...",
+            confirmBanner: "Посмотреть короткий баннер за",
+            bannerRewardMsg: (r) => `📺 +${r} монет за баннер!`,
         },
         en: {
             alert: "<b>Screen turning off?</b> Extend display timeout in your phone settings.",
@@ -118,6 +123,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             activeDaysWord: "active days",
             weeklyBoxLockedNote: "🔒 The chest unlocks at video-reward level 7 — a 20-200 coin range opens up.",
             bigBoxLockedNote: "🔒 The big box unlocks at video-reward level 10 — and the first one is granted right away.",
+            bannerBtnPrefix: "Quick banner",
+            bannerWaitBtn: (mmss) => `Banner in ${mmss}`,
+            bannerLoadingBtn: "Loading banner...",
+            confirmBanner: "Watch a short banner for",
+            bannerRewardMsg: (r) => `📺 +${r} coins for the banner!`,
         }
     };
 
@@ -150,7 +160,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         ads_watched_today: 0, ads_required_today: 15, streak_count: 0,
         ref_count: 0, ref_earn: 0, min_withdrawal: 10000,
         days_to_next_reward: null, days_to_next_limit: null, days_to_next_big_box: null,
+        banner_cooldown_seconds: 0,
     };
+
+    // Награда за баннер — только для текста кнопки, реальное начисление
+    // считает сервер (см. lib/economyConfig.js: BANNER_REWARD).
+    const BANNER_REWARD_DISPLAY = 8;
 
     // Зеркало серверной лестницы наград (lib/streakLogic.js) — только
     // для отображения, реальные начисления считает сервер. Теперь
@@ -162,6 +177,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function refreshUser() {
         try {
             userState = await api('get-user', { startParam, timezone: userTimezone });
+            startBannerCountdown(userState.banner_cooldown_seconds || 0);
             renderUser();
         } catch (e) {
             console.error(e);
@@ -189,6 +205,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateVideoRewardDisplay();
 
         updateWatchButton();
+        updateBannerButton();
     }
 
     function updateVideoRewardDisplay() {
@@ -316,6 +333,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (walletInput) walletInput.placeholder = t.walletPlaceholder;
 
         updateWatchButton();
+        updateBannerButton();
     };
 
     // ==== Реклама (Adsgram) ====
@@ -332,10 +350,109 @@ document.addEventListener('DOMContentLoaded', async () => {
     const BANNER_BLOCK_ID = "44050";
 
     let videoController = null;
+    let bannerController = null;
     if (window.Adsgram) {
         videoController = window.Adsgram.init({
             blockId: USE_TEST_ADS ? TEST_BLOCK_ID : PROD_BLOCK_ID,
             debug: USE_TEST_ADS,
+        });
+        bannerController = window.Adsgram.init({
+            blockId: USE_TEST_ADS ? TEST_BLOCK_ID : BANNER_BLOCK_ID,
+            debug: USE_TEST_ADS,
+        });
+    }
+
+    // ==== Баннер (Interstitial) ====
+    const bannerBtn = document.getElementById('bannerBtn');
+    let isBannerLoading = false;
+    let bannerCooldownRemaining = 0;
+    let bannerCountdownTimer = null;
+
+    function formatMMSS(totalSeconds) {
+        const m = Math.floor(totalSeconds / 60);
+        const s = totalSeconds % 60;
+        return `${m}:${String(s).padStart(2, '0')}`;
+    }
+
+    function updateBannerButton() {
+        if (!bannerBtn) return;
+        const t = translations[currentLang];
+        if (isBannerLoading) {
+            bannerBtn.innerText = t.bannerLoadingBtn;
+            bannerBtn.disabled = true;
+        } else if (bannerCooldownRemaining > 0) {
+            bannerBtn.innerText = t.bannerWaitBtn(formatMMSS(bannerCooldownRemaining));
+            bannerBtn.disabled = true;
+        } else {
+            bannerBtn.innerText = `${t.bannerBtnPrefix} (+${BANNER_REWARD_DISPLAY} ${t.coinWord})`;
+            bannerBtn.disabled = false;
+        }
+    }
+
+    function startBannerCountdown(seconds) {
+        bannerCooldownRemaining = Math.max(0, Math.floor(seconds || 0));
+        if (bannerCountdownTimer) clearInterval(bannerCountdownTimer);
+        if (bannerCooldownRemaining <= 0) {
+            updateBannerButton();
+            return;
+        }
+        bannerCountdownTimer = setInterval(() => {
+            bannerCooldownRemaining -= 1;
+            if (bannerCooldownRemaining <= 0) {
+                bannerCooldownRemaining = 0;
+                clearInterval(bannerCountdownTimer);
+                bannerCountdownTimer = null;
+            }
+            updateBannerButton();
+        }, 1000);
+        updateBannerButton();
+    }
+
+    if (bannerBtn) {
+        bannerBtn.addEventListener('click', async () => {
+            if (isBannerLoading || bannerCooldownRemaining > 0) return;
+            if (!confirm(`${translations[currentLang].confirmBanner} +${BANNER_REWARD_DISPLAY}?`)) return;
+
+            isBannerLoading = true;
+            updateBannerButton();
+
+            let session;
+            try {
+                session = await api('session', { action: 'banner_start' });
+            } catch (e) {
+                isBannerLoading = false;
+                alert(e.message);
+                await refreshUser();
+                return;
+            }
+
+            const finishBannerSuccess = async () => {
+                try {
+                    const result = await api('session', { action: 'banner_complete', sessionId: session.sessionId });
+                    userState.balance = result.balance;
+                    renderUser();
+                    alert(translations[currentLang].bannerRewardMsg(result.reward));
+                } catch (e) {
+                    alert(e.message);
+                } finally {
+                    isBannerLoading = false;
+                    await refreshUser();
+                }
+            };
+
+            const finishBannerFail = async () => {
+                isBannerLoading = false;
+                await refreshUser();
+                alert(translations[currentLang].adErrorAlert);
+            };
+
+            if (bannerController) {
+                bannerController.show()
+                    .then((result) => { if (result?.done !== false) finishBannerSuccess(); else finishBannerFail(); })
+                    .catch(finishBannerFail);
+            } else {
+                setTimeout(finishBannerSuccess, session.durationSeconds ? session.durationSeconds * 1000 : 8000);
+            }
         });
     }
 
