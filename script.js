@@ -6,18 +6,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         tg.ready();
         tg.expand();
 
-        // Учитываем системную шапку Telegram (актуально для Fullscreen-режима),
-        // чтобы верхние блоки не перекрывались кнопками "Закрыть"/меню.
+        // Пытаемся войти в настоящий Fullscreen (Bot API 8.0+) — так Telegram
+        // корректнее сообщает высоту своей шапки через contentSafeAreaInset.
+        if (typeof tg.isVersionAtLeast === 'function' && tg.isVersionAtLeast('8.0')
+            && typeof tg.requestFullscreen === 'function' && !tg.isFullscreen) {
+            try { tg.requestFullscreen(); } catch (e) { /* платформа не поддерживает — не критично */ }
+        }
+
+        // Учитываем системную шапку Telegram, чтобы верхние блоки не перекрывались
+        // кнопками "Закрыть"/меню. На части клиентов contentSafeAreaInset/safeAreaInset
+        // возвращают 0 или заниженное значение, поэтому подстраховываемся минимумом.
+        const MIN_SAFE_TOP = 64;
         const applySafeArea = () => {
-            const top = tg.contentSafeAreaInset?.top
-                ?? tg.safeAreaInset?.top
-                ?? 0;
+            const apiTop = Math.max(
+                tg.contentSafeAreaInset?.top || 0,
+                tg.safeAreaInset?.top || 0
+            );
+            const top = Math.max(apiTop, MIN_SAFE_TOP);
             document.documentElement.style.setProperty('--tg-safe-top', top + 'px');
         };
         applySafeArea();
         tg.onEvent('viewportChanged', applySafeArea);
         tg.onEvent('safeAreaChanged', applySafeArea);
         tg.onEvent('contentSafeAreaChanged', applySafeArea);
+        tg.onEvent('fullscreenChanged', applySafeArea);
     }
     const initData = tg?.initData || "";
     let botUsername = "mintrostreakly_bot";
