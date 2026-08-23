@@ -61,8 +61,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             nextLimitLabel: "До +1 ролика в день:",
             nextBigBoxLabel: "До большой коробки:",
             activeDaysWord: "активных дней",
-            weeklyBoxLockedNote: "🔒 Сундук откроется на 7 уровне награды за ролик — станет доступен диапазон 20-200 монет.",
-            bigBoxLockedNote: "🔒 Большая коробка откроется на 10 уровне награды за ролик — и сразу же выдастся первая.",
+            weeklyBoxLockedNote: "🔒 Сундук откроется, когда награда за ролик вырастет до 18 монет — станет доступен диапазон 55-330 монет.",
+            bigBoxLockedNote: "🔒 Большая коробка откроется на том же уровне (18 монет за ролик) — и сразу же выдастся первая.",
             bannerBtnPrefix: "Быстрый баннер",
             bannerWaitBtn: (mmss) => `Баннер через ${mmss}`,
             bannerLoadingBtn: "Загрузка баннера...",
@@ -121,8 +121,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             nextLimitLabel: "Until +1 daily video:",
             nextBigBoxLabel: "Until big box:",
             activeDaysWord: "active days",
-            weeklyBoxLockedNote: "🔒 The chest unlocks at video-reward level 7 — a 20-200 coin range opens up.",
-            bigBoxLockedNote: "🔒 The big box unlocks at video-reward level 10 — and the first one is granted right away.",
+            weeklyBoxLockedNote: "🔒 The chest unlocks once your video reward grows to 18 coins — a 55-330 coin range opens up.",
+            bigBoxLockedNote: "🔒 The big box unlocks at the same point (18 coins/video) — and the first one is granted right away.",
             bannerBtnPrefix: "Quick banner",
             bannerWaitBtn: (mmss) => `Banner in ${mmss}`,
             bannerLoadingBtn: "Loading banner...",
@@ -167,11 +167,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // считает сервер (см. lib/economyConfig.js: BANNER_REWARD).
     const BANNER_REWARD_DISPLAY = 8;
 
-    // Зеркало серверной лестницы наград (lib/streakLogic.js) — только
-    // для отображения, реальные начисления считает сервер. Теперь
-    // одна лестница на всех, сундук открывается с 2-го уровня (16+).
+    // Зеркало серверной лестницы наград (lib/streakLogic.js: DAILY_LADDER
+    // и BOX_UNLOCK_TIER_IDX) — только для отображения, реальные начисления
+    // считает сервер. Сундук открывается со 2-го тира (video_reward = 18).
     function weeklyLadderFor(reward) {
-        return { values: [9, 14, 19, 24, 29, 34], boxUnlocked: reward >= 16 };
+        return { values: [11, 17, 23, 29, 35, 41], boxUnlocked: reward >= 18 };
     }
 
     async function refreshUser() {
@@ -247,7 +247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!boxUnlocked) {
                 note.style.display = 'block';
                 note.innerText = t.weeklyBoxLockedNote;
-            } else if ((userState.video_reward || 10) < 16) {
+            } else if ((userState.video_reward || 10) < 18) {
                 note.style.display = 'block';
                 note.innerText = t.bigBoxLockedNote;
             } else {
@@ -273,7 +273,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const bigBoxEl = document.getElementById('tNextBigBoxHint');
         if (bigBoxEl) {
             bigBoxEl.innerText = userState.days_to_next_big_box === null
-                ? (currentLang === 'ru' ? 'Большая коробка: откроется на 10 уровне награды' : 'Big box: unlocks at reward level 10')
+                ? (currentLang === 'ru' ? 'Большая коробка: откроется на уровне 18 монет/ролик' : 'Big box: unlocks at 18 coins/video')
                 : `${t.nextBigBoxLabel} ${userState.days_to_next_big_box} ${t.activeDaysWord}`;
         }
     }
