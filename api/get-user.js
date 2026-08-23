@@ -118,7 +118,7 @@ module.exports = async (req, res) => {
   const lifetimeRevenue = user.lifetime_ad_revenue_usd || 0;
   const lifetimePayoutUsd = (user.lifetime_ad_payout_coins || 0) * COIN_TO_USD;
   const adPayoutRatio = lifetimeRevenue > 0
-    ? Math.min(MAX_AD_PAYOUT_RATIO_DISPLAY, Math.round((lifetimePayoutUsd / lifetimeRevenue) * 100))
+    ? Math.min(MAX_AD_PAYOUT_RATIO_DISPLAY, Number(((lifetimePayoutUsd / lifetimeRevenue) * 100).toFixed(1)))
     : 0;
 
   return res.status(200).json({
