@@ -66,6 +66,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             bannerBtnPrefix: "Быстрый баннер",
             bannerWaitBtn: (mmss) => `Баннер через ${mmss}`,
             bannerLoadingBtn: "Загрузка баннера...",
+            bannerDailyLimitBtn: "Баннеры на сегодня закончились",
             confirmBanner: "Посмотреть короткий баннер за",
             bannerRewardMsg: (r) => `📺 +${r} монет за баннер!`,
         },
@@ -126,6 +127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             bannerBtnPrefix: "Quick banner",
             bannerWaitBtn: (mmss) => `Banner in ${mmss}`,
             bannerLoadingBtn: "Loading banner...",
+            bannerDailyLimitBtn: "No more banners today",
             confirmBanner: "Watch a short banner for",
             bannerRewardMsg: (r) => `📺 +${r} coins for the banner!`,
         }
@@ -160,7 +162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         ads_watched_today: 0, ads_required_today: 15, streak_count: 0,
         ref_count: 0, ref_earn: 0, min_withdrawal: 10000,
         days_to_next_reward: null, days_to_next_limit: null, days_to_next_big_box: null,
-        banner_cooldown_seconds: 0,
+        banner_cooldown_seconds: 0, banners_watched_today: 0, banner_daily_limit: 6,
     };
 
     // Награда за баннер — только для текста кнопки, реальное начисление
@@ -377,14 +379,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     function updateBannerButton() {
         if (!bannerBtn) return;
         const t = translations[currentLang];
+        const dailyLimitReached = (userState.banners_watched_today || 0) >= (userState.banner_daily_limit || 6);
         if (isBannerLoading) {
             bannerBtn.innerText = t.bannerLoadingBtn;
+            bannerBtn.disabled = true;
+        } else if (dailyLimitReached) {
+            bannerBtn.innerText = t.bannerDailyLimitBtn;
             bannerBtn.disabled = true;
         } else if (bannerCooldownRemaining > 0) {
             bannerBtn.innerText = t.bannerWaitBtn(formatMMSS(bannerCooldownRemaining));
             bannerBtn.disabled = true;
         } else {
-            bannerBtn.innerText = `${t.bannerBtnPrefix} (+${BANNER_REWARD_DISPLAY} ${t.coinWord})`;
+            const left = (userState.banner_daily_limit || 6) - (userState.banners_watched_today || 0);
+            bannerBtn.innerText = `${t.bannerBtnPrefix} (+${BANNER_REWARD_DISPLAY} ${t.coinWord}) · ${left}/${userState.banner_daily_limit || 6}`;
             bannerBtn.disabled = false;
         }
     }
@@ -410,7 +417,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (bannerBtn) {
         bannerBtn.addEventListener('click', async () => {
-            if (isBannerLoading || bannerCooldownRemaining > 0) return;
+            const dailyLimitReached = (userState.banners_watched_today || 0) >= (userState.banner_daily_limit || 6);
+            if (isBannerLoading || bannerCooldownRemaining > 0 || dailyLimitReached) return;
             if (!confirm(`${translations[currentLang].confirmBanner} +${BANNER_REWARD_DISPLAY}?`)) return;
 
             isBannerLoading = true;
