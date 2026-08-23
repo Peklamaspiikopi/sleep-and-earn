@@ -204,7 +204,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         const ratioEl = document.getElementById('statAdRatioVal');
         if (ratioEl && userState.ad_payout_ratio != null) {
-            ratioEl.innerText = `${userState.ad_payout_ratio}/${userState.max_ad_payout_ratio || 50}%`;
+            const cur = Number(userState.ad_payout_ratio).toFixed(1);
+            const max = Number(userState.max_ad_payout_ratio || 50).toFixed(1);
+            ratioEl.innerText = `${cur}/${max}%`;
         }
     }
 
@@ -322,8 +324,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // так можно проверять показ рекламы прямо сейчас, не дожидаясь
     // одобрения. После модерации верните USE_TEST_ADS = false.
     const USE_TEST_ADS = false;
-    const PROD_BLOCK_ID = "43521";
+    const PROD_BLOCK_ID = "44049";
     const TEST_BLOCK_ID = "43046";
+    // Interstitial — отдельный от Reward тип блока, для баннеров в
+    // Терминале. task-44051 получен про запас на будущее (Task ad —
+    // нативный блок в стиле "список заданий"), пока не используется.
+    const BANNER_BLOCK_ID = "44050";
 
     let videoController = null;
     if (window.Adsgram) {
@@ -413,7 +419,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let session;
         try {
-            session = await api('session-start', { sessionType, topic });
+            session = await api('session', { action: 'start', sessionType, topic });
         } catch (e) {
             alert(e.message);
             isWatching = false;
@@ -430,7 +436,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const finishSuccess = async () => {
             try {
-                const result = await api('session-complete', { sessionId: session.sessionId });
+                const result = await api('session', { action: 'complete', sessionId: session.sessionId });
                 userState.balance = result.balance;
                 await refreshUser();
                 if (onComplete) onComplete(result);
@@ -447,7 +453,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             let cancelled = false;
             for (let attempt = 0; attempt < 2 && !cancelled; attempt++) {
                 try {
-                    await api('session-cancel', { sessionId: session.sessionId });
+                    await api('session', { action: 'cancel', sessionId: session.sessionId });
                     cancelled = true;
                 } catch (e) {
                     console.error('session-cancel failed, attempt', attempt, e);
@@ -486,7 +492,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const code = promoInput.value.trim();
             if (!code) return;
             try {
-                const result = await api('promo-redeem', { code });
+                const result = await api('economy', { action: 'promo_redeem', code });
                 userState.balance = result.balance;
                 renderUser();
                 alert(currentLang === 'ru' ? `🎉 Бонус +${result.reward} монет!` : `🎉 Bonus +${result.reward} coins!`);
@@ -520,7 +526,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ? `Вывести ${userState.balance} монет на ${payoutAddress}? Заявка уйдёт на обработку.`
                 : `Withdraw ${userState.balance} coins to ${payoutAddress}? The request will be processed.`)) return;
             try {
-                const result = await api('request-withdrawal', { payoutAddress });
+                const result = await api('account', { action: 'withdraw', payoutAddress });
                 userState.balance = result.balance;
                 renderUser();
                 if (addressInput) addressInput.value = '';
@@ -657,7 +663,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function loadDilemma(topic) {
         try {
-            const result = await api('get-dilemma', { topic, lang: currentLang });
+            const result = await api('dilemma', { action: 'get', topic, lang: currentLang });
             currentDilemmaTopic = result.activeTopic;
 
             if (dilemmaTopicSwitcher && result.topics) {
@@ -689,7 +695,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!currentDilemma || !currentDilemmaTopic) return;
         if (dilemmaOptions) dilemmaOptions.style.display = 'none';
         try {
-            const result = await api('dilemma-choose', {
+            const result = await api('dilemma', {
+                action: 'choose',
                 topic: currentDilemmaTopic,
                 dilemmaId: currentDilemma.id,
                 choice,
@@ -746,7 +753,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (ageGateBtn) {
             ageGateBtn.addEventListener('click', async () => {
                 try {
-                    await api('confirm-age');
+                    await api('account', { action: 'confirm_age' });
                 } catch (e) {
                     console.error('confirm-age failed', e);
                 }
