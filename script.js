@@ -2,7 +2,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ==== Telegram ====
     const tg = window.Telegram?.WebApp;
-    if (tg) { tg.ready(); tg.expand(); }
+    if (tg) {
+        tg.ready();
+        tg.expand();
+
+        // Учитываем системную шапку Telegram (актуально для Fullscreen-режима),
+        // чтобы верхние блоки не перекрывались кнопками "Закрыть"/меню.
+        const applySafeArea = () => {
+            const top = tg.contentSafeAreaInset?.top
+                ?? tg.safeAreaInset?.top
+                ?? 0;
+            document.documentElement.style.setProperty('--tg-safe-top', top + 'px');
+        };
+        applySafeArea();
+        tg.onEvent('viewportChanged', applySafeArea);
+        tg.onEvent('safeAreaChanged', applySafeArea);
+        tg.onEvent('contentSafeAreaChanged', applySafeArea);
+    }
     const initData = tg?.initData || "";
     let botUsername = "mintrostreakly_bot";
     let miniAppShortName = "MintoStrk";
