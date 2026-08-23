@@ -22,7 +22,7 @@ const {
 } = require('../lib/streakLogic');
 const {
   REVENUE_PER_VIDEO_AD, BANNER_REWARD, BANNER_COOLDOWN_SECONDS,
-  BANNER_MIN_WATCH_SECONDS, REVENUE_PER_BANNER_AD,
+  BANNER_MIN_WATCH_SECONDS, REVENUE_PER_BANNER_AD, BANNER_DAILY_LIMIT,
 } = require('../lib/economyConfig');
 const { logTransaction } = require('../lib/transactions');
 const crypto = require('crypto');
@@ -387,13 +387,20 @@ async function handleCancel(req, res, telegramId) {
 
 // ==== action: banner_start ====
 async function handleBannerStart(req, res, telegramId) {
-  const { data: user } = await supabaseAdmin
+  const { timezone } = req.body || {};
+  const { data: rawUser } = await supabaseAdmin
     .from('users')
-    .select('last_banner_watched_at')
+    .select('last_banner_watched_at, banners_watched_today, manual_limit, manual_limit_max, ads_watched_today, last_reset, last_reset_at, timezone')
     .eq('telegram_id', telegramId)
     .single();
 
-  if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+  if (!rawUser) return res.status(404).json({ error: 'Пользователь не найден' });
+
+  const { user } = await ensureDailyReset(supabaseAdmin, rawUser, telegramId, timezone);
+
+  if ((user.banners_watched_today || 0) >= BANNER_DAILY_LIMIT) {
+    return res.status(429).json({ error: 'Дневной лимит баннеров исчерпан, возвращайся завтра', daily_limit_reached: true });
+  }
 
   if (user.last_banner_watched_at) {
     const elapsedSec = (Date.now() - new Date(user.last_banner_watched_at).getTime()) / 1000;
@@ -469,7 +476,7 @@ async function handleBannerComplete(req, res, telegramId) {
 
   const { data: user } = await supabaseAdmin
     .from('users')
-    .select('balance, lifetime_ad_payout_coins, lifetime_ad_revenue_usd')
+    .select('balance, lifetime_ad_payout_coins, lifetime_ad_revenue_usd, banners_watched_today')
     .eq('telegram_id', telegramId)
     .single();
 
@@ -481,6 +488,7 @@ async function handleBannerComplete(req, res, telegramId) {
     .update({
       balance: newBalance,
       last_banner_watched_at: new Date().toISOString(),
+      banners_watched_today: (user.banners_watched_today || 0) + 1,
       lifetime_ad_payout_coins: (user.lifetime_ad_payout_coins || 0) + reward,
       lifetime_ad_revenue_usd: (user.lifetime_ad_revenue_usd || 0) + REVENUE_PER_BANNER_AD,
     })
