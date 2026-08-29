@@ -2,35 +2,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ==== Telegram ====
     const tg = window.Telegram?.WebApp;
-    if (tg) {
-        tg.ready();
-        tg.expand();
-
-        // Пытаемся войти в настоящий Fullscreen (Bot API 8.0+) — так Telegram
-        // корректнее сообщает высоту своей шапки через contentSafeAreaInset.
-        if (typeof tg.isVersionAtLeast === 'function' && tg.isVersionAtLeast('8.0')
-            && typeof tg.requestFullscreen === 'function' && !tg.isFullscreen) {
-            try { tg.requestFullscreen(); } catch (e) { /* платформа не поддерживает — не критично */ }
-        }
-
-        // Учитываем системную шапку Telegram, чтобы верхние блоки не перекрывались
-        // кнопками "Закрыть"/меню. На части клиентов contentSafeAreaInset/safeAreaInset
-        // возвращают 0 или заниженное значение, поэтому подстраховываемся минимумом.
-        const MIN_SAFE_TOP = 64;
-        const applySafeArea = () => {
-            const apiTop = Math.max(
-                tg.contentSafeAreaInset?.top || 0,
-                tg.safeAreaInset?.top || 0
-            );
-            const top = Math.max(apiTop, MIN_SAFE_TOP);
-            document.documentElement.style.setProperty('--tg-safe-top', top + 'px');
-        };
-        applySafeArea();
-        tg.onEvent('viewportChanged', applySafeArea);
-        tg.onEvent('safeAreaChanged', applySafeArea);
-        tg.onEvent('contentSafeAreaChanged', applySafeArea);
-        tg.onEvent('fullscreenChanged', applySafeArea);
-    }
+    if (tg) { tg.ready(); tg.expand(); }
     const initData = tg?.initData || "";
     let botUsername = "mintrostreakly_bot";
     let miniAppShortName = "MintoStrk";
@@ -191,6 +163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         ref_count: 0, ref_earn: 0, min_withdrawal: 10000,
         days_to_next_reward: null, days_to_next_limit: null, days_to_next_big_box: null,
         banner_cooldown_seconds: 0, banners_watched_today: 0, banner_daily_limit: 6,
+        game_tokens: 0, game_ads_watched_today: 0, game_daily_limit: 8,
     };
 
     // Награда за баннер — только для текста кнопки, реальное начисление
@@ -236,6 +209,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         updateWatchButton();
         updateBannerButton();
+        updateGameJetonsDisplay();
     }
 
     function updateVideoRewardDisplay() {
@@ -377,7 +351,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Interstitial — отдельный от Reward тип блока, для баннеров в
     // Терминале. task-44051 получен про запас на будущее (Task ad —
     // нативный блок в стиле "список заданий"), пока не используется.
-    const BANNER_BLOCK_ID = "44050";
+    const BANNER_BLOCK_ID = "int-44050";
 
     let videoController = null;
     let bannerController = null;
@@ -488,6 +462,143 @@ document.addEventListener('DOMContentLoaded', async () => {
                     .catch(finishBannerFail);
             } else {
                 setTimeout(finishBannerSuccess, session.durationSeconds ? session.durationSeconds * 1000 : 8000);
+            }
+        });
+    }
+
+    // ==== Мини-игры (закрытый период, валюта game_tokens) ====
+    const gameContainer = document.getElementById('gameContainer');
+    const gameJetonsEl = document.getElementById('gameJetons');
+    const gameClaimBox = document.getElementById('gameClaimBox');
+    const gameClaimScoreText = document.getElementById('gameClaimScoreText');
+    const gameClaimBtn = document.getElementById('gameClaimBtn');
+    const gameRestartBtn = document.getElementById('gameRestartBtn');
+    const btnNavGames = document.getElementById('btnNavGames');
+    const gamePickBlockBlast = document.getElementById('gamePickBlockBlast');
+    const gamePick2048 = document.getElementById('gamePick2048');
+    const gamePickWaterSort = document.getElementById('gamePickWaterSort');
+
+    const GAME_ENGINES = {
+        blockblast: () => window.BlockBlast,
+        '2048': () => window.Game2048,
+        watersort: () => window.WaterSort,
+    };
+    let currentGameKey = 'blockblast';
+    let currentGameInstance = null;
+    let lastGameScore = 0;
+    let isGameClaimLoading = false;
+
+    function updateGameJetonsDisplay() {
+        if (gameJetonsEl) gameJetonsEl.innerText = `Жетоны: ${userState.game_tokens || 0}`;
+    }
+
+    function updateGamePickButtons() {
+        if (gamePickBlockBlast) gamePickBlockBlast.style.background = currentGameKey === 'blockblast' ? '' : 'rgba(255,255,255,0.08)';
+        if (gamePick2048) gamePick2048.style.background = currentGameKey === '2048' ? '' : 'rgba(255,255,255,0.08)';
+        if (gamePickWaterSort) gamePickWaterSort.style.background = currentGameKey === 'watersort' ? '' : 'rgba(255,255,255,0.08)';
+    }
+
+    function startCurrentGameRound() {
+        const engine = GAME_ENGINES[currentGameKey] && GAME_ENGINES[currentGameKey]();
+        if (!engine || !gameContainer) return;
+        gameClaimBox.style.display = 'none';
+        currentGameInstance = engine.mount(gameContainer, {
+            onGameOver: (score) => {
+                lastGameScore = score;
+                gameClaimScoreText.innerText = `Раунд окончен! Очки: ${score}`;
+                gameClaimBox.style.display = 'block';
+            },
+        });
+    }
+
+    function destroyCurrentGame() {
+        if (currentGameInstance) {
+            currentGameInstance.destroy();
+            currentGameInstance = null;
+        }
+    }
+
+    function switchGame(key) {
+        if (currentGameKey === key) return;
+        currentGameKey = key;
+        updateGamePickButtons();
+        destroyCurrentGame();
+        startCurrentGameRound();
+    }
+
+    if (gamePickBlockBlast) gamePickBlockBlast.addEventListener('click', () => switchGame('blockblast'));
+    if (gamePick2048) gamePick2048.addEventListener('click', () => switchGame('2048'));
+    if (gamePickWaterSort) gamePickWaterSort.addEventListener('click', () => switchGame('watersort'));
+
+    if (btnNavGames) {
+        btnNavGames.addEventListener('click', () => {
+            switchTab('games');
+            updateGameJetonsDisplay();
+            if (!currentGameInstance) startCurrentGameRound();
+        });
+    }
+
+    // При уходе на другие вкладки гасим игру, чтобы не тратить ресурсы в фоне
+    ['btnNavDilemmas', 'btnNavTerminal', 'btnNavFinance', 'btnNavHistory'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('click', destroyCurrentGame);
+    });
+
+    if (gameRestartBtn) {
+        gameRestartBtn.addEventListener('click', startCurrentGameRound);
+    }
+
+    if (gameClaimBtn) {
+        gameClaimBtn.addEventListener('click', async () => {
+            if (isGameClaimLoading) return;
+            isGameClaimLoading = true;
+            gameClaimBtn.disabled = true;
+            gameClaimBtn.innerText = 'Загрузка...';
+
+            let session;
+            try {
+                session = await api('session', { action: 'game_start', game: currentGameKey, timezone: userTimezone });
+            } catch (e) {
+                alert(e.message);
+                isGameClaimLoading = false;
+                gameClaimBtn.disabled = false;
+                gameClaimBtn.innerText = 'Получить награду';
+                return;
+            }
+
+            const finishGameSuccess = async () => {
+                try {
+                    const result = await api('session', { action: 'game_complete', sessionId: session.sessionId, score: lastGameScore });
+                    userState.game_tokens = result.gameTokens;
+                    updateGameJetonsDisplay();
+                    alert(`🧩 +${result.reward} жетонов!`);
+                } catch (e) {
+                    alert(e.message);
+                } finally {
+                    isGameClaimLoading = false;
+                    gameClaimBtn.disabled = false;
+                    gameClaimBtn.innerText = 'Получить награду';
+                    gameClaimBox.style.display = 'none';
+                    startCurrentGameRound();
+                }
+            };
+
+            const finishGameFail = () => {
+                isGameClaimLoading = false;
+                gameClaimBtn.disabled = false;
+                gameClaimBtn.innerText = 'Получить награду';
+            };
+
+            // Именно Reward-блок (videoController), а не баннер — только он
+            // гарантирует настоящий полный просмотр (см. разбор done-семантики
+            // Interstitial в чате). Для claim'а награды это важнее, чем для
+            // бонусного баннера.
+            if (videoController) {
+                videoController.show()
+                    .then((result) => { if (result?.done !== false) finishGameSuccess(); else finishGameFail(); })
+                    .catch(finishGameFail);
+            } else {
+                setTimeout(finishGameSuccess, 15000);
             }
         });
     }

@@ -16,7 +16,6 @@
             min-height: 100vh;
             margin: 0;
             padding: 12px 0;
-            padding-top: calc(12px + var(--tg-safe-top, 0px));
             user-select: none;
         }
         .container { width: 92%; max-width: 390px; display: flex; flex-direction: column; gap: 12px; }
@@ -289,6 +288,24 @@
         <button class="btn btn-withdraw" id="withdrawBtn">Заказать вывод средств</button>
     </div>
 
+    <!-- ИГРЫ -->
+    <div class="tab-content" id="tabGames">
+        <div class="card" style="text-align:center;">
+            <div style="display:flex;gap:8px;justify-content:center;margin-bottom:10px;">
+                <button class="btn" id="gamePickBlockBlast" style="padding:8px 14px;font-size:12px;">🧩 Block Blast</button>
+                <button class="btn" id="gamePick2048" style="padding:8px 14px;font-size:12px;background:rgba(255,255,255,0.08);">🔢 2048</button>
+                <button class="btn" id="gamePickWaterSort" style="padding:8px 14px;font-size:12px;background:rgba(255,255,255,0.08);">💧 Water Sort</button>
+            </div>
+            <div id="gameJetons" style="font-size:13px;color:#9aa0a6;margin-bottom:10px;">Жетоны: 0</div>
+            <div id="gameContainer"></div>
+            <div id="gameClaimBox" style="display:none;margin-top:14px;">
+                <div id="gameClaimScoreText" style="font-size:14px;color:#fff;margin-bottom:10px;"></div>
+                <button class="btn" id="gameClaimBtn" style="background: linear-gradient(135deg, #ffd43b, #ffa94d);">Получить награду</button>
+                <button class="btn" id="gameRestartBtn" style="margin-top:8px;background:rgba(255,255,255,0.08);">Играть ещё раз без награды</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ИСТОРИЯ -->
     <div class="tab-content" id="tabHistory">
         <div class="card" style="text-align:left;">
@@ -306,16 +323,20 @@
     <div class="nav-bar">
         <button class="nav-btn active" id="btnNavDilemmas" onclick="switchTab('dilemmas')">🎭 <span id="tNavDilemmas">Дилеммы</span></button>
         <button class="nav-btn" id="btnNavTerminal" onclick="switchTab('terminal')">🛌 <span id="tNavTerminal">Терминал</span></button>
+        <button class="nav-btn" id="btnNavGames">🧩 <span id="tNavGames">Игры</span></button>
         <button class="nav-btn" id="btnNavFinance" onclick="switchTab('finance')">💼 <span id="tNavCabinet">Кабинет</span></button>
         <button class="nav-btn" id="btnNavHistory">📜 <span id="tNavHistory">История</span></button>
     </div>
 </div>
 
-<script src="script.js?v=14" defer></script>
+<script src="blockblast.js?v=1" defer></script>
+<script src="game2048.js?v=1" defer></script>
+<script src="watersort.js?v=1" defer></script>
+<script src="script.js?v=17" defer></script>
 <script>
 function switchTab(tabName) {
-    const tabs = { dilemmas: 'tabDilemmas', terminal: 'tabTerminal', finance: 'tabFinance', history: 'tabHistory' };
-    const btns = { dilemmas: 'btnNavDilemmas', terminal: 'btnNavTerminal', finance: 'btnNavFinance', history: 'btnNavHistory' };
+    const tabs = { dilemmas: 'tabDilemmas', terminal: 'tabTerminal', games: 'tabGames', finance: 'tabFinance', history: 'tabHistory' };
+    const btns = { dilemmas: 'btnNavDilemmas', terminal: 'btnNavTerminal', games: 'btnNavGames', finance: 'btnNavFinance', history: 'btnNavHistory' };
     Object.keys(tabs).forEach(key => {
         const isActive = key === tabName;
         document.getElementById(tabs[key]).classList.toggle('active', isActive);
