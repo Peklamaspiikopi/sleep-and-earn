@@ -53,11 +53,14 @@ async function handleWithdraw(req, res, telegramId) {
 
   const { data: user } = await supabaseAdmin
     .from('users')
-    .select('balance, video_reward')
+    .select('balance, video_reward, flagged, reward_locked_permanent')
     .eq('telegram_id', telegramId)
     .single();
 
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+  if (user.flagged || user.reward_locked_permanent) {
+    return res.status(403).json({ error: 'Вывод для этого аккаунта временно недоступен, обратись в поддержку' });
+  }
 
   const minWithdrawal = minWithdrawalFor(user);
   if (user.balance < minWithdrawal) {

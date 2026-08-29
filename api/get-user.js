@@ -10,7 +10,7 @@ const { supabaseAdmin } = require('../lib/supabaseAdmin');
 const { ensureDailyReset, getLocalDateString, MAX_MANUAL_PER_DAY } = require('../lib/userDaily');
 const { daysToNextReward, daysToNextLimit, daysToNextBigBox, minWithdrawalFor, minAdsRequired } = require('../lib/streakLogic');
 const { getTonUsdRate } = require('../lib/tonRate');
-const { BANNER_COOLDOWN_SECONDS, MAX_AD_PAYOUT_RATIO_DISPLAY, BANNER_DAILY_LIMIT } = require('../lib/economyConfig');
+const { BANNER_COOLDOWN_SECONDS, MAX_AD_PAYOUT_RATIO_DISPLAY, BANNER_DAILY_LIMIT, GAME_DAILY_LIMIT } = require('../lib/economyConfig');
 
 // Внутренний курс монеты: 1 монета = $0.00001 (0.1 копейки — уменьшено
 // в 10 раз против исходных $0.0001, чтобы баннер (Interstitial,
@@ -137,6 +137,9 @@ module.exports = async (req, res) => {
     banner_cooldown_seconds: bannerCooldownRemaining,
     banners_watched_today: user.banners_watched_today || 0,
     banner_daily_limit: BANNER_DAILY_LIMIT,
+    game_tokens: user.game_tokens || 0,
+    game_ads_watched_today: user.game_ads_watched_today || 0,
+    game_daily_limit: GAME_DAILY_LIMIT,
     ad_payout_ratio: adPayoutRatio,
     max_ad_payout_ratio: MAX_AD_PAYOUT_RATIO_DISPLAY,
     ref_count: user.ref_count,

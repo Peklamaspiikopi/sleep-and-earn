@@ -23,7 +23,10 @@ const {
 const {
   REVENUE_PER_VIDEO_AD, BANNER_REWARD, BANNER_COOLDOWN_SECONDS,
   BANNER_MIN_WATCH_SECONDS, REVENUE_PER_BANNER_AD, BANNER_DAILY_LIMIT,
+  GAME_DAILY_LIMIT, GAME_MIN_WATCH_SECONDS, GAME_SESSION_TTL_SECONDS,
+  BASE_GAME_REWARD, computeGameBonus,
 } = require('../lib/economyConfig');
+const ALLOWED_GAMES = ['blockblast', '2048', 'watersort'];
 const { logTransaction } = require('../lib/transactions');
 const crypto = require('crypto');
 
@@ -86,6 +89,10 @@ async function handleStart(req, res, telegramId) {
 
   const resetResult = await ensureDailyReset(supabaseAdmin, user, telegramId, user.timezone);
   user = resetResult.user;
+
+  if (user.flagged || user.reward_locked_permanent) {
+    return res.status(403).json({ error: 'Начисления для этого аккаунта временно недоступны' });
+  }
 
   let dilemmaProgress = null;
   if (type === 'dilemma_checkpoint') {
@@ -328,15 +335,39 @@ async function handleComplete(req, res, telegramId) {
   updates.lifetime_ad_payout_coins = (user.lifetime_ad_payout_coins || 0) + payoutThisAd;
   updates.lifetime_ad_revenue_usd = (user.lifetime_ad_revenue_usd || 0) + REVENUE_PER_VIDEO_AD;
 
-  const { error: updateErr } = await supabaseAdmin
-    .from('users')
-    .update(updates)
-    .eq('telegram_id', telegramId);
+  // CAS с повтором на самом balance: остальные поля в updates (стрик,
+  // тир, счётчики) безопасно фиксировать по первому чтению — их не
+  // трогает ни один другой обработчик. А вот balance параллельно
+  // меняют shop_buy/wheel_spin/promo_redeem/withdraw, и без проверки
+  // здесь их запись могла бы быть затёрта этим update'ом "вслепую"
+  // (и наоборот — см. разбор в чате). Поэтому именно balance всегда
+  // пересчитываем от СВЕЖЕГО значения на каждой попытке.
+  let committed = null;
+  let currentBalanceForRetry = user.balance;
+  for (let attempt = 0; attempt < 5 && !committed; attempt++) {
+    const attemptBalance = currentBalanceForRetry + payoutThisAd;
+    const { data: result } = await supabaseAdmin
+      .from('users')
+      .update({ ...updates, balance: attemptBalance })
+      .eq('telegram_id', telegramId)
+      .eq('balance', currentBalanceForRetry)
+      .select()
+      .maybeSingle();
 
-  if (updateErr) {
-    await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
-    return res.status(500).json({ error: 'Не удалось начислить награду' });
+    if (result) {
+      committed = result;
+    } else {
+      const { data: freshUser } = await supabaseAdmin.from('users').select('balance').eq('telegram_id', telegramId).maybeSingle();
+      if (!freshUser) break;
+      currentBalanceForRetry = freshUser.balance;
+    }
   }
+
+  if (!committed) {
+    await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
+    return res.status(409).json({ error: 'Не удалось начислить награду, попробуй ещё раз' });
+  }
+  newBalance = committed.balance;
 
   await supabaseAdmin
     .from('sessions')
@@ -390,11 +421,14 @@ async function handleBannerStart(req, res, telegramId) {
   const { timezone } = req.body || {};
   const { data: rawUser } = await supabaseAdmin
     .from('users')
-    .select('last_banner_watched_at, banners_watched_today, manual_limit, manual_limit_max, ads_watched_today, last_reset, last_reset_at, timezone')
+    .select('last_banner_watched_at, banners_watched_today, manual_limit, manual_limit_max, ads_watched_today, last_reset, last_reset_at, timezone, flagged, reward_locked_permanent')
     .eq('telegram_id', telegramId)
     .single();
 
   if (!rawUser) return res.status(404).json({ error: 'Пользователь не найден' });
+  if (rawUser.flagged || rawUser.reward_locked_permanent) {
+    return res.status(403).json({ error: 'Начисления для этого аккаунта временно недоступны' });
+  }
 
   const { user } = await ensureDailyReset(supabaseAdmin, rawUser, telegramId, timezone);
 
@@ -506,6 +540,131 @@ async function handleBannerComplete(req, res, telegramId) {
   return res.status(200).json({ ok: true, reward, balance: updated.balance });
 }
 
+// ==== action: game_start ====
+// Общий вход для всех мини-игр закрытого периода (blockblast/2048/watersort).
+async function handleGameStart(req, res, telegramId) {
+  const { game, timezone } = req.body || {};
+  if (!ALLOWED_GAMES.includes(game)) {
+    return res.status(400).json({ error: 'Неизвестная игра' });
+  }
+
+  const { data: rawUser } = await supabaseAdmin
+    .from('users')
+    .select('game_ads_watched_today, manual_limit, manual_limit_max, ads_watched_today, last_reset, last_reset_at, timezone, flagged, reward_locked_permanent')
+    .eq('telegram_id', telegramId)
+    .single();
+
+  if (!rawUser) return res.status(404).json({ error: 'Пользователь не найден' });
+  if (rawUser.flagged || rawUser.reward_locked_permanent) {
+    return res.status(403).json({ error: 'Начисления для этого аккаунта временно недоступны' });
+  }
+
+  const { user } = await ensureDailyReset(supabaseAdmin, rawUser, telegramId, timezone);
+
+  if ((user.game_ads_watched_today || 0) >= GAME_DAILY_LIMIT) {
+    return res.status(429).json({ error: 'Дневной лимит наград за игры исчерпан, возвращайся завтра', daily_limit_reached: true });
+  }
+
+  const { data: activeSession } = await supabaseAdmin
+    .from('sessions')
+    .select('id, expires_at')
+    .eq('telegram_id', telegramId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (activeSession && new Date(activeSession.expires_at) > new Date()) {
+    return res.status(409).json({ error: 'Уже есть незавершённая сессия' });
+  }
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + GAME_SESSION_TTL_SECONDS * 1000);
+
+  const { data: session, error } = await supabaseAdmin
+    .from('sessions')
+    .insert({
+      telegram_id: telegramId,
+      mode: 'manual',
+      duration_seconds: GAME_MIN_WATCH_SECONDS,
+      reward: 0,
+      started_at: now.toISOString(),
+      expires_at: expiresAt.toISOString(),
+      status: 'active',
+      session_type: `game_${game}`,
+    })
+    .select()
+    .single();
+
+  if (error || !session) return res.status(500).json({ error: 'Не удалось начать раунд' });
+
+  return res.status(200).json({ sessionId: session.id });
+}
+
+// ==== action: game_complete ====
+async function handleGameComplete(req, res, telegramId) {
+  const { sessionId, score } = req.body || {};
+  const safeScore = Math.max(0, Math.min(100000, Number(score) || 0));
+
+  const { data: session } = await supabaseAdmin
+    .from('sessions')
+    .update({ status: 'processing' })
+    .eq('id', sessionId)
+    .eq('telegram_id', telegramId)
+    .eq('status', 'active')
+    .select()
+    .maybeSingle();
+
+  if (!session || !session.session_type || !session.session_type.startsWith('game_')) {
+    return res.status(409).json({ error: 'Сессия не найдена или уже обработана' });
+  }
+
+  const elapsedSec = (Date.now() - new Date(session.started_at).getTime()) / 1000;
+  if (elapsedSec < GAME_MIN_WATCH_SECONDS) {
+    await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
+    return res.status(400).json({ error: 'Слишком рано' });
+  }
+
+  const reward = BASE_GAME_REWARD + computeGameBonus(safeScore);
+
+  const { data: user } = await supabaseAdmin
+    .from('users')
+    .select('game_tokens, game_ads_watched_today')
+    .eq('telegram_id', telegramId)
+    .single();
+
+  // CAS с повтором на game_tokens — тот же принцип, что и на balance у
+  // ролика/промокода: game_tokens параллельно может трогать магазин
+  // (списание при покупке), поэтому нельзя писать вслепую.
+  let committed = null;
+  let base = user.game_tokens || 0;
+  for (let attempt = 0; attempt < 5 && !committed; attempt++) {
+    const attemptTokens = base + reward;
+    const { data: result } = await supabaseAdmin
+      .from('users')
+      .update({ game_tokens: attemptTokens, game_ads_watched_today: (user.game_ads_watched_today || 0) + 1 })
+      .eq('telegram_id', telegramId)
+      .eq('game_tokens', base)
+      .select()
+      .maybeSingle();
+    if (result) {
+      committed = result;
+    } else {
+      const { data: freshUser } = await supabaseAdmin.from('users').select('game_tokens').eq('telegram_id', telegramId).maybeSingle();
+      if (!freshUser) break;
+      base = freshUser.game_tokens;
+    }
+  }
+
+  if (!committed) {
+    await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
+    return res.status(409).json({ error: 'Не удалось начислить награду, попробуй ещё раз' });
+  }
+
+  await supabaseAdmin.from('sessions').update({ status: 'completed', completed_at: new Date().toISOString(), reward, score: safeScore }).eq('id', sessionId);
+  await logTransaction(supabaseAdmin, telegramId, 'game_reward', reward, committed.game_tokens, session.session_type);
+
+  return res.status(200).json({ ok: true, reward, gameTokens: committed.game_tokens });
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -521,6 +680,8 @@ module.exports = async (req, res) => {
     case 'cancel': return handleCancel(req, res, telegramId);
     case 'banner_start': return handleBannerStart(req, res, telegramId);
     case 'banner_complete': return handleBannerComplete(req, res, telegramId);
+    case 'game_start': return handleGameStart(req, res, telegramId);
+    case 'game_complete': return handleGameComplete(req, res, telegramId);
     default: return res.status(400).json({ error: 'Неизвестное действие' });
   }
 };

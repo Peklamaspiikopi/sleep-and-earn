@@ -160,12 +160,37 @@ async function handlePromoRedeem(req, res, telegramId) {
 
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
 
-  const newBalance = user.balance + promo.reward;
+  // Ретрай на CAS: promo_redemptions выше уже необратимо помечает код
+  // использованным, поэтому здесь нельзя просто отдать 409 при первой
+  // же гонке с balance — повторный ввод того же кода уйдёт в "уже
+  // использован" и человек останется без награды навсегда.
+  let committed = null;
+  let base = user.balance;
+  for (let attempt = 0; attempt < 5 && !committed; attempt++) {
+    const attemptBalance = base + promo.reward;
+    const { data: result } = await supabaseAdmin
+      .from('users')
+      .update({ balance: attemptBalance })
+      .eq('telegram_id', telegramId)
+      .eq('balance', base)
+      .select()
+      .maybeSingle();
+    if (result) {
+      committed = result;
+    } else {
+      const { data: freshUser } = await supabaseAdmin.from('users').select('balance').eq('telegram_id', telegramId).maybeSingle();
+      if (!freshUser) break;
+      base = freshUser.balance;
+    }
+  }
 
-  await supabaseAdmin.from('users').update({ balance: newBalance }).eq('telegram_id', telegramId);
-  await logTransaction(supabaseAdmin, telegramId, 'promo', promo.reward, newBalance, normalizedCode);
+  if (!committed) {
+    return res.status(500).json({ error: 'Промокод принят, но не удалось начислить монеты — напиши в поддержку' });
+  }
 
-  return res.status(200).json({ balance: newBalance, reward: promo.reward });
+  await logTransaction(supabaseAdmin, telegramId, 'promo', promo.reward, committed.balance, normalizedCode);
+
+  return res.status(200).json({ balance: committed.balance, reward: promo.reward });
 }
 
 module.exports = async (req, res) => {
