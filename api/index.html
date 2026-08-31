@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MintoStrk</title>
+    <style>
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body {
+            background-color: #111317;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 12px 0;
+            user-select: none;
+        }
+        .container { width: 92%; max-width: 390px; display: flex; flex-direction: column; gap: 12px; }
+
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 2px; }
+        h1 { font-size: 22px; font-weight: 800; margin: 0; background: linear-gradient(90deg, #00b0ff, #00e676); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .lang-switch { display: flex; background: #1c1e24; padding: 3px; border-radius: 10px; border: 1px solid #2a2d37; }
+        .lang-btn { background: none; border: none; color: #6c727f; font-size: 11px; font-weight: 700; cursor: pointer; padding: 4px 8px; border-radius: 7px; transition: 0.2s; }
+        .lang-btn.active { background: #2a2d37; color: #00b0ff; }
+
+        .tab-content { display: none; flex-direction: column; gap: 12px; }
+        .tab-content.active { display: flex; }
+
+        .card { background: #1a1c23; border: 1px solid #2a2d37; border-radius: 16px; padding: 14px; text-align: left; }
+
+        .alert-box {
+            background: rgba(255, 145, 0, 0.04);
+            border: 1px solid rgba(255, 145, 0, 0.5);
+            box-shadow: 0 0 14px rgba(255, 145, 0, 0.15), inset 0 1px 0 rgba(255,255,255,0.03);
+            color: #ffe0b2; font-size: 12px; line-height: 1.4; border-radius: 16px; padding: 12px 14px;
+            display: flex; gap: 10px; align-items: center;
+        }
+        .alert-icon { font-size: 20px; flex-shrink: 0; text-shadow: 0 0 10px rgba(255, 145, 0, 0.7); }
+
+        .honesty-card {
+            background: rgba(0, 230, 118, 0.04);
+            border: 1px solid rgba(0, 230, 118, 0.4);
+            box-shadow: 0 0 12px rgba(0, 230, 118, 0.12), inset 0 1px 0 rgba(255,255,255,0.03);
+            color: #b9f6ca; font-size: 11px; line-height: 1.4; border-radius: 16px; padding: 12px 14px;
+        }
+
+        .withdraw-limit-card {
+            background: rgba(255, 82, 82, 0.04);
+            border: 1px solid rgba(255, 82, 82, 0.4);
+            box-shadow: 0 0 12px rgba(255, 82, 82, 0.12), inset 0 1px 0 rgba(255,255,255,0.03);
+            color: #ff8a80; font-size: 12px; text-align: center; font-weight: bold; border-radius: 16px; padding: 12px;
+        }
+
+        .limit-card {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 13px; color: #9aa0a6; font-weight: 500;
+            background: linear-gradient(145deg, #1a1c23, #15171d);
+            border: 1px solid rgba(0, 176, 255, 0.3);
+            box-shadow: 0 0 10px rgba(0, 176, 255, 0.08), inset 0 1px 0 rgba(255,255,255,0.03);
+        }
+        .limit-card b { color: #00b0ff; font-weight: 700; text-shadow: 0 0 6px rgba(0, 176, 255, 0.4); }
+
+        .daily-card {
+            background: linear-gradient(145deg, #241a2e, #1a1420);
+            border: 1px solid rgba(171, 71, 188, 0.5);
+            box-shadow: 0 0 14px rgba(171, 71, 188, 0.2), inset 0 1px 0 rgba(255,255,255,0.03);
+            text-align: center;
+            padding: 16px;
+        }
+        .daily-title { font-size: 14px; font-weight: 800; color: #e1bee7; margin-bottom: 4px; }
+        .daily-streak { font-size: 12px; color: #ab47bc; margin-bottom: 10px; }
+        .daily-streak b { font-size: 16px; color: #e1bee7; }
+
+        .week-ladder { display: flex; gap: 4px; margin: 10px 0; }
+        .week-day { flex: 1; background: #1a1420; border: 1px solid rgba(171,71,188,0.3); border-radius: 8px; padding: 6px 2px; text-align: center; }
+        .week-day.active { border-color: #e040fb; box-shadow: 0 0 10px rgba(224,64,251,0.5); background: rgba(224,64,251,0.12); }
+        .week-day-num { font-size: 9px; color: #8a909a; }
+        .week-day-reward { font-size: 11px; font-weight: 700; color: #e1bee7; margin-top: 2px; }
+        .progress-hint { font-size: 11px; color: #8a909a; margin-bottom: 4px; }
+
+        .balance-card {
+            text-align: center; padding: 16px;
+            background: linear-gradient(145deg, #1c1f28, #161820);
+            border: 1px solid rgba(0, 230, 118, 0.4);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 15px rgba(0, 230, 118, 0.12), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+        .balance-label { font-size: 11px; color: #8a909a; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        .balance-value { font-size: 32px; font-weight: 800; color: #00e676; margin-top: 2px; text-shadow: 0 0 15px rgba(0, 230, 118, 0.4); }
+
+        .btn {
+            background: #00b0ff; color: #fff; border: 1px solid #00e5ff;
+            padding: 14px; font-size: 15px; font-weight: 800; border-radius: 14px;
+            cursor: pointer; width: 100%; transition: 0.3s ease;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        #watchBtn {
+            background: linear-gradient(135deg, #0088ff, #00e5ff);
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.6), 0 0 30px rgba(0, 136, 255, 0.3);
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+        }
+        #watchBtn:active:not(:disabled) { transform: scale(0.98); box-shadow: 0 0 10px rgba(0, 229, 255, 0.4); }
+
+        #dailyBonusBtn {
+            background: linear-gradient(135deg, #aa00ff, #e040fb);
+            border: 1px solid #ea80fc;
+            box-shadow: 0 0 15px rgba(224, 64, 251, 0.5);
+        }
+
+        .btn-withdraw {
+            background: linear-gradient(135deg, #aa00ff, #e040fb);
+            border: 1px solid #ea80fc;
+            box-shadow: 0 0 15px rgba(224, 64, 251, 0.6), 0 0 30px rgba(170, 0, 255, 0.3);
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+        }
+        .btn-withdraw:active { transform: scale(0.98); box-shadow: 0 0 10px rgba(224, 64, 251, 0.4); }
+
+        .ref-card { border-color: rgba(0, 176, 255, 0.4); box-shadow: 0 0 12px rgba(0, 176, 255, 0.1); background: rgba(0, 176, 255, 0.04); }
+        .ref-box { display: flex; gap: 6px; margin-top: 8px; }
+        .ref-input { flex: 1; background: #111317; border: 1px solid rgba(0, 230, 118, 0.4); color: #00e676; font-weight: 600; padding: 8px; border-radius: 10px; font-size: 11px; text-align: center; box-shadow: 0 0 8px rgba(0, 230, 118, 0.15); }
+        .ref-btn { background: #00b0ff; color: #fff; border: 1px solid #00e5ff; padding: 0 12px; font-size: 11px; font-weight: 700; border-radius: 10px; cursor: pointer; box-shadow: 0 0 8px rgba(0, 176, 255, 0.4); }
+
+        .grid-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .stat-item { background: #1a1c23; border: 1px solid rgba(0, 176, 255, 0.25); border-radius: 14px; padding: 10px 12px; box-shadow: 0 0 10px rgba(0, 176, 255, 0.05); }
+        .stat-item-title { font-size: 11px; color: #8a909a; font-weight: 700; }
+        .stat-item-val { font-size: 13px; font-weight: 700; color: #fff; margin-top: 4px; }
+
+        .promo-box { display: flex; gap: 6px; }
+        .promo-input { flex: 1; background: #1a1c23; border: 1px solid rgba(0, 176, 255, 0.3); color: #fff; padding: 10px; border-radius: 12px; font-size: 12px; text-align: center; box-shadow: 0 0 8px rgba(0, 176, 255, 0.05); }
+        .promo-btn { background: rgba(0, 230, 118, 0.15); color: #00e676; border: 1px solid #00e676; padding: 0 16px; font-weight: 700; border-radius: 12px; cursor: pointer; font-size: 12px; box-shadow: 0 0 10px rgba(0, 230, 118, 0.25); }
+
+        .nav-bar { display: flex; background: #1a1c23; border-radius: 16px; padding: 4px; gap: 4px; border: 1px solid rgba(0, 176, 255, 0.3); box-shadow: 0 0 15px rgba(0, 176, 255, 0.1); margin-top: 4px; }
+        .nav-btn { flex: 1; background: transparent; color: #6c727f; border: none; padding: 10px 0; font-size: 13px; font-weight: 700; border-radius: 12px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .nav-btn.active { background: #2a2d37; color: #00b0ff; box-shadow: 0 0 10px rgba(0, 176, 255, 0.3); text-shadow: 0 0 5px rgba(0, 176, 255, 0.5); }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(5px); }
+        .modal-content { background: #1a1c23; border: 1px solid #00b0ff; box-shadow: 0 0 25px rgba(0, 176, 255, 0.4); padding: 20px; border-radius: 20px; width: 85%; max-width: 320px; text-align: center; }
+    </style>
+    <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+
+<div class="modal-overlay" id="ageGateModal" style="display:none; z-index:9999;">
+    <div class="modal-content">
+        <div style="font-size: 18px; color: #ff5252; font-weight: 800; margin-bottom: 10px;" id="tAgeGateTitle">⚠️ Внимание!</div>
+        <div style="font-size: 13px; color: #9aa0a6; line-height: 1.5; margin-bottom: 15px; text-align: left;" id="tAgeGateText">MintoStrk доступен только пользователям 18+. Продолжая, вы подтверждаете, что вам есть 18 лет и вы согласны с <a href="terms.html" target="_blank" style="color:#00b0ff;" id="tAgeGateTermsLink">условиями использования</a>.</div>
+        <button class="btn" id="ageGateBtn">Подтверждаю, мне есть 18</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="welcomeModal">
+    <div class="modal-content">
+        <div style="font-size: 18px; color: #00b0ff; font-weight: 800; margin-bottom: 10px; text-shadow: 0 0 8px rgba(0, 176, 255, 0.6);" id="tModalTitle">🚀 Первый запуск!</div>
+        <div style="font-size: 13px; color: #9aa0a6; line-height: 1.5; margin-bottom: 15px; text-align: left;" id="tModalText">Привет!</div>
+        <button class="btn" id="tModalBtn" onclick="closeModal()">Понятно</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="header">
+        <h1>MintoStrk</h1>
+        <div class="lang-switch">
+            <button class="lang-btn active" id="langRu" onclick="setLanguage('ru')">RU</button>
+            <button class="lang-btn" id="langEn" onclick="setLanguage('en')">EN</button>
+        </div>
+    </div>
+
+    <!-- ДИЛЕММЫ -->
+    <div class="tab-content active" id="tabDilemmas">
+        <div class="card" style="text-align:left;">
+            <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;" id="dilemmaTopicSwitcher"></div>
+
+            <div id="dilemmaProgressLine" style="font-size:12px; color:#9aa0a6; margin-bottom:10px;">—</div>
+
+            <div style="font-size: 15px; font-weight: 800; color: #00e5ff; margin-bottom: 8px;" id="dilemmaTitle">—</div>
+            <div style="font-size: 13px; color: #d0d4da; line-height:1.5; margin-bottom: 16px;" id="dilemmaText">—</div>
+
+            <div id="dilemmaOptions" style="display:flex; flex-direction:column; gap:8px;"></div>
+
+            <div id="dilemmaConsequenceBox" style="display:none; margin-top:14px; padding:12px; border-radius:10px; background:#1b1e27; border:1px solid #2a2d37;">
+                <div style="font-size:12px; color:#9aa0a6; margin-bottom:6px;" id="tConsequenceLabel">Что произошло:</div>
+                <div style="font-size:13px; color:#e0e0e0;" id="dilemmaConsequenceText">—</div>
+                <button class="btn" id="dilemmaNextBtn" style="margin-top:12px;">Дальше</button>
+            </div>
+        </div>
+
+        <div class="card" id="dilemmaCheckpointCard" style="display:none; text-align:center; border-color: rgba(0,230,118,0.4);">
+            <div style="font-size:13px; color:#00e676; font-weight:700; margin-bottom:8px;" id="tCheckpointReady">🎁 Чекпоинт готов!</div>
+            <button class="btn" id="dilemmaCheckpointBtn">Посмотреть рекламу за монеты</button>
+        </div>
+    </div>
+
+    <!-- ТЕРМИНАЛ -->
+    <!-- ТЕРМИНАЛ (временно закрыт на период обновления экономики) -->
+    <div class="tab-content" id="tabTerminal">
+        <div class="card" style="text-align:center; padding: 30px 20px;">
+            <div style="font-size: 40px; margin-bottom: 12px;">🚧</div>
+            <div style="font-size: 15px; font-weight: 700; color: #ffd43b; margin-bottom: 10px;" id="tTerminalClosedTitle">Терминал временно закрыт</div>
+            <div style="font-size: 13px; color: #9aa0a6; line-height: 1.5;" id="tTerminalClosedText">Идёт обновление экономики. Зарабатывай жетоны в дилеммах и играх — они пересчитаются в монеты, когда Терминал снова откроется.</div>
+        </div>
+    </div>
+
+    <!-- КАБИНЕТ -->
+    <div class="tab-content" id="tabFinance">
+        <div class="card ref-card">
+            <div style="font-size: 12px; font-weight: 700; color: #00b0ff; text-shadow: 0 0 6px rgba(0, 176, 255, 0.4);" id="tRefTitle">🔗 Ваша реферальная ссылка:</div>
+            <div class="ref-box">
+                <input type="text" id="myRefLink" class="ref-input" readonly value="Загрузка...">
+                <button class="ref-btn" id="copyRefBtn" onclick="copyRefLink()">Копировать</button>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; color: #9aa0a6;">
+                <span>👥 <span id="tRefCountLabel">Приглашено:</span> <b id="refCount" style="color:#ab47bc; text-shadow:0 0 6px rgba(171,71,188,0.5);">0</b></span>
+            </div>
+            <div style="margin-top: 8px; font-size: 11px; color: #ab47bc;" id="tRefBonusText">Реферал засчитывается, когда приглашённый друг наберёт несколько активных дней — доход с вывода посчитаем, когда Терминал откроется</div>
+        </div>
+
+        <div class="card" style="text-align:center;">
+            <div style="font-size: 13px; font-weight: 700; color: #ffd43b; margin-bottom: 10px;">🔑 Твои ключи</div>
+            <div style="display:flex; justify-content:space-around;">
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color:#fff;" id="topicKeysVal">0</div>
+                    <div style="font-size: 11px; color:#9aa0a6;">ключей от тем</div>
+                </div>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color:#fff;" id="secretKeysVal">0</div>
+                    <div style="font-size: 11px; color:#9aa0a6;">секретных ключей</div>
+                </div>
+            </div>
+            <button class="btn" id="unlockTopicBtn" style="margin-top:12px;background: linear-gradient(135deg, #4dabf7, #748ffc);">Открыть новую тему дилемм</button>
+            <button class="btn" id="unlockSecretBtn" style="margin-top:8px;background: linear-gradient(135deg, #9775fa, #f783ac);">Открыть секретную дилемму</button>
+        </div>
+
+        <div class="card" style="text-align:center;">
+            <div style="font-size: 13px; font-weight: 700; color: #ffa94d; margin-bottom: 10px;">🛍️ Магазин</div>
+            <div id="shopJetonsLine" style="font-size:12px;color:#9aa0a6;margin-bottom:10px;">Жетоны: 0</div>
+            <div id="shopList" style="display:flex;flex-direction:column;gap:8px;text-align:left;"></div>
+        </div>
+
+        <div class="honesty-card" id="tHonesty">
+            🛡️ <b>Правило честности:</b> Мы за прозрачное сотрудничество. Любые накрутки фиксируются системой.
+        </div>
+    </div>
+
+    <!-- ИГРЫ -->
+    <div class="tab-content" id="tabGames">
+        <div class="card" style="text-align:center;">
+            <div style="font-size:13px;font-weight:700;color:#69db7c;margin-bottom:8px;">📅 Игровой стрик: <span id="gameStreakCount">0</span> дн.</div>
+            <div id="gameStreakStatusText" style="font-size:12px;color:#9aa0a6;margin-bottom:10px;"></div>
+            <div id="gameStreakButtons">
+                <button class="btn" id="streakAdBtn" style="background: linear-gradient(135deg, #69db7c, #38d9a9); padding:10px;">Смотреть рекламу (+0)</button>
+                <button class="btn" id="streakSkipBtn" style="margin-top:8px;background:rgba(255,255,255,0.08);padding:10px;">Без рекламы (+0)</button>
+            </div>
+            <button class="btn" id="weeklyWheelBtn" style="margin-top:10px;display:none;background: linear-gradient(135deg, #9775fa, #748ffc);padding:10px;">🎡 Бесплатный спин на ключи</button>
+            <button class="btn" id="directAdBtn" style="margin-top:10px;display:none;background: linear-gradient(135deg, #ff922b, #f76707);padding:10px;">📺 Смотреть рекламу напрямую (+8)</button>
+        </div>
+        <div class="card" style="text-align:center;">
+            <div style="display:flex;gap:8px;justify-content:center;margin-bottom:10px;">
+                <button class="btn" id="gamePickBlockBlast" style="padding:8px 14px;font-size:12px;">🧩 Block Blast</button>
+                <button class="btn" id="gamePick2048" style="padding:8px 14px;font-size:12px;background:rgba(255,255,255,0.08);">🔢 2048</button>
+                <button class="btn" id="gamePickWaterSort" style="padding:8px 14px;font-size:12px;background:rgba(255,255,255,0.08);">💧 Water Sort</button>
+            </div>
+            <div id="gameJetons" style="font-size:13px;color:#9aa0a6;margin-bottom:10px;">Жетоны: 0</div>
+            <div id="gameContainer"></div>
+            <div id="gameClaimBox" style="display:none;margin-top:14px;">
+                <div id="gameClaimScoreText" style="font-size:14px;color:#fff;margin-bottom:10px;"></div>
+                <button class="btn" id="gameClaimBtn" style="background: linear-gradient(135deg, #ffd43b, #ffa94d);">Получить награду</button>
+                <button class="btn" id="gameRestartBtn" style="margin-top:8px;background:rgba(255,255,255,0.08);">Играть ещё раз без награды</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ИСТОРИЯ -->
+    <div class="tab-content" id="tabHistory">
+        <div class="card" style="text-align:left;">
+            <div style="font-size: 13px; font-weight: 700; color: #00b0ff; margin-bottom: 10px;">📜 История операций</div>
+            <div id="historyList" style="max-height: 60vh; overflow-y: auto;"></div>
+        </div>
+
+        <div class="card" style="text-align:left;">
+            <div style="font-size: 13px; font-weight: 700; color: #00e676; margin-bottom: 10px;" id="tPublicPayoutsTitle">🛡️ Публичные выплаты (последние 50)</div>
+            <div id="publicPayoutsList" style="max-height: 40vh; overflow-y: auto; font-size:12px; color:#9aa0a6;"></div>
+        </div>
+    </div>
+
+    <!-- Нижнее меню -->
+    <div class="nav-bar">
+        <button class="nav-btn active" id="btnNavDilemmas" onclick="switchTab('dilemmas')">🎭 <span id="tNavDilemmas">Дилеммы</span></button>
+        <button class="nav-btn" id="btnNavGames">🧩 <span id="tNavGames">Игры</span></button>
+        <button class="nav-btn" id="btnNavFinance" onclick="switchTab('finance')">💼 <span id="tNavCabinet">Кабинет</span></button>
+        <button class="nav-btn" id="btnNavHistory">📜 <span id="tNavHistory">История</span></button>
+    </div>
+</div>
+
+<script src="blockblast.js?v=1" defer></script>
+<script src="game2048.js?v=1" defer></script>
+<script src="watersort.js?v=1" defer></script>
+<script src="script.js?v=17" defer></script>
+<script>
+function switchTab(tabName) {
+    const tabs = { dilemmas: 'tabDilemmas', terminal: 'tabTerminal', games: 'tabGames', finance: 'tabFinance', history: 'tabHistory' };
+    const btns = { dilemmas: 'btnNavDilemmas', terminal: 'btnNavTerminal', games: 'btnNavGames', finance: 'btnNavFinance', history: 'btnNavHistory' };
+    Object.keys(tabs).forEach(key => {
+        const isActive = key === tabName;
+        document.getElementById(tabs[key]).classList.toggle('active', isActive);
+        document.getElementById(btns[key]).classList.toggle('active', isActive);
+    });
+}
+</script>
+</body>
+</html>
