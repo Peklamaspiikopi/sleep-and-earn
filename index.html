@@ -196,46 +196,13 @@
     </div>
 
     <!-- ТЕРМИНАЛ -->
+    <!-- ТЕРМИНАЛ (временно закрыт на период обновления экономики) -->
     <div class="tab-content" id="tabTerminal">
-        <div class="alert-box">
-            <span class="alert-icon">💡</span>
-            <span id="tAlert">Экран гаснет? Продлите время работы дисплея в настройках телефона.</span>
+        <div class="card" style="text-align:center; padding: 30px 20px;">
+            <div style="font-size: 40px; margin-bottom: 12px;">🚧</div>
+            <div style="font-size: 15px; font-weight: 700; color: #ffd43b; margin-bottom: 10px;" id="tTerminalClosedTitle">Терминал временно закрыт</div>
+            <div style="font-size: 13px; color: #9aa0a6; line-height: 1.5;" id="tTerminalClosedText">Идёт обновление экономики. Зарабатывай жетоны в дилеммах и играх — они пересчитаются в монеты, когда Терминал снова откроется.</div>
         </div>
-
-        <div class="card daily-card">
-            <div class="daily-title" id="tDailyTitle">🎁 Активность дня</div>
-            <div class="daily-streak"><span id="tAdsProgressLabel">Роликов сегодня:</span> <b id="adsToday">0</b>/<span id="adsRequired">5</span></div>
-            <div class="daily-streak"><span id="tDailyStreakLabel">Активных дней подряд:</span> <b id="streakDay">0</b></div>
-
-            <div class="week-ladder" id="weekLadder">
-                <div class="week-day" data-day="1"><div class="week-day-num">1</div><div class="week-day-reward">10</div></div>
-                <div class="week-day" data-day="2"><div class="week-day-num">2</div><div class="week-day-reward">15</div></div>
-                <div class="week-day" data-day="3"><div class="week-day-num">3</div><div class="week-day-reward">20</div></div>
-                <div class="week-day" data-day="4"><div class="week-day-num">4</div><div class="week-day-reward">25</div></div>
-                <div class="week-day" data-day="5"><div class="week-day-num">5</div><div class="week-day-reward">30</div></div>
-                <div class="week-day" data-day="6"><div class="week-day-num">6</div><div class="week-day-reward">35</div></div>
-                <div class="week-day" data-day="7"><div class="week-day-num">7</div><div class="week-day-reward" id="weekDay7Reward">🎁</div></div>
-            </div>
-
-            <div class="progress-hint" id="tNextRewardHint">До роста награды за ролик: —</div>
-            <div class="progress-hint" id="tNextLimitHint">До +1 ролика в день: —</div>
-            <div class="progress-hint" id="tNextBigBoxHint">До большой коробки: —</div>
-            <div class="progress-hint" id="tBoxesLockedNote" style="display:none; color:#ffb74d; margin-top:6px;"></div>
-        </div>
-
-        <div class="card limit-card">
-            <span id="tLimitLabel">🎬 Осталось роликов сегодня:</span>
-            <span><b><span id="limitCount">20</span></b> / <span id="maxLimitCount">20</span></span>
-        </div>
-
-        <div class="card balance-card">
-            <div class="balance-label" id="tBalanceLabel">Ваш баланс</div>
-            <div class="balance-value"><span id="balance">0</span> <span id="tCoinUnit" style="font-size: 18px;">Монет</span></div>
-        </div>
-
-        <button class="btn" id="watchBtn">Смотреть ролик (+7 монет)</button>
-
-        <button class="btn" id="bannerBtn" style="background: linear-gradient(135deg, #ff9100, #ffc046); border: 1px solid #ffcc80; box-shadow: 0 0 15px rgba(255, 145, 0, 0.5); text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);">Быстрый баннер (+8 монет)</button>
     </div>
 
     <!-- КАБИНЕТ -->
@@ -248,48 +215,49 @@
             </div>
             <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; color: #9aa0a6;">
                 <span>👥 <span id="tRefCountLabel">Приглашено:</span> <b id="refCount" style="color:#ab47bc; text-shadow:0 0 6px rgba(171,71,188,0.5);">0</b></span>
-                <span>💰 <span id="tRefEarnLabel">Доход:</span> <b id="refEarn" style="color:#ab47bc; text-shadow:0 0 6px rgba(171,71,188,0.5);">0</b> <span id="tRefCoinUnit">монет</span></span>
             </div>
-            <div style="margin-top: 8px; font-size: 11px; color: #ab47bc;">👥 <span id="tRefBonusText">+15% от суммы вывода каждого приглашённого</span></div>
+            <div style="margin-top: 8px; font-size: 11px; color: #ab47bc;" id="tRefBonusText">Реферал засчитывается, когда приглашённый друг наберёт несколько активных дней — доход с вывода посчитаем, когда Терминал откроется</div>
         </div>
 
-        <div class="grid-stats">
-            <div class="stat-item">
-                <div class="stat-item-title" id="statCourseTitle">💎 КУРС</div>
-                <div class="stat-item-val" id="statCourseVal" style="color:#00e676; text-shadow:0 0 6px rgba(0,230,118,0.4);">—</div>
+        <div class="card" style="text-align:center;">
+            <div style="font-size: 13px; font-weight: 700; color: #ffd43b; margin-bottom: 10px;">🔑 Твои ключи</div>
+            <div style="display:flex; justify-content:space-around;">
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color:#fff;" id="topicKeysVal">0</div>
+                    <div style="font-size: 11px; color:#9aa0a6;">ключей от тем</div>
+                </div>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color:#fff;" id="secretKeysVal">0</div>
+                    <div style="font-size: 11px; color:#9aa0a6;">секретных ключей</div>
+                </div>
             </div>
-            <div class="stat-item">
-                <div class="stat-item-title" id="statVideoTitle">📺 ВИДЕО-РОЛИК</div>
-                <div class="stat-item-val" id="statVideoVal" style="color:#00e676; text-shadow:0 0 6px rgba(0,230,118,0.4);">—</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-item-title" id="statAdRatioTitle">📊 ДОХОД С РЕКЛАМЫ</div>
-                <div class="stat-item-val" id="statAdRatioVal" style="color:#00e676; text-shadow:0 0 6px rgba(0,230,118,0.4);">—</div>
-            </div>
+            <button class="btn" id="unlockTopicBtn" style="margin-top:12px;background: linear-gradient(135deg, #4dabf7, #748ffc);">Открыть новую тему дилемм</button>
+            <button class="btn" id="unlockSecretBtn" style="margin-top:8px;background: linear-gradient(135deg, #9775fa, #f783ac);">Открыть секретную дилемму</button>
+        </div>
+
+        <div class="card" style="text-align:center;">
+            <div style="font-size: 13px; font-weight: 700; color: #ffa94d; margin-bottom: 10px;">🛍️ Магазин</div>
+            <div id="shopJetonsLine" style="font-size:12px;color:#9aa0a6;margin-bottom:10px;">Жетоны: 0</div>
+            <div id="shopList" style="display:flex;flex-direction:column;gap:8px;text-align:left;"></div>
         </div>
 
         <div class="honesty-card" id="tHonesty">
             🛡️ <b>Правило честности:</b> Мы за прозрачное сотрудничество. Любые накрутки фиксируются системой.
         </div>
-
-        <div class="withdraw-limit-card" id="tWithdrawLimit">
-            🔒 Минимальный вывод: <b>2000 Монет (~0.1 TON)</b>
-        </div>
-
-        <div class="promo-box">
-            <input type="text" id="promoInput" class="promo-input" placeholder="Введите промокод...">
-            <button class="promo-btn" id="promoBtn">ОК</button>
-        </div>
-
-        <div class="promo-box" style="margin-top:10px;">
-            <input type="text" id="payoutAddressInput" class="promo-input" placeholder="Адрес TON-кошелька для вывода" style="flex:1;">
-        </div>
-
-        <button class="btn btn-withdraw" id="withdrawBtn">Заказать вывод средств</button>
     </div>
 
     <!-- ИГРЫ -->
     <div class="tab-content" id="tabGames">
+        <div class="card" style="text-align:center;">
+            <div style="font-size:13px;font-weight:700;color:#69db7c;margin-bottom:8px;">📅 Игровой стрик: <span id="gameStreakCount">0</span> дн.</div>
+            <div id="gameStreakStatusText" style="font-size:12px;color:#9aa0a6;margin-bottom:10px;"></div>
+            <div id="gameStreakButtons">
+                <button class="btn" id="streakAdBtn" style="background: linear-gradient(135deg, #69db7c, #38d9a9); padding:10px;">Смотреть рекламу (+0)</button>
+                <button class="btn" id="streakSkipBtn" style="margin-top:8px;background:rgba(255,255,255,0.08);padding:10px;">Без рекламы (+0)</button>
+            </div>
+            <button class="btn" id="weeklyWheelBtn" style="margin-top:10px;display:none;background: linear-gradient(135deg, #9775fa, #748ffc);padding:10px;">🎡 Бесплатный спин на ключи</button>
+            <button class="btn" id="directAdBtn" style="margin-top:10px;display:none;background: linear-gradient(135deg, #ff922b, #f76707);padding:10px;">📺 Смотреть рекламу напрямую (+8)</button>
+        </div>
         <div class="card" style="text-align:center;">
             <div style="display:flex;gap:8px;justify-content:center;margin-bottom:10px;">
                 <button class="btn" id="gamePickBlockBlast" style="padding:8px 14px;font-size:12px;">🧩 Block Blast</button>
@@ -322,7 +290,6 @@
     <!-- Нижнее меню -->
     <div class="nav-bar">
         <button class="nav-btn active" id="btnNavDilemmas" onclick="switchTab('dilemmas')">🎭 <span id="tNavDilemmas">Дилеммы</span></button>
-        <button class="nav-btn" id="btnNavTerminal" onclick="switchTab('terminal')">🛌 <span id="tNavTerminal">Терминал</span></button>
         <button class="nav-btn" id="btnNavGames">🧩 <span id="tNavGames">Игры</span></button>
         <button class="nav-btn" id="btnNavFinance" onclick="switchTab('finance')">💼 <span id="tNavCabinet">Кабинет</span></button>
         <button class="nav-btn" id="btnNavHistory">📜 <span id="tNavHistory">История</span></button>

@@ -164,6 +164,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         days_to_next_reward: null, days_to_next_limit: null, days_to_next_big_box: null,
         banner_cooldown_seconds: 0, banners_watched_today: 0, banner_daily_limit: 6,
         game_tokens: 0, game_ads_watched_today: 0, game_daily_limit: 8,
+        game_streak_count: 0, game_streak_checked_in_today: false,
+        secret_keys: 0, topic_keys: 0, weekly_wheel_available: false,
     };
 
     // Награда за баннер — только для текста кнопки, реальное начисление
@@ -210,6 +212,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateWatchButton();
         updateBannerButton();
         updateGameJetonsDisplay();
+        updateStreakUI();
+
+        const topicKeysEl = document.getElementById('topicKeysVal');
+        if (topicKeysEl) topicKeysEl.innerText = userState.topic_keys || 0;
+        const secretKeysEl = document.getElementById('secretKeysVal');
+        if (secretKeysEl) secretKeysEl.innerText = userState.secret_keys || 0;
+        updateDirectAdButton();
     }
 
     function updateVideoRewardDisplay() {
@@ -466,6 +475,246 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // ==== Магазин (game_tokens) ====
+    const shopListEl = document.getElementById('shopList');
+    const shopJetonsLine = document.getElementById('shopJetonsLine');
+    const CATEGORY_LABELS = {
+        cosmetic: 'Косметика',
+        gameplay_boost: 'Игровые бусты',
+        terminal_boost: 'Бусты на будущий Терминал',
+        unlock: 'Разблокировки',
+    };
+    let shopCatalog = [];
+    let shopOwned = {};
+
+    function renderShop() {
+        if (!shopListEl) return;
+        if (shopJetonsLine) shopJetonsLine.innerText = `Жетоны: ${userState.game_tokens || 0}`;
+        if (!shopCatalog.length) {
+            shopListEl.innerHTML = '<div style="color:#9aa0a6;font-size:12px;">Загрузка...</div>';
+            return;
+        }
+        const byCategory = {};
+        shopCatalog.forEach((item) => {
+            if (!byCategory[item.category]) byCategory[item.category] = [];
+            byCategory[item.category].push(item);
+        });
+
+        shopListEl.innerHTML = Object.keys(byCategory).map((cat) => {
+            const rows = byCategory[cat].map((item) => {
+                const label = (item.metadata && item.metadata[`label_${currentLang}`]) || item.item_key;
+                const qty = shopOwned[item.item_key];
+                const alreadyOwnedNonConsumable = !item.consumable && qty;
+                const btnText = item.consumable
+                    ? `Купить (+${(item.metadata && item.metadata.uses) || 1})`
+                    : (alreadyOwnedNonConsumable ? 'Куплено ✓' : 'Купить');
+                const disabled = alreadyOwnedNonConsumable || (userState.game_tokens || 0) < item.price_tokens;
+                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:rgba(255,255,255,0.04);border-radius:8px;">
+                    <div>
+                        <div style="font-size:13px;color:#fff;">${label}</div>
+                        <div style="font-size:11px;color:#9aa0a6;">${item.price_tokens} жетонов${qty && item.consumable ? ` · осталось: ${qty}` : ''}</div>
+                    </div>
+                    <button class="btn shop-buy-btn" data-key="${item.item_key}" style="padding:6px 12px;font-size:12px;width:auto;${disabled ? 'opacity:0.5;' : ''}" ${disabled ? 'disabled' : ''}>${btnText}</button>
+                </div>`;
+            }).join('');
+            return `<div style="font-size:12px;font-weight:700;color:#ffd43b;margin-top:6px;">${CATEGORY_LABELS[cat] || cat}</div>${rows}`;
+        }).join('');
+
+        shopListEl.querySelectorAll('.shop-buy-btn').forEach((btn) => {
+            btn.addEventListener('click', () => buyShopItem(btn.dataset.key));
+        });
+    }
+
+    async function loadShop() {
+        try {
+            const result = await api('economy', { action: 'shop_token_list' });
+            shopCatalog = result.items || [];
+            shopOwned = result.owned || {};
+            renderShop();
+        } catch (e) {
+            if (shopListEl) shopListEl.innerText = e.message;
+        }
+    }
+
+    async function buyShopItem(itemKey) {
+        try {
+            const result = await api('economy', { action: 'shop_token_buy', itemKey });
+            userState.game_tokens = result.gameTokens;
+            shopOwned[itemKey] = result.quantity;
+            updateGameJetonsDisplay();
+            if (itemKey === 'direct_ad_unlock') {
+                userState.direct_ad_unlocked = true;
+                updateDirectAdButton();
+            }
+            renderShop();
+            alert(currentLang === 'ru' ? '✅ Куплено!' : '✅ Purchased!');
+        } catch (e) {
+            alert(e.message);
+        }
+    }
+
+    const financeNavBtn = document.getElementById('btnNavFinance');
+    if (financeNavBtn) financeNavBtn.addEventListener('click', loadShop);
+
+    // ==== Прямая кнопка рекламы (после покупки direct_ad_unlock) ====
+    const directAdBtn = document.getElementById('directAdBtn');
+    let isDirectAdLoading = false;
+
+    function updateDirectAdButton() {
+        if (directAdBtn) directAdBtn.style.display = userState.direct_ad_unlocked ? 'block' : 'none';
+    }
+
+    if (directAdBtn) {
+        directAdBtn.addEventListener('click', async () => {
+            if (isDirectAdLoading) return;
+            isDirectAdLoading = true;
+            directAdBtn.disabled = true;
+
+            let session;
+            try {
+                session = await api('session', { action: 'direct_ad_start', timezone: userTimezone });
+            } catch (e) {
+                alert(e.message);
+                isDirectAdLoading = false;
+                directAdBtn.disabled = false;
+                return;
+            }
+
+            const finish = async () => {
+                try {
+                    const result = await api('session', { action: 'direct_ad_complete', sessionId: session.sessionId });
+                    userState.game_tokens = result.gameTokens;
+                    updateGameJetonsDisplay();
+                    alert(`+${result.reward} жетонов!`);
+                } catch (e) {
+                    alert(e.message);
+                } finally {
+                    isDirectAdLoading = false;
+                    directAdBtn.disabled = false;
+                }
+            };
+            const onFail = () => { isDirectAdLoading = false; directAdBtn.disabled = false; };
+
+            if (videoController) {
+                videoController.show()
+                    .then((result) => { if (result?.done !== false) finish(); else onFail(); })
+                    .catch(onFail);
+            } else {
+                setTimeout(finish, 15000);
+            }
+        });
+    }
+
+    // ==== Игровой стрик (ежедневный вход + бесплатный спин на ключи) ====
+    const DAILY_GAME_LADDER_FULL_MIRROR = [3, 4, 5, 6, 8, 10, 15];
+    const DAILY_GAME_LADDER_SKIP_MIRROR = [1, 2, 2, 3, 4, 5, 7];
+    const gameStreakCountEl = document.getElementById('gameStreakCount');
+    const gameStreakStatusText = document.getElementById('gameStreakStatusText');
+    const gameStreakButtons = document.getElementById('gameStreakButtons');
+    const streakAdBtn = document.getElementById('streakAdBtn');
+    const streakSkipBtn = document.getElementById('streakSkipBtn');
+    const weeklyWheelBtn = document.getElementById('weeklyWheelBtn');
+    let isStreakLoading = false;
+
+    function updateStreakUI() {
+        if (gameStreakCountEl) gameStreakCountEl.innerText = userState.game_streak_count || 0;
+        const nextPos = (userState.game_streak_count || 0) % 7; // 0-индекс следующего дня
+        const fullReward = DAILY_GAME_LADDER_FULL_MIRROR[nextPos];
+        const skipReward = DAILY_GAME_LADDER_SKIP_MIRROR[nextPos];
+        const isBigDay = nextPos + 1 === 7;
+        if (streakAdBtn) streakAdBtn.innerText = `Смотреть рекламу (+${fullReward}${isBigDay ? ' + 🔑' : ''})`;
+        if (streakSkipBtn) streakSkipBtn.innerText = `Без рекламы (+${skipReward})`;
+
+        if (userState.game_streak_checked_in_today) {
+            if (gameStreakButtons) gameStreakButtons.style.display = 'none';
+            if (gameStreakStatusText) gameStreakStatusText.innerText = 'Сегодня уже отмечался — заходи завтра';
+        } else {
+            if (gameStreakButtons) gameStreakButtons.style.display = 'block';
+            if (gameStreakStatusText) gameStreakStatusText.innerText = isBigDay ? 'День 7 — большой день, ключ только за рекламу!' : `День ${nextPos + 1} из 7`;
+        }
+        if (weeklyWheelBtn) weeklyWheelBtn.style.display = userState.weekly_wheel_available ? 'block' : 'none';
+    }
+
+    async function claimStreak(withAd) {
+        if (isStreakLoading) return;
+        isStreakLoading = true;
+        if (streakAdBtn) streakAdBtn.disabled = true;
+        if (streakSkipBtn) streakSkipBtn.disabled = true;
+
+        const finishWith = async (apiCall) => {
+            try {
+                const result = await apiCall();
+                userState.game_tokens = result.gameTokens;
+                userState.game_streak_count = result.streakCount;
+                userState.game_streak_checked_in_today = true;
+                if (result.gotSecretKey) userState.secret_keys = result.secretKeys;
+                updateGameJetonsDisplay();
+                updateStreakUI();
+                alert(result.gotSecretKey ? `+${result.reward} жетонов и 🔑 ключ от секретной дилеммы!` : `+${result.reward} жетонов!`);
+            } catch (e) {
+                alert(e.message);
+            } finally {
+                isStreakLoading = false;
+                if (streakAdBtn) streakAdBtn.disabled = false;
+                if (streakSkipBtn) streakSkipBtn.disabled = false;
+            }
+        };
+
+        if (!withAd) {
+            await finishWith(() => api('session', { action: 'streak_skip', timezone: userTimezone }));
+            return;
+        }
+
+        let session;
+        try {
+            session = await api('session', { action: 'streak_ad_start', timezone: userTimezone });
+        } catch (e) {
+            alert(e.message);
+            isStreakLoading = false;
+            if (streakAdBtn) streakAdBtn.disabled = false;
+            if (streakSkipBtn) streakSkipBtn.disabled = false;
+            return;
+        }
+
+        const onFail = () => {
+            isStreakLoading = false;
+            if (streakAdBtn) streakAdBtn.disabled = false;
+            if (streakSkipBtn) streakSkipBtn.disabled = false;
+        };
+
+        if (videoController) {
+            videoController.show()
+                .then((result) => {
+                    if (result?.done !== false) {
+                        finishWith(() => api('session', { action: 'streak_ad_complete', sessionId: session.sessionId, timezone: userTimezone }));
+                    } else onFail();
+                })
+                .catch(onFail);
+        } else {
+            setTimeout(() => finishWith(() => api('session', { action: 'streak_ad_complete', sessionId: session.sessionId, timezone: userTimezone })), 15000);
+        }
+    }
+
+    if (streakAdBtn) streakAdBtn.addEventListener('click', () => claimStreak(true));
+    if (streakSkipBtn) streakSkipBtn.addEventListener('click', () => claimStreak(false));
+
+    if (weeklyWheelBtn) {
+        weeklyWheelBtn.addEventListener('click', async () => {
+            weeklyWheelBtn.disabled = true;
+            try {
+                const result = await api('session', { action: 'weekly_key_wheel' });
+                userState.secret_keys = result.secretKeys;
+                userState.weekly_wheel_available = false;
+                updateStreakUI();
+                alert(result.keysWon > 0 ? `🎡 +${result.keysWon} ключей от секретных дилемм!` : '🎡 В этот раз пусто, повезёт через неделю!');
+            } catch (e) {
+                alert(e.message);
+            } finally {
+                weeklyWheelBtn.disabled = false;
+            }
+        });
+    }
+
     // ==== Мини-игры (закрытый период, валюта game_tokens) ====
     const gameContainer = document.getElementById('gameContainer');
     const gameJetonsEl = document.getElementById('gameJetons');
@@ -534,6 +783,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         btnNavGames.addEventListener('click', () => {
             switchTab('games');
             updateGameJetonsDisplay();
+            updateStreakUI();
             if (!currentGameInstance) startCurrentGameRound();
         });
     }
@@ -637,9 +887,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (checkpointBtn) {
             if (isWatching) {
                 checkpointBtn.innerText = t.watchingBtn;
-                checkpointBtn.disabled = true;
-            } else if (userState.manual_limit <= 0) {
-                checkpointBtn.innerText = t.limitBtn;
                 checkpointBtn.disabled = true;
             } else {
                 checkpointBtn.innerText = t.checkpointBtn;
@@ -807,6 +1054,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const historyList = document.getElementById('historyList');
     const historyLabels = {
         video_reward: { ru: '📺 Просмотр ролика', en: '📺 Video watched' },
+        banner_reward: { ru: '📺 Быстрый баннер', en: '📺 Quick banner' },
         daily_bonus: { ru: '🎁 Дневной бонус', en: '🎁 Daily bonus' },
         box: { ru: '🎁 Сундук', en: '🎁 Chest' },
         big_box: { ru: '📦 Большая коробка', en: '📦 Big box' },
@@ -816,6 +1064,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         withdrawal_request: { ru: '💸 Заявка на вывод', en: '💸 Withdrawal request' },
         referral_bonus: { ru: '👥 Реферальный бонус', en: '👥 Referral bonus' },
         dilemma_checkpoint: { ru: '🎭 Чекпоинт дилемм', en: '🎭 Dilemma checkpoint' },
+        checkpoint_reward: { ru: '🎭 Чекпоинт дилемм', en: '🎭 Dilemma checkpoint' },
+        game_reward: { ru: '🧩 Мини-игра', en: '🧩 Mini-game' },
+        streak_ad: { ru: '📅 Ежедневный вход (реклама)', en: '📅 Daily check-in (ad)' },
+        streak_skip: { ru: '📅 Ежедневный вход', en: '📅 Daily check-in' },
     };
     async function loadHistory() {
         if (!historyList) return;
@@ -872,6 +1124,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==== Дилеммы ====
     let currentDilemma = null;
     let currentDilemmaTopic = null;
+    let isViewingSecretDilemma = false;
     const dilemmaTopicSwitcher = document.getElementById('dilemmaTopicSwitcher');
     const dilemmaTitle = document.getElementById('dilemmaTitle');
     const dilemmaText = document.getElementById('dilemmaText');
@@ -886,6 +1139,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const topicNames = {
         work: { ru: '💼 Работа', en: '💼 Work' },
         money: { ru: '💰 Деньги', en: '💰 Money' },
+        friendship: { ru: '🤝 Дружба', en: '🤝 Friendship' },
+        family: { ru: '👨‍👩‍👧 Семья', en: '👨‍👩‍👧 Family' },
+        internet: { ru: '📱 Интернет', en: '📱 Internet' },
+        neighbors: { ru: '🏠 Соседи', en: '🏠 Neighbors' },
+        school: { ru: '🎓 Учёба', en: '🎓 School' },
+        pets: { ru: '🐾 Питомцы', en: '🐾 Pets' },
+        tech: { ru: '🤖 Технологии', en: '🤖 Tech' },
     };
 
     function renderDilemmaProgress(progress) {
@@ -926,6 +1186,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function loadDilemma(topic) {
+        isViewingSecretDilemma = false;
         try {
             const result = await api('dilemma', { action: 'get', topic, lang: currentLang });
             currentDilemmaTopic = result.activeTopic;
@@ -956,19 +1217,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function chooseDilemmaOption(choice) {
-        if (!currentDilemma || !currentDilemmaTopic) return;
+        if (!currentDilemma) return;
+        if (!isViewingSecretDilemma && !currentDilemmaTopic) return;
         if (dilemmaOptions) dilemmaOptions.style.display = 'none';
         try {
-            const result = await api('dilemma', {
-                action: 'choose',
-                topic: currentDilemmaTopic,
-                dilemmaId: currentDilemma.id,
-                choice,
-                lang: currentLang,
-            });
+            const result = isViewingSecretDilemma
+                ? await api('dilemma', { action: 'choose_secret', dilemmaId: currentDilemma.id, choice, lang: currentLang })
+                : await api('dilemma', {
+                    action: 'choose',
+                    topic: currentDilemmaTopic,
+                    dilemmaId: currentDilemma.id,
+                    choice,
+                    lang: currentLang,
+                });
             if (dilemmaConsequenceText) dilemmaConsequenceText.innerText = result.consequence;
             if (dilemmaConsequenceBox) dilemmaConsequenceBox.style.display = 'block';
-            renderDilemmaProgress(result.progress);
+            if (!isViewingSecretDilemma) renderDilemmaProgress(result.progress);
         } catch (e) {
             alert(e.message);
             if (dilemmaOptions) dilemmaOptions.style.display = 'flex';
@@ -982,14 +1246,91 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (dilemmaCheckpointBtn) {
         dilemmaCheckpointBtn.addEventListener('click', async () => {
             if (isWatching) return;
-            await watchAd({
-                sessionType: 'dilemma_checkpoint',
-                topic: currentDilemmaTopic,
-                onComplete: (result) => {
-                    alert(currentLang === 'ru' ? `🎉 +${result.reward} монет!` : `🎉 +${result.reward} coins!`);
+            isWatching = true;
+            dilemmaCheckpointBtn.disabled = true;
+
+            let session;
+            try {
+                session = await api('session', { action: 'checkpoint_start', topic: currentDilemmaTopic });
+            } catch (e) {
+                alert(e.message);
+                isWatching = false;
+                dilemmaCheckpointBtn.disabled = false;
+                return;
+            }
+
+            const finish = async () => {
+                try {
+                    const result = await api('session', { action: 'checkpoint_complete', sessionId: session.sessionId });
+                    userState.game_tokens = result.gameTokens;
+                    userState.topic_keys = result.topicKeys;
+                    updateGameJetonsDisplay();
+                    const topicKeysEl = document.getElementById('topicKeysVal');
+                    if (topicKeysEl) topicKeysEl.innerText = result.topicKeys;
+                    alert(currentLang === 'ru' ? `🎉 +${result.reward} жетонов и 🔑 ключ от темы!` : `🎉 +${result.reward} tokens and 🔑 a topic key!`);
                     loadDilemma(currentDilemmaTopic);
-                },
-            });
+                } catch (e) {
+                    alert(e.message);
+                } finally {
+                    isWatching = false;
+                    dilemmaCheckpointBtn.disabled = false;
+                }
+            };
+
+            const onFail = () => {
+                isWatching = false;
+                dilemmaCheckpointBtn.disabled = false;
+            };
+
+            if (videoController) {
+                videoController.show()
+                    .then((result) => { if (result?.done !== false) finish(); else onFail(); })
+                    .catch(onFail);
+            } else {
+                setTimeout(finish, 13000);
+            }
+        });
+    }
+
+    const unlockTopicBtn = document.getElementById('unlockTopicBtn');
+    const unlockSecretBtn = document.getElementById('unlockSecretBtn');
+
+    if (unlockTopicBtn) {
+        unlockTopicBtn.addEventListener('click', async () => {
+            unlockTopicBtn.disabled = true;
+            try {
+                const result = await api('dilemma', { action: 'unlock_topic' });
+                userState.topic_keys = result.topicKeys;
+                const el = document.getElementById('topicKeysVal');
+                if (el) el.innerText = result.topicKeys;
+                const name = (topicNames[result.unlockedTopic] && topicNames[result.unlockedTopic][currentLang]) || result.unlockedTopic;
+                alert(currentLang === 'ru' ? `🔓 Открыта новая тема: ${name}!` : `🔓 New topic unlocked: ${name}!`);
+                loadDilemma(result.unlockedTopic);
+            } catch (e) {
+                alert(e.message);
+            } finally {
+                unlockTopicBtn.disabled = false;
+            }
+        });
+    }
+
+    if (unlockSecretBtn) {
+        unlockSecretBtn.addEventListener('click', async () => {
+            unlockSecretBtn.disabled = true;
+            try {
+                const result = await api('dilemma', { action: 'unlock_secret', lang: currentLang });
+                userState.secret_keys = result.secretKeys;
+                const el = document.getElementById('secretKeysVal');
+                if (el) el.innerText = result.secretKeys;
+                isViewingSecretDilemma = true;
+                switchTab('dilemmas');
+                renderDilemma(result.dilemma);
+                if (dilemmaConsequenceBox) dilemmaConsequenceBox.style.display = 'none';
+            } catch (e) {
+                alert(e.message);
+            } finally {
+                unlockSecretBtn.disabled = false;
+            }
         });
     }
 
