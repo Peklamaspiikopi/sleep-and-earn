@@ -879,10 +879,34 @@ function streakLadderPosition(streakCount) {
   return ((streakCount - 1) % 7);
 }
 
+const REFERRAL_ACTIVE_DAYS_THRESHOLD = 3;
+
+// Реферал засчитывается рефереру (ref_count += 1, один раз) как только
+// приглашённый друг наберёт REFERRAL_ACTIVE_DAYS_THRESHOLD дней в новом
+// игровом стрике — вместо старого триггера на оплаченный вывод (вывод
+// сейчас закрыт). Переиспользуем поле referral_credited: смысл тот же
+// ("этот реферал уже засчитан"), просто другой триггер события.
+async function creditReferralIfEligible(telegramId, newStreakCount, referredBy, alreadyCredited) {
+  if (alreadyCredited || !referredBy) return;
+  if (newStreakCount < REFERRAL_ACTIVE_DAYS_THRESHOLD) return;
+
+  const { data: marked } = await supabaseAdmin
+    .from('users')
+    .update({ referral_credited: true })
+    .eq('telegram_id', telegramId)
+    .eq('referral_credited', false)
+    .select()
+    .maybeSingle();
+
+  if (!marked) return; // гонка или уже засчитан кем-то параллельным запросом
+
+  await atomicIncrement(supabaseAdmin, 'users', { telegram_id: referredBy }, 'ref_count', 1);
+}
+
 async function fetchStreakUser(telegramId) {
   return supabaseAdmin
     .from('users')
-    .select('game_streak_count, game_streak_last_active_date, game_streak_last_weekly_wheel_date, secret_keys, game_tokens, timezone, flagged, reward_locked_permanent')
+    .select('game_streak_count, game_streak_last_active_date, game_streak_last_weekly_wheel_date, secret_keys, game_tokens, timezone, flagged, reward_locked_permanent, referred_by, referral_credited')
     .eq('telegram_id', telegramId)
     .single();
 }
@@ -921,6 +945,7 @@ async function handleStreakSkip(req, res, telegramId) {
   if (!updated) return res.status(409).json({ error: 'Повтори ещё раз' });
 
   await logTransaction(supabaseAdmin, telegramId, 'streak_skip', reward, updated.game_tokens);
+  await creditReferralIfEligible(telegramId, newStreakCount, user.referred_by, user.referral_credited);
 
   return res.status(200).json({ ok: true, reward, gameTokens: updated.game_tokens, streakCount: newStreakCount, dayPosition: pos + 1 });
 }
@@ -1024,6 +1049,7 @@ async function handleStreakAdComplete(req, res, telegramId) {
 
   await supabaseAdmin.from('sessions').update({ status: 'completed', completed_at: new Date().toISOString(), reward }).eq('id', sessionId);
   await logTransaction(supabaseAdmin, telegramId, 'streak_ad', reward, updated.game_tokens);
+  await creditReferralIfEligible(telegramId, newStreakCount, user.referred_by, user.referral_credited);
 
   return res.status(200).json({
     ok: true, reward, gameTokens: updated.game_tokens, streakCount: newStreakCount,
