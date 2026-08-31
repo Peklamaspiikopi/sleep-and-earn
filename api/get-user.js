@@ -140,6 +140,13 @@ module.exports = async (req, res) => {
     game_tokens: user.game_tokens || 0,
     game_ads_watched_today: user.game_ads_watched_today || 0,
     game_daily_limit: GAME_DAILY_LIMIT,
+    game_streak_count: user.game_streak_count || 0,
+    game_streak_checked_in_today: user.game_streak_last_active_date === getLocalDateString(tz),
+    secret_keys: user.secret_keys || 0,
+    topic_keys: user.topic_keys || 0,
+    weekly_wheel_available: !user.game_streak_last_weekly_wheel_date
+      || ((Date.now() - new Date(user.game_streak_last_weekly_wheel_date).getTime()) / (1000 * 60 * 60 * 24)) >= 7,
+    direct_ad_unlocked: !!user.direct_ad_unlocked,
     ad_payout_ratio: adPayoutRatio,
     max_ad_payout_ratio: MAX_AD_PAYOUT_RATIO_DISPLAY,
     ref_count: user.ref_count,

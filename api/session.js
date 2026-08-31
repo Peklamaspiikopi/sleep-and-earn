@@ -13,7 +13,7 @@
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
-const { ensureDailyReset, postResetCooldownRemaining, MAX_MANUAL_PER_DAY } = require('../lib/userDaily');
+const { ensureDailyReset, postResetCooldownRemaining, MAX_MANUAL_PER_DAY, getLocalDateString } = require('../lib/userDaily');
 const { atomicIncrement } = require('../lib/atomicIncrement');
 const {
   dailyBonusForStreak, rollBigBox, minAdsRequired, tierIndexFor,
@@ -25,6 +25,8 @@ const {
   BANNER_MIN_WATCH_SECONDS, REVENUE_PER_BANNER_AD, BANNER_DAILY_LIMIT,
   GAME_DAILY_LIMIT, GAME_MIN_WATCH_SECONDS, GAME_SESSION_TTL_SECONDS,
   BASE_GAME_REWARD, computeGameBonus,
+  DAILY_GAME_LADDER_FULL, DAILY_GAME_LADDER_SKIP, DAY7_POSITION,
+  rollKeyWheel, TERMINAL_CLOSED, TERMINAL_CLOSED_MESSAGE, CHECKPOINT_TOKEN_REWARD,
 } = require('../lib/economyConfig');
 const ALLOWED_GAMES = ['blockblast', '2048', 'watersort'];
 const { logTransaction } = require('../lib/transactions');
@@ -35,10 +37,11 @@ const SESSION_TTL_SECONDS = 120;
 const COOLDOWN_MIN_SECONDS = 75;
 const COOLDOWN_MAX_SECONDS = 120;
 
-// ==== action: start (ролик/чекпоинт дилеммы) ====
+// ==== action: start (ролик) ====
 async function handleStart(req, res, telegramId) {
+  if (TERMINAL_CLOSED) return res.status(403).json({ error: TERMINAL_CLOSED_MESSAGE });
   const { sessionType, topic } = req.body || {};
-  const type = sessionType === 'dilemma_checkpoint' ? 'dilemma_checkpoint' : 'video';
+  const type = 'video';
 
   let { data: user } = await supabaseAdmin
     .from('users')
@@ -92,23 +95,6 @@ async function handleStart(req, res, telegramId) {
 
   if (user.flagged || user.reward_locked_permanent) {
     return res.status(403).json({ error: 'Начисления для этого аккаунта временно недоступны' });
-  }
-
-  let dilemmaProgress = null;
-  if (type === 'dilemma_checkpoint') {
-    if (!topic) return res.status(400).json({ error: 'Не указана тема дилемм' });
-
-    const { data: progress } = await supabaseAdmin
-      .from('dilemma_progress')
-      .select('*')
-      .eq('telegram_id', telegramId)
-      .eq('topic', topic)
-      .maybeSingle();
-
-    if (!progress || progress.pending_checkpoints <= 0) {
-      return res.status(400).json({ error: 'Нет доступных чекпоинтов для получения монет' });
-    }
-    dilemmaProgress = progress;
   }
 
   if (user.ads_watched_today === 0) {
@@ -168,22 +154,6 @@ async function handleStart(req, res, telegramId) {
     return res.status(409).json({ error: 'Попробуй ещё раз' });
   }
 
-  if (type === 'dilemma_checkpoint') {
-    const { data: claimedCheckpoint } = await supabaseAdmin
-      .from('dilemma_progress')
-      .update({ pending_checkpoints: dilemmaProgress.pending_checkpoints - 1 })
-      .eq('telegram_id', telegramId)
-      .eq('topic', topic)
-      .eq('pending_checkpoints', dilemmaProgress.pending_checkpoints)
-      .select()
-      .maybeSingle();
-
-    if (!claimedCheckpoint) {
-      await supabaseAdmin.from('users').update({ manual_limit: user.manual_limit }).eq('telegram_id', telegramId).eq('manual_limit', newLimit);
-      return res.status(409).json({ error: 'Попробуй ещё раз' });
-    }
-  }
-
   const sessionId = crypto.randomUUID();
   const startedAt = new Date();
   const expiresAt = new Date(startedAt.getTime() + SESSION_TTL_SECONDS * 1000);
@@ -199,14 +169,15 @@ async function handleStart(req, res, telegramId) {
     expires_at: expiresAt.toISOString(),
     status: 'active',
     session_type: type,
-    dilemma_topic: type === 'dilemma_checkpoint' ? topic : null,
+    dilemma_topic: null,
   }]);
 
   return res.status(200).json({ sessionId, manual_limit: newLimit, reward });
 }
 
-// ==== action: complete (ролик/чекпоинт дилеммы) ====
+// ==== action: complete (ролик) ====
 async function handleComplete(req, res, telegramId) {
+  if (TERMINAL_CLOSED) return res.status(403).json({ error: TERMINAL_CLOSED_MESSAGE });
   const { sessionId } = req.body || {};
 
   const { data: session } = await supabaseAdmin
@@ -374,8 +345,8 @@ async function handleComplete(req, res, telegramId) {
     .update({ status: 'completed', completed_at: new Date().toISOString() })
     .eq('id', sessionId);
 
-  const rewardType = session.session_type === 'dilemma_checkpoint' ? 'dilemma_checkpoint' : 'video_reward';
-  await logTransaction(supabaseAdmin, telegramId, rewardType, session.reward, newBalance, session.session_type === 'dilemma_checkpoint' ? session.dilemma_topic : null);
+  const rewardType = 'video_reward';
+  await logTransaction(supabaseAdmin, telegramId, rewardType, session.reward, newBalance);
   if (dayInfo.dailyBonus) {
     await logTransaction(supabaseAdmin, telegramId, dayInfo.isBox ? 'box' : 'daily_bonus', dayInfo.dailyBonus, newBalance, `Активный день ${dayInfo.streak}`);
   }
@@ -383,7 +354,7 @@ async function handleComplete(req, res, telegramId) {
     await logTransaction(supabaseAdmin, telegramId, 'big_box', dayInfo.bigBox, newBalance, `Большая коробка`);
   }
 
-  return res.status(200).json({ balance: newBalance, reward: session.reward, dilemmaTopic: session.dilemma_topic, ...dayInfo });
+  return res.status(200).json({ balance: newBalance, reward: session.reward, ...dayInfo });
 }
 
 // ==== action: cancel (ролик/чекпоинт дилеммы) ====
@@ -403,14 +374,6 @@ async function handleCancel(req, res, telegramId) {
     return res.status(200).json({ ok: true, alreadyClosed: true });
   }
 
-  if (session.session_type === 'dilemma_checkpoint') {
-    await atomicIncrement(
-      supabaseAdmin, 'dilemma_progress',
-      { telegram_id: telegramId, topic: session.dilemma_topic },
-      'pending_checkpoints', 1
-    );
-  }
-
   await atomicIncrement(supabaseAdmin, 'users', { telegram_id: telegramId }, 'manual_limit', 1);
 
   return res.status(200).json({ ok: true });
@@ -418,6 +381,7 @@ async function handleCancel(req, res, telegramId) {
 
 // ==== action: banner_start ====
 async function handleBannerStart(req, res, telegramId) {
+  if (TERMINAL_CLOSED) return res.status(403).json({ error: TERMINAL_CLOSED_MESSAGE });
   const { timezone } = req.body || {};
   const { data: rawUser } = await supabaseAdmin
     .from('users')
@@ -476,6 +440,7 @@ async function handleBannerStart(req, res, telegramId) {
 
 // ==== action: banner_complete ====
 async function handleBannerComplete(req, res, telegramId) {
+  if (TERMINAL_CLOSED) return res.status(403).json({ error: TERMINAL_CLOSED_MESSAGE });
   const { sessionId } = req.body || {};
 
   const { data: session } = await supabaseAdmin
@@ -542,6 +507,248 @@ async function handleBannerComplete(req, res, telegramId) {
 
 // ==== action: game_start ====
 // Общий вход для всех мини-игр закрытого периода (blockblast/2048/watersort).
+// ==== action: checkpoint_start (дилеммы — не завязано на manual_limit) ====
+async function handleCheckpointStart(req, res, telegramId) {
+  const { topic } = req.body || {};
+  if (!topic) return res.status(400).json({ error: 'Не указана тема дилемм' });
+
+  const { data: user } = await supabaseAdmin
+    .from('users')
+    .select('flagged, reward_locked_permanent')
+    .eq('telegram_id', telegramId)
+    .single();
+
+  if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+  if (user.flagged || user.reward_locked_permanent) {
+    return res.status(403).json({ error: 'Начисления для этого аккаунта временно недоступны' });
+  }
+
+  const { data: progress } = await supabaseAdmin
+    .from('dilemma_progress')
+    .select('*')
+    .eq('telegram_id', telegramId)
+    .eq('topic', topic)
+    .maybeSingle();
+
+  if (!progress || progress.pending_checkpoints <= 0) {
+    return res.status(400).json({ error: 'Нет доступных чекпоинтов' });
+  }
+
+  const { data: activeSession } = await supabaseAdmin
+    .from('sessions')
+    .select('id, expires_at')
+    .eq('telegram_id', telegramId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (activeSession && new Date(activeSession.expires_at) > new Date()) {
+    return res.status(409).json({ error: 'Уже есть незавершённая сессия' });
+  }
+
+  const { data: claimedCheckpoint } = await supabaseAdmin
+    .from('dilemma_progress')
+    .update({ pending_checkpoints: progress.pending_checkpoints - 1 })
+    .eq('telegram_id', telegramId)
+    .eq('topic', topic)
+    .eq('pending_checkpoints', progress.pending_checkpoints)
+    .select()
+    .maybeSingle();
+
+  if (!claimedCheckpoint) return res.status(409).json({ error: 'Попробуй ещё раз' });
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + GAME_SESSION_TTL_SECONDS * 1000);
+  const { data: session, error } = await supabaseAdmin
+    .from('sessions')
+    .insert({
+      telegram_id: telegramId, mode: 'manual', duration_seconds: GAME_MIN_WATCH_SECONDS,
+      reward: 0, started_at: now.toISOString(), expires_at: expiresAt.toISOString(),
+      status: 'active', session_type: 'dilemma_checkpoint', dilemma_topic: topic,
+    })
+    .select()
+    .single();
+
+  if (error || !session) {
+    // вернуть чекпоинт, раз сессию создать не удалось
+    await atomicIncrement(supabaseAdmin, 'dilemma_progress', { telegram_id: telegramId, topic }, 'pending_checkpoints', 1);
+    return res.status(500).json({ error: 'Не удалось начать' });
+  }
+
+  return res.status(200).json({ sessionId: session.id });
+}
+
+// ==== action: checkpoint_complete ====
+async function handleCheckpointComplete(req, res, telegramId) {
+  const { sessionId } = req.body || {};
+
+  const { data: session } = await supabaseAdmin
+    .from('sessions')
+    .update({ status: 'processing' })
+    .eq('id', sessionId)
+    .eq('telegram_id', telegramId)
+    .eq('status', 'active')
+    .eq('session_type', 'dilemma_checkpoint')
+    .select()
+    .maybeSingle();
+
+  if (!session) return res.status(409).json({ error: 'Сессия не найдена или уже обработана' });
+
+  const elapsedSec = (Date.now() - new Date(session.started_at).getTime()) / 1000;
+  if (elapsedSec < GAME_MIN_WATCH_SECONDS) {
+    await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
+    return res.status(400).json({ error: 'Слишком рано' });
+  }
+
+  const { data: user } = await supabaseAdmin
+    .from('users')
+    .select('game_tokens, topic_keys')
+    .eq('telegram_id', telegramId)
+    .single();
+
+  const reward = CHECKPOINT_TOKEN_REWARD;
+
+  let committed = null;
+  let base = user.game_tokens || 0;
+  for (let attempt = 0; attempt < 5 && !committed; attempt++) {
+    const attemptTokens = base + reward;
+    const { data: result } = await supabaseAdmin
+      .from('users')
+      .update({ game_tokens: attemptTokens, topic_keys: (user.topic_keys || 0) + 1 })
+      .eq('telegram_id', telegramId)
+      .eq('game_tokens', base)
+      .select()
+      .maybeSingle();
+    if (result) {
+      committed = result;
+    } else {
+      const { data: freshUser } = await supabaseAdmin.from('users').select('game_tokens').eq('telegram_id', telegramId).maybeSingle();
+      if (!freshUser) break;
+      base = freshUser.game_tokens;
+    }
+  }
+
+  if (!committed) {
+    await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
+    await atomicIncrement(supabaseAdmin, 'dilemma_progress', { telegram_id: telegramId, topic: session.dilemma_topic }, 'pending_checkpoints', 1);
+    return res.status(409).json({ error: 'Не удалось начислить награду, попробуй ещё раз' });
+  }
+
+  await supabaseAdmin.from('sessions').update({ status: 'completed', completed_at: new Date().toISOString(), reward }).eq('id', sessionId);
+  await logTransaction(supabaseAdmin, telegramId, 'checkpoint_reward', reward, committed.game_tokens, session.dilemma_topic);
+
+  return res.status(200).json({ ok: true, reward, gameTokens: committed.game_tokens, topicKeys: committed.topic_keys });
+}
+
+// ==== action: direct_ad_start (после покупки direct_ad_unlock в магазине) ====
+// Тот же дневной счётчик, что у мини-игр — это ярлык в тот же пул
+// наград, а не новый источник токенов.
+async function handleDirectAdStart(req, res, telegramId) {
+  const { timezone } = req.body || {};
+  const { data: rawUser } = await supabaseAdmin
+    .from('users')
+    .select('game_ads_watched_today, manual_limit, manual_limit_max, ads_watched_today, last_reset, last_reset_at, timezone, flagged, reward_locked_permanent, direct_ad_unlocked')
+    .eq('telegram_id', telegramId)
+    .single();
+
+  if (!rawUser) return res.status(404).json({ error: 'Пользователь не найден' });
+  if (!rawUser.direct_ad_unlocked) return res.status(403).json({ error: 'Функция не куплена в магазине' });
+  if (rawUser.flagged || rawUser.reward_locked_permanent) {
+    return res.status(403).json({ error: 'Начисления для этого аккаунта временно недоступны' });
+  }
+
+  const { user } = await ensureDailyReset(supabaseAdmin, rawUser, telegramId, timezone);
+  if ((user.game_ads_watched_today || 0) >= GAME_DAILY_LIMIT) {
+    return res.status(429).json({ error: 'Дневной лимит наград исчерпан, возвращайся завтра', daily_limit_reached: true });
+  }
+
+  const { data: activeSession } = await supabaseAdmin
+    .from('sessions')
+    .select('id, expires_at')
+    .eq('telegram_id', telegramId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (activeSession && new Date(activeSession.expires_at) > new Date()) {
+    return res.status(409).json({ error: 'Уже есть незавершённая сессия' });
+  }
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + GAME_SESSION_TTL_SECONDS * 1000);
+  const { data: session, error } = await supabaseAdmin
+    .from('sessions')
+    .insert({
+      telegram_id: telegramId, mode: 'manual', duration_seconds: GAME_MIN_WATCH_SECONDS,
+      reward: 0, started_at: now.toISOString(), expires_at: expiresAt.toISOString(),
+      status: 'active', session_type: 'direct_ad',
+    })
+    .select()
+    .single();
+
+  if (error || !session) return res.status(500).json({ error: 'Не удалось начать' });
+  return res.status(200).json({ sessionId: session.id });
+}
+
+// ==== action: direct_ad_complete ====
+async function handleDirectAdComplete(req, res, telegramId) {
+  const { sessionId } = req.body || {};
+
+  const { data: session } = await supabaseAdmin
+    .from('sessions')
+    .update({ status: 'processing' })
+    .eq('id', sessionId)
+    .eq('telegram_id', telegramId)
+    .eq('status', 'active')
+    .eq('session_type', 'direct_ad')
+    .select()
+    .maybeSingle();
+
+  if (!session) return res.status(409).json({ error: 'Сессия не найдена или уже обработана' });
+
+  const elapsedSec = (Date.now() - new Date(session.started_at).getTime()) / 1000;
+  if (elapsedSec < GAME_MIN_WATCH_SECONDS) {
+    await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
+    return res.status(400).json({ error: 'Слишком рано' });
+  }
+
+  const reward = BASE_GAME_REWARD; // без бонуса по очкам — раунд не игрался
+
+  const { data: user } = await supabaseAdmin
+    .from('users')
+    .select('game_tokens, game_ads_watched_today')
+    .eq('telegram_id', telegramId)
+    .single();
+
+  let committed = null;
+  let base = user.game_tokens || 0;
+  for (let attempt = 0; attempt < 5 && !committed; attempt++) {
+    const attemptTokens = base + reward;
+    const { data: result } = await supabaseAdmin
+      .from('users')
+      .update({ game_tokens: attemptTokens, game_ads_watched_today: (user.game_ads_watched_today || 0) + 1 })
+      .eq('telegram_id', telegramId)
+      .eq('game_tokens', base)
+      .select()
+      .maybeSingle();
+    if (result) {
+      committed = result;
+    } else {
+      const { data: freshUser } = await supabaseAdmin.from('users').select('game_tokens').eq('telegram_id', telegramId).maybeSingle();
+      if (!freshUser) break;
+      base = freshUser.game_tokens;
+    }
+  }
+
+  if (!committed) {
+    await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
+    return res.status(409).json({ error: 'Не удалось начислить награду, попробуй ещё раз' });
+  }
+
+  await supabaseAdmin.from('sessions').update({ status: 'completed', completed_at: new Date().toISOString(), reward }).eq('id', sessionId);
+  await logTransaction(supabaseAdmin, telegramId, 'direct_ad_reward', reward, committed.game_tokens);
+
+  return res.status(200).json({ ok: true, reward, gameTokens: committed.game_tokens });
+}
+
 async function handleGameStart(req, res, telegramId) {
   const { game, timezone } = req.body || {};
   if (!ALLOWED_GAMES.includes(game)) {
@@ -665,6 +872,201 @@ async function handleGameComplete(req, res, telegramId) {
   return res.status(200).json({ ok: true, reward, gameTokens: committed.game_tokens });
 }
 
+// ==== Игровой стрик: ежедневный вход с выбором реклама/скип ====
+
+function streakLadderPosition(streakCount) {
+  // streakCount уже ПОСЛЕ инкремента на этот чек-ин (1-based)
+  return ((streakCount - 1) % 7);
+}
+
+async function fetchStreakUser(telegramId) {
+  return supabaseAdmin
+    .from('users')
+    .select('game_streak_count, game_streak_last_active_date, game_streak_last_weekly_wheel_date, secret_keys, game_tokens, timezone, flagged, reward_locked_permanent')
+    .eq('telegram_id', telegramId)
+    .single();
+}
+
+// ==== action: streak_skip (без рекламы, половина награды, мгновенно) ====
+async function handleStreakSkip(req, res, telegramId) {
+  const { timezone } = req.body || {};
+  const { data: user } = await fetchStreakUser(telegramId);
+  if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+  if (user.flagged || user.reward_locked_permanent) {
+    return res.status(403).json({ error: 'Начисления для этого аккаунта временно недоступны' });
+  }
+
+  const today = getLocalDateString(timezone || user.timezone);
+  if (user.game_streak_last_active_date === today) {
+    return res.status(429).json({ error: 'Уже отмечался сегодня' });
+  }
+
+  const newStreakCount = (user.game_streak_count || 0) + 1;
+  const pos = streakLadderPosition(newStreakCount);
+  const reward = DAILY_GAME_LADDER_SKIP[pos];
+  const newTokens = (user.game_tokens || 0) + reward;
+
+  const { data: updated } = await supabaseAdmin
+    .from('users')
+    .update({
+      game_streak_count: newStreakCount,
+      game_streak_last_active_date: today,
+      game_tokens: newTokens,
+    })
+    .eq('telegram_id', telegramId)
+    .eq('game_tokens', user.game_tokens)
+    .select()
+    .maybeSingle();
+
+  if (!updated) return res.status(409).json({ error: 'Повтори ещё раз' });
+
+  await logTransaction(supabaseAdmin, telegramId, 'streak_skip', reward, updated.game_tokens);
+
+  return res.status(200).json({ ok: true, reward, gameTokens: updated.game_tokens, streakCount: newStreakCount, dayPosition: pos + 1 });
+}
+
+// ==== action: streak_ad_start ====
+async function handleStreakAdStart(req, res, telegramId) {
+  const { timezone } = req.body || {};
+  const { data: user } = await fetchStreakUser(telegramId);
+  if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+  if (user.flagged || user.reward_locked_permanent) {
+    return res.status(403).json({ error: 'Начисления для этого аккаунта временно недоступны' });
+  }
+
+  const today = getLocalDateString(timezone || user.timezone);
+  if (user.game_streak_last_active_date === today) {
+    return res.status(429).json({ error: 'Уже отмечался сегодня' });
+  }
+
+  const { data: activeSession } = await supabaseAdmin
+    .from('sessions')
+    .select('id, expires_at')
+    .eq('telegram_id', telegramId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (activeSession && new Date(activeSession.expires_at) > new Date()) {
+    return res.status(409).json({ error: 'Уже есть незавершённая сессия' });
+  }
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + GAME_SESSION_TTL_SECONDS * 1000);
+  const { data: session, error } = await supabaseAdmin
+    .from('sessions')
+    .insert({
+      telegram_id: telegramId, mode: 'manual', duration_seconds: GAME_MIN_WATCH_SECONDS,
+      reward: 0, started_at: now.toISOString(), expires_at: expiresAt.toISOString(),
+      status: 'active', session_type: 'streak_checkin',
+    })
+    .select()
+    .single();
+
+  if (error || !session) return res.status(500).json({ error: 'Не удалось начать' });
+
+  return res.status(200).json({ sessionId: session.id });
+}
+
+// ==== action: streak_ad_complete ====
+async function handleStreakAdComplete(req, res, telegramId) {
+  const { sessionId, timezone } = req.body || {};
+
+  const { data: session } = await supabaseAdmin
+    .from('sessions')
+    .update({ status: 'processing' })
+    .eq('id', sessionId)
+    .eq('telegram_id', telegramId)
+    .eq('status', 'active')
+    .eq('session_type', 'streak_checkin')
+    .select()
+    .maybeSingle();
+
+  if (!session) return res.status(409).json({ error: 'Сессия не найдена или уже обработана' });
+
+  const elapsedSec = (Date.now() - new Date(session.started_at).getTime()) / 1000;
+  if (elapsedSec < GAME_MIN_WATCH_SECONDS) {
+    await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
+    return res.status(400).json({ error: 'Слишком рано' });
+  }
+
+  const { data: user } = await fetchStreakUser(telegramId);
+  if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+
+  const today = getLocalDateString(timezone || user.timezone);
+  if (user.game_streak_last_active_date === today) {
+    return res.status(429).json({ error: 'Уже отмечался сегодня' });
+  }
+
+  const newStreakCount = (user.game_streak_count || 0) + 1;
+  const pos = streakLadderPosition(newStreakCount);
+  const reward = DAILY_GAME_LADDER_FULL[pos];
+  const isBigDay = (pos + 1) === DAY7_POSITION;
+  const newTokens = (user.game_tokens || 0) + reward;
+  const newSecretKeys = (user.secret_keys || 0) + (isBigDay ? 1 : 0);
+
+  const { data: updated } = await supabaseAdmin
+    .from('users')
+    .update({
+      game_streak_count: newStreakCount,
+      game_streak_last_active_date: today,
+      game_tokens: newTokens,
+      secret_keys: newSecretKeys,
+    })
+    .eq('telegram_id', telegramId)
+    .eq('game_tokens', user.game_tokens)
+    .select()
+    .maybeSingle();
+
+  if (!updated) {
+    await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
+    return res.status(409).json({ error: 'Не удалось начислить награду, попробуй ещё раз' });
+  }
+
+  await supabaseAdmin.from('sessions').update({ status: 'completed', completed_at: new Date().toISOString(), reward }).eq('id', sessionId);
+  await logTransaction(supabaseAdmin, telegramId, 'streak_ad', reward, updated.game_tokens);
+
+  return res.status(200).json({
+    ok: true, reward, gameTokens: updated.game_tokens, streakCount: newStreakCount,
+    dayPosition: pos + 1, gotSecretKey: isBigDay, secretKeys: updated.secret_keys,
+  });
+}
+
+// ==== action: weekly_key_wheel (бесплатно, раз в 7 дней, без рекламы) ====
+async function handleWeeklyKeyWheel(req, res, telegramId) {
+  const { data: user } = await supabaseAdmin
+    .from('users')
+    .select('secret_keys, game_streak_last_weekly_wheel_date, flagged, reward_locked_permanent')
+    .eq('telegram_id', telegramId)
+    .single();
+
+  if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+  if (user.flagged || user.reward_locked_permanent) {
+    return res.status(403).json({ error: 'Начисления для этого аккаунта временно недоступны' });
+  }
+
+  if (user.game_streak_last_weekly_wheel_date) {
+    const daysSince = (Date.now() - new Date(user.game_streak_last_weekly_wheel_date).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSince < 7) {
+      return res.status(429).json({ error: 'Следующий бесплатный спин ещё не доступен', days_remaining: Math.ceil(7 - daysSince) });
+    }
+  }
+
+  const keysWon = rollKeyWheel();
+  const newKeys = (user.secret_keys || 0) + keysWon;
+
+  const { data: updated } = await supabaseAdmin
+    .from('users')
+    .update({ secret_keys: newKeys, game_streak_last_weekly_wheel_date: new Date().toISOString() })
+    .eq('telegram_id', telegramId)
+    .eq('secret_keys', user.secret_keys)
+    .select()
+    .maybeSingle();
+
+  if (!updated) return res.status(409).json({ error: 'Повтори ещё раз' });
+
+  return res.status(200).json({ ok: true, keysWon, secretKeys: updated.secret_keys });
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -682,6 +1084,14 @@ module.exports = async (req, res) => {
     case 'banner_complete': return handleBannerComplete(req, res, telegramId);
     case 'game_start': return handleGameStart(req, res, telegramId);
     case 'game_complete': return handleGameComplete(req, res, telegramId);
+    case 'checkpoint_start': return handleCheckpointStart(req, res, telegramId);
+    case 'checkpoint_complete': return handleCheckpointComplete(req, res, telegramId);
+    case 'direct_ad_start': return handleDirectAdStart(req, res, telegramId);
+    case 'direct_ad_complete': return handleDirectAdComplete(req, res, telegramId);
+    case 'streak_skip': return handleStreakSkip(req, res, telegramId);
+    case 'streak_ad_start': return handleStreakAdStart(req, res, telegramId);
+    case 'streak_ad_complete': return handleStreakAdComplete(req, res, telegramId);
+    case 'weekly_key_wheel': return handleWeeklyKeyWheel(req, res, telegramId);
     default: return res.status(400).json({ error: 'Неизвестное действие' });
   }
 };

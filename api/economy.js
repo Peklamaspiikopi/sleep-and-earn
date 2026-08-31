@@ -12,9 +12,105 @@ const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
 const { logTransaction } = require('../lib/transactions');
 const { atomicIncrement } = require('../lib/atomicIncrement');
-const { SHOP_EXTRA_PLAYS_COST, SHOP_EXTRA_PLAYS_AMOUNT, WHEEL_SPIN_COST, rollWheel } = require('../lib/economyConfig');
+const { SHOP_EXTRA_PLAYS_COST, SHOP_EXTRA_PLAYS_AMOUNT, WHEEL_SPIN_COST, rollWheel, TERMINAL_CLOSED, TERMINAL_CLOSED_MESSAGE } = require('../lib/economyConfig');
 
 const DUPLICATE_KEY_CODE = '23505'; // Postgres: unique_violation
+
+// ==== action: shop_token_list ====
+// Каталог + что уже куплено (для галочек/счётчиков расходников)
+async function handleShopTokenList(req, res, telegramId) {
+  const { data: items } = await supabaseAdmin
+    .from('shop_items')
+    .select('*')
+    .eq('active', true)
+    .order('category')
+    .order('price_tokens');
+
+  const { data: inventory } = await supabaseAdmin
+    .from('user_inventory')
+    .select('item_key, quantity')
+    .eq('telegram_id', telegramId);
+
+  const owned = {};
+  (inventory || []).forEach((row) => { owned[row.item_key] = row.quantity; });
+
+  return res.status(200).json({ items: items || [], owned });
+}
+
+// ==== action: shop_token_buy ====
+async function handleShopTokenBuy(req, res, telegramId) {
+  const { itemKey } = req.body || {};
+  if (!itemKey) return res.status(400).json({ error: 'Не указан товар' });
+
+  const { data: item } = await supabaseAdmin
+    .from('shop_items')
+    .select('*')
+    .eq('item_key', itemKey)
+    .eq('active', true)
+    .maybeSingle();
+
+  if (!item) return res.status(404).json({ error: 'Товар не найден' });
+
+  const { data: existingInv } = await supabaseAdmin
+    .from('user_inventory')
+    .select('quantity')
+    .eq('telegram_id', telegramId)
+    .eq('item_key', itemKey)
+    .maybeSingle();
+
+  if (!item.consumable && existingInv) {
+    return res.status(400).json({ error: 'Уже куплено' });
+  }
+
+  const { data: user } = await supabaseAdmin
+    .from('users')
+    .select('game_tokens')
+    .eq('telegram_id', telegramId)
+    .single();
+
+  if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+  if ((user.game_tokens || 0) < item.price_tokens) {
+    return res.status(400).json({ error: 'Недостаточно жетонов' });
+  }
+
+  const newTokens = user.game_tokens - item.price_tokens;
+  const { data: updated } = await supabaseAdmin
+    .from('users')
+    .update({ game_tokens: newTokens })
+    .eq('telegram_id', telegramId)
+    .eq('game_tokens', user.game_tokens)
+    .select()
+    .maybeSingle();
+
+  if (!updated) return res.status(409).json({ error: 'Повтори ещё раз' });
+
+  let invResult;
+  if (existingInv) {
+    const { data } = await supabaseAdmin
+      .from('user_inventory')
+      .update({ quantity: existingInv.quantity + ((item.metadata && item.metadata.uses) || 1) })
+      .eq('telegram_id', telegramId)
+      .eq('item_key', itemKey)
+      .select()
+      .maybeSingle();
+    invResult = data;
+  } else {
+    const { data } = await supabaseAdmin
+      .from('user_inventory')
+      .insert({ telegram_id: telegramId, item_key: itemKey, quantity: (item.metadata && item.metadata.uses) || 1 })
+      .select()
+      .maybeSingle();
+    invResult = data;
+  }
+
+  if (itemKey === 'direct_ad_unlock') {
+    await supabaseAdmin.from('users').update({ direct_ad_unlocked: true }).eq('telegram_id', telegramId);
+  }
+
+  await logTransaction(supabaseAdmin, telegramId, 'shop_token_purchase', -item.price_tokens, updated.game_tokens, itemKey);
+
+  return res.status(200).json({ ok: true, gameTokens: updated.game_tokens, quantity: invResult ? invResult.quantity : 1 });
+}
 
 // ==== action: shop_buy ====
 //
@@ -22,6 +118,7 @@ const DUPLICATE_KEY_CODE = '23505'; // Postgres: unique_violation
 // лимита роликов. Чистый coin sink: монеты только тратятся, новых не
 // появляется — безопасно для доли выплаты независимо от цены.
 async function handleShopBuy(req, res, telegramId) {
+  if (TERMINAL_CLOSED) return res.status(403).json({ error: TERMINAL_CLOSED_MESSAGE });
   const { item } = req.body || {};
   if (item !== 'extra_plays') {
     return res.status(400).json({ error: 'Неизвестный товар' });
@@ -72,6 +169,9 @@ async function handleShopBuy(req, res, telegramId) {
 // Монте-Карло симуляцией на 2 млн прогонов. Списание ставки и
 // начисление выигрыша — одна атомарная операция (net = payout - cost).
 async function handleWheelSpin(req, res, telegramId) {
+  if (TERMINAL_CLOSED) return res.status(403).json({ error: TERMINAL_CLOSED_MESSAGE });
+  if (TERMINAL_CLOSED) return res.status(403).json({ error: TERMINAL_CLOSED_MESSAGE });
+  if (TERMINAL_CLOSED) return res.status(403).json({ error: TERMINAL_CLOSED_MESSAGE });
   const { data: user } = await supabaseAdmin
     .from('users')
     .select('balance')
@@ -112,6 +212,9 @@ async function handleWheelSpin(req, res, telegramId) {
 //   ALTER TABLE promo_redemptions
 //     ADD CONSTRAINT unique_user_code UNIQUE (telegram_id, code);
 async function handlePromoRedeem(req, res, telegramId) {
+  if (TERMINAL_CLOSED) return res.status(403).json({ error: TERMINAL_CLOSED_MESSAGE });
+  if (TERMINAL_CLOSED) return res.status(403).json({ error: TERMINAL_CLOSED_MESSAGE });
+  if (TERMINAL_CLOSED) return res.status(403).json({ error: TERMINAL_CLOSED_MESSAGE });
   const { code } = req.body || {};
   const normalizedCode = String(code || '').trim().toUpperCase();
   if (!normalizedCode) return res.status(400).json({ error: 'Пустой промокод' });
@@ -206,6 +309,8 @@ module.exports = async (req, res) => {
     case 'shop_buy': return handleShopBuy(req, res, telegramId);
     case 'wheel_spin': return handleWheelSpin(req, res, telegramId);
     case 'promo_redeem': return handlePromoRedeem(req, res, telegramId);
+    case 'shop_token_list': return handleShopTokenList(req, res, telegramId);
+    case 'shop_token_buy': return handleShopTokenBuy(req, res, telegramId);
     default: return res.status(400).json({ error: 'Неизвестное действие' });
   }
 };

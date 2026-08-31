@@ -12,6 +12,7 @@ const { supabaseAdmin } = require('../lib/supabaseAdmin');
 const { logTransaction } = require('../lib/transactions');
 const { minWithdrawalFor } = require('../lib/streakLogic');
 const { isValidTonAddress } = require('../lib/tonAddress');
+const { TERMINAL_CLOSED, TERMINAL_CLOSED_MESSAGE } = require('../lib/economyConfig');
 
 // ==== action: confirm_age ====
 async function handleConfirmAge(req, res, telegramId) {
@@ -30,6 +31,7 @@ async function handleConfirmAge(req, res, telegramId) {
 // бонус рефереру начислится автоматически (см. триггер в SQL-схеме).
 // Списание баланса — атомарное (optimistic locking).
 async function handleWithdraw(req, res, telegramId) {
+  if (TERMINAL_CLOSED) return res.status(403).json({ error: TERMINAL_CLOSED_MESSAGE });
   const { payoutAddress } = req.body || {};
 
   const address = String(payoutAddress || '').trim();
