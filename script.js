@@ -1206,6 +1206,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (dilemmaTitle) dilemmaTitle.innerText = currentLang === 'ru' ? 'Дилеммы скоро появятся' : 'Dilemmas coming soon';
                 if (dilemmaText) dilemmaText.innerText = '';
                 if (dilemmaOptions) dilemmaOptions.innerHTML = '';
+                if (dilemmaConsequenceBox) dilemmaConsequenceBox.style.display = 'none';
                 return;
             }
 
