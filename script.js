@@ -609,6 +609,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const DAILY_GAME_LADDER_FULL_MIRROR = [3, 4, 5, 6, 8, 10, 15];
     const DAILY_GAME_LADDER_SKIP_MIRROR = [1, 2, 2, 3, 4, 5, 7];
     const gameStreakCountEl = document.getElementById('gameStreakCount');
+    const gameStreakTotalEl = document.getElementById('gameStreakTotalVal');
+    const streakWeekStripEl = document.getElementById('streakWeekStrip');
     const gameStreakStatusText = document.getElementById('gameStreakStatusText');
     const gameStreakButtons = document.getElementById('gameStreakButtons');
     const streakAdBtn = document.getElementById('streakAdBtn');
@@ -616,9 +618,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     const weeklyWheelBtn = document.getElementById('weeklyWheelBtn');
     let isStreakLoading = false;
 
+    function renderStreakWeek(count, checkedToday) {
+        if (!streakWeekStripEl) return;
+        const nextPos = count % 7; // 0..6, индекс дня, который ещё не пройден (или пройден сегодня)
+        const justFinishedWeek = checkedToday && nextPos === 0 && count > 0;
+        const completedInCycle = justFinishedWeek ? 7 : nextPos;
+        const todayIndex = checkedToday ? -1 : nextPos;
+
+        let html = '';
+        for (let i = 0; i < 7; i++) {
+            const dayNum = i + 1;
+            const isBoxDay = dayNum === 7;
+            let cls = 'streak-day-upcoming';
+            let content = isBoxDay ? '🎁' : String(dayNum);
+            if (i < completedInCycle) {
+                cls = 'streak-day-done';
+                content = isBoxDay ? '🎁' : '✓';
+            } else if (i === todayIndex) {
+                cls = 'streak-day-today';
+            }
+            html += `<div class="streak-day ${cls}">${content}</div>`;
+        }
+        streakWeekStripEl.innerHTML = html;
+    }
+
     function updateStreakUI() {
-        if (gameStreakCountEl) gameStreakCountEl.innerText = userState.game_streak_count || 0;
-        const nextPos = (userState.game_streak_count || 0) % 7; // 0-индекс следующего дня
+        const count = userState.game_streak_count || 0;
+        if (gameStreakCountEl) gameStreakCountEl.innerText = count;
+        if (gameStreakTotalEl) gameStreakTotalEl.innerText = count;
+        renderStreakWeek(count, !!userState.game_streak_checked_in_today);
+        const nextPos = count % 7; // 0-индекс следующего дня
         const fullReward = DAILY_GAME_LADDER_FULL_MIRROR[nextPos];
         const skipReward = DAILY_GAME_LADDER_SKIP_MIRROR[nextPos];
         const isBigDay = nextPos + 1 === 7;
@@ -1125,7 +1154,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentDilemma = null;
     let currentDilemmaTopic = null;
     let isViewingSecretDilemma = false;
-    const dilemmaTopicSwitcher = document.getElementById('dilemmaTopicSwitcher');
+    const topicSelectorToggle = document.getElementById('topicSelectorToggle');
+    const topicSelectorPanel = document.getElementById('topicSelectorPanel');
+    const currentTopicLabel = document.getElementById('currentTopicLabel');
+    const topicSelectorArrow = document.getElementById('topicSelectorArrow');
     const dilemmaTitle = document.getElementById('dilemmaTitle');
     const dilemmaText = document.getElementById('dilemmaText');
     const dilemmaOptions = document.getElementById('dilemmaOptions');
@@ -1147,6 +1179,79 @@ document.addEventListener('DOMContentLoaded', async () => {
         pets: { ru: '🐾 Питомцы', en: '🐾 Pets' },
         tech: { ru: '🤖 Технологии', en: '🤖 Tech' },
     };
+
+    // Свой фон под каждую тему — чтобы темы визуально не путались между собой
+    const TOPIC_STYLES = {
+        work: 'linear-gradient(135deg, #4dabf7, #1864ab)',
+        money: 'linear-gradient(135deg, #ffd43b, #f08c00)',
+        friendship: 'linear-gradient(135deg, #ff8787, #e64980)',
+        family: 'linear-gradient(135deg, #69db7c, #2f9e44)',
+        internet: 'linear-gradient(135deg, #66d9e8, #0c8599)',
+        neighbors: 'linear-gradient(135deg, #ffa94d, #e8590c)',
+        school: 'linear-gradient(135deg, #b197fc, #6741d9)',
+        pets: 'linear-gradient(135deg, #63e6be, #0ca678)',
+        tech: 'linear-gradient(135deg, #91a7ff, #3b5bdb)',
+    };
+
+    // ==== Селектор тем: открывающаяся/закрывающаяся панель с плитками ====
+    let topicSelectorOpen = false;
+    function closeTopicSelector() {
+        topicSelectorOpen = false;
+        if (topicSelectorPanel) topicSelectorPanel.style.display = 'none';
+        if (topicSelectorArrow) topicSelectorArrow.innerText = '▾';
+    }
+    function toggleTopicSelector() {
+        topicSelectorOpen = !topicSelectorOpen;
+        if (topicSelectorPanel) topicSelectorPanel.style.display = topicSelectorOpen ? 'grid' : 'none';
+        if (topicSelectorArrow) topicSelectorArrow.innerText = topicSelectorOpen ? '▴' : '▾';
+    }
+    if (topicSelectorToggle) topicSelectorToggle.addEventListener('click', toggleTopicSelector);
+
+    function renderTopicSelector(topicsMeta, activeTopic) {
+        if (!topicSelectorPanel) return;
+        const tiles = (topicsMeta || []).map(({ topic, unlocked }) => {
+            const name = (topicNames[topic] && topicNames[topic][currentLang]) || topic;
+            const bg = TOPIC_STYLES[topic] || '#2a2d37';
+            const isActive = topic === activeTopic;
+            const lock = unlocked ? '' : '<div class="topic-lock-overlay">🔒</div>';
+            return `<button type="button" class="topic-tile ${isActive ? 'topic-tile-active' : ''}" data-topic="${topic}" data-unlocked="${unlocked}" style="background:${bg};">${name}${lock}</button>`;
+        }).join('');
+
+        const secretLabel = currentLang === 'ru' ? '✨ Секретные дилеммы' : '✨ Secret dilemmas';
+        const secretKeysLabel = currentLang === 'ru' ? 'ключей' : 'keys';
+        const secretTile = `<button type="button" class="topic-tile topic-tile-secret" id="topicTileSecret" style="background: linear-gradient(135deg, #9775fa, #f783ac);">
+            ${secretLabel}<div style="font-size:11px; opacity:0.85; margin-top:2px;">${secretKeysLabel}: <span id="topicTileSecretKeys">${userState.secret_keys || 0}</span></div>
+        </button>`;
+
+        topicSelectorPanel.innerHTML = tiles + secretTile;
+
+        topicSelectorPanel.querySelectorAll('.topic-tile[data-topic]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                if (btn.dataset.unlocked !== 'true') {
+                    alert(currentLang === 'ru'
+                        ? 'Тема пока закрыта. Открыть можно ключом от тем во вкладке «Магазин».'
+                        : 'This topic is still locked. Unlock it with a topic key in the Shop tab.');
+                    return;
+                }
+                loadDilemma(btn.dataset.topic);
+                closeTopicSelector();
+            });
+        });
+
+        const secretBtn = document.getElementById('topicTileSecret');
+        if (secretBtn) {
+            secretBtn.addEventListener('click', () => {
+                if ((userState.secret_keys || 0) <= 0) {
+                    alert(currentLang === 'ru'
+                        ? 'Нет секретных ключей. Получи их за игровой стрик (день 7) или в магазине.'
+                        : 'No secret keys yet. Earn them via the day-7 streak reward or the shop.');
+                    return;
+                }
+                unlockSecretDilemma(secretBtn);
+                closeTopicSelector();
+            });
+        }
+    }
 
     function renderDilemmaProgress(progress) {
         if (!dilemmaProgressLine) return;
@@ -1191,15 +1296,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const result = await api('dilemma', { action: 'get', topic, lang: currentLang });
             currentDilemmaTopic = result.activeTopic;
 
-            if (dilemmaTopicSwitcher && result.topics) {
-                dilemmaTopicSwitcher.innerHTML = result.topics.map(t => {
-                    const name = (topicNames[t] && topicNames[t][currentLang]) || t;
-                    const active = t === currentDilemmaTopic;
-                    return `<button class="btn" data-topic="${t}" style="flex:1; padding:8px; font-size:12px; ${active ? '' : 'background:#2a2d37; opacity:0.7;'}">${name}</button>`;
-                }).join('');
-                dilemmaTopicSwitcher.querySelectorAll('button').forEach(b => {
-                    b.addEventListener('click', () => loadDilemma(b.dataset.topic));
-                });
+            if (currentTopicLabel) {
+                const name = (topicNames[currentDilemmaTopic] && topicNames[currentDilemmaTopic][currentLang]) || currentDilemmaTopic || '—';
+                currentTopicLabel.innerText = name;
+            }
+            if (result.topicsMeta) {
+                renderTopicSelector(result.topicsMeta, currentDilemmaTopic);
             }
 
             if (!result.dilemma) {
@@ -1315,24 +1417,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    async function unlockSecretDilemma(triggerBtn) {
+        if (triggerBtn) triggerBtn.disabled = true;
+        try {
+            const result = await api('dilemma', { action: 'unlock_secret', lang: currentLang });
+            userState.secret_keys = result.secretKeys;
+            const el = document.getElementById('secretKeysVal');
+            if (el) el.innerText = result.secretKeys;
+            const tileEl = document.getElementById('topicTileSecretKeys');
+            if (tileEl) tileEl.innerText = result.secretKeys;
+            isViewingSecretDilemma = true;
+            switchTab('dilemmas');
+            renderDilemma(result.dilemma);
+            if (dilemmaConsequenceBox) dilemmaConsequenceBox.style.display = 'none';
+        } catch (e) {
+            alert(e.message);
+        } finally {
+            if (triggerBtn) triggerBtn.disabled = false;
+        }
+    }
+
     if (unlockSecretBtn) {
-        unlockSecretBtn.addEventListener('click', async () => {
-            unlockSecretBtn.disabled = true;
-            try {
-                const result = await api('dilemma', { action: 'unlock_secret', lang: currentLang });
-                userState.secret_keys = result.secretKeys;
-                const el = document.getElementById('secretKeysVal');
-                if (el) el.innerText = result.secretKeys;
-                isViewingSecretDilemma = true;
-                switchTab('dilemmas');
-                renderDilemma(result.dilemma);
-                if (dilemmaConsequenceBox) dilemmaConsequenceBox.style.display = 'none';
-            } catch (e) {
-                alert(e.message);
-            } finally {
-                unlockSecretBtn.disabled = false;
-            }
-        });
+        unlockSecretBtn.addEventListener('click', () => unlockSecretDilemma(unlockSecretBtn));
     }
 
     // ==== Копирование реф. ссылки ====
