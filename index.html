@@ -302,8 +302,8 @@
 <script src="script.js?v=18" defer></script>
 <script>
 function switchTab(tabName) {
-    const tabs = { dilemmas: 'tabDilemmas', terminal: 'tabTerminal', games: 'tabGames', finance: 'tabFinance', history: 'tabHistory' };
-    const btns = { dilemmas: 'btnNavDilemmas', terminal: 'btnNavTerminal', games: 'btnNavGames', finance: 'btnNavFinance', history: 'btnNavHistory' };
+    const tabs = { dilemmas: 'tabDilemmas', games: 'tabGames', finance: 'tabFinance', history: 'tabHistory' };
+    const btns = { dilemmas: 'btnNavDilemmas', games: 'btnNavGames', finance: 'btnNavFinance', history: 'btnNavHistory' };
     Object.keys(tabs).forEach(key => {
         const isActive = key === tabName;
         document.getElementById(tabs[key]).classList.toggle('active', isActive);
