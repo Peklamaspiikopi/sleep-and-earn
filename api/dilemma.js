@@ -15,6 +15,7 @@ const { CHECKPOINT_INTERVAL } = require('../lib/dilemmaLogic');
 // 004_new_topics.sql. work/money доступны всем всегда, без ключа.
 const ALWAYS_OPEN_TOPICS = ['work', 'money'];
 const KEY_UNLOCK_ORDER = ['friendship', 'family', 'internet', 'neighbors', 'school', 'pets', 'tech'];
+const ALL_TOPICS_ORDER = [...ALWAYS_OPEN_TOPICS, ...KEY_UNLOCK_ORDER];
 
 async function getUnlockedTopics(telegramId) {
   const { data: rows } = await supabaseAdmin
@@ -43,9 +44,15 @@ async function handleGet(req, res, telegramId) {
   const unlockedByKey = await getUnlockedTopics(telegramId);
   const topics = allTopics.filter((t) => ALWAYS_OPEN_TOPICS.includes(t) || unlockedByKey.has(t));
 
+  // Полный список тем (открытые + закрытые) для селектора на главном экране —
+  // в фиксированном порядке открытия, а не в алфавитном порядке из БД.
+  const topicsMeta = ALL_TOPICS_ORDER
+    .filter((t) => allTopics.includes(t))
+    .map((t) => ({ topic: t, unlocked: ALWAYS_OPEN_TOPICS.includes(t) || unlockedByKey.has(t) }));
+
   const requestedIsAllowed = topic && topics.includes(topic);
   const activeTopic = requestedIsAllowed ? topic : topics[0];
-  if (!activeTopic) return res.status(200).json({ topics: [], dilemma: null });
+  if (!activeTopic) return res.status(200).json({ topics: [], topicsMeta, dilemma: null });
 
   const { data: topicDilemmas } = await supabaseAdmin
     .from('dilemmas')
@@ -55,7 +62,7 @@ async function handleGet(req, res, telegramId) {
     .order('order_index');
 
   if (!topicDilemmas || topicDilemmas.length === 0) {
-    return res.status(200).json({ topics, dilemma: null });
+    return res.status(200).json({ topics, topicsMeta, dilemma: null });
   }
 
   let { data: progress } = await supabaseAdmin
@@ -80,6 +87,7 @@ async function handleGet(req, res, telegramId) {
 
   return res.status(200).json({
     topics,
+    topicsMeta,
     activeTopic,
     dilemma: {
       id: current.id,
