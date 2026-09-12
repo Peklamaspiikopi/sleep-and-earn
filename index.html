@@ -124,6 +124,17 @@
         .ref-input { flex: 1; background: #111317; border: 1px solid rgba(0, 230, 118, 0.4); color: #00e676; font-weight: 600; padding: 8px; border-radius: 10px; font-size: 11px; text-align: center; box-shadow: 0 0 8px rgba(0, 230, 118, 0.15); }
         .ref-btn { background: #00b0ff; color: #fff; border: 1px solid #00e5ff; padding: 0 12px; font-size: 11px; font-weight: 700; border-radius: 10px; cursor: pointer; box-shadow: 0 0 8px rgba(0, 176, 255, 0.4); }
 
+        .streak-day { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; background: #1a1c23; border: 1px solid #2a2d37; color: #6a7078; }
+        .streak-day-done { background: rgba(105, 219, 124, 0.18); border-color: #69db7c; color: #69db7c; }
+        .streak-day-today { border-color: #00e5ff; color: #00e5ff; box-shadow: 0 0 8px rgba(0, 229, 255, 0.4); animation: streakPulse 1.6s ease-in-out infinite; }
+        @keyframes streakPulse { 0%, 100% { box-shadow: 0 0 6px rgba(0, 229, 255, 0.3); } 50% { box-shadow: 0 0 14px rgba(0, 229, 255, 0.7); } }
+
+        .topic-tile { position: relative; border: none; border-radius: 12px; padding: 14px 10px; font-size: 13px; font-weight: 700; color: #fff; text-align: center; cursor: pointer; text-shadow: 0 1px 3px rgba(0,0,0,0.4); opacity: 0.55; filter: grayscale(0.3); }
+        .topic-tile[data-unlocked="true"] { opacity: 1; filter: none; }
+        .topic-tile-active { outline: 2px solid #fff; outline-offset: 2px; }
+        .topic-lock-overlay { position: absolute; top: 6px; right: 8px; font-size: 13px; }
+        .topic-tile-secret { grid-column: 1 / -1; opacity: 1 !important; filter: none !important; }
+
         .grid-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .stat-item { background: #1a1c23; border: 1px solid rgba(0, 176, 255, 0.25); border-radius: 14px; padding: 10px 12px; box-shadow: 0 0 10px rgba(0, 176, 255, 0.05); }
         .stat-item-title { font-size: 11px; color: #8a909a; font-weight: 700; }
@@ -172,10 +183,27 @@
 
     <!-- ДИЛЕММЫ -->
     <div class="tab-content active" id="tabDilemmas">
-        <div class="card" style="text-align:left;">
-            <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;" id="dilemmaTopicSwitcher"></div>
+        <div class="card" style="text-align:center;">
+            <div style="font-size:13px;font-weight:700;color:#69db7c;margin-bottom:2px;">📅 Стрик: <span id="gameStreakCount">0</span> дн. подряд</div>
+            <div style="font-size:11px;color:#9aa0a6;margin-bottom:10px;" id="tStreakTotalLine">Всего активных дней: <b id="gameStreakTotalVal" style="color:#fff;">0</b></div>
+            <div id="streakWeekStrip" style="display:flex; gap:6px; justify-content:center; margin-bottom:10px;"></div>
+            <div id="gameStreakStatusText" style="font-size:12px;color:#9aa0a6;margin-bottom:10px;"></div>
+            <div id="gameStreakButtons">
+                <button class="btn" id="streakAdBtn" style="background: linear-gradient(135deg, #69db7c, #38d9a9); padding:10px;">Смотреть рекламу (+0)</button>
+                <button class="btn" id="streakSkipBtn" style="margin-top:8px;background:rgba(255,255,255,0.08);padding:10px;">Без рекламы (+0)</button>
+            </div>
+            <button class="btn" id="weeklyWheelBtn" style="margin-top:10px;display:none;background: linear-gradient(135deg, #9775fa, #748ffc);padding:10px;">🎡 Бесплатный спин на ключи</button>
+            <button class="btn" id="directAdBtn" style="margin-top:10px;display:none;background: linear-gradient(135deg, #ff922b, #f76707);padding:10px;">📺 Смотреть рекламу напрямую (+8)</button>
+        </div>
 
-            <div id="dilemmaProgressLine" style="font-size:12px; color:#9aa0a6; margin-bottom:10px;">—</div>
+        <div class="card" style="text-align:left;">
+            <button class="btn" id="topicSelectorToggle" type="button" style="width:100%; display:flex; justify-content:space-between; align-items:center; background:#2a2d37; margin-bottom:0;">
+                <span id="currentTopicLabel">—</span>
+                <span id="topicSelectorArrow">▾</span>
+            </button>
+            <div id="topicSelectorPanel" style="display:none; margin-top:10px; grid-template-columns: 1fr 1fr; gap:8px;"></div>
+
+            <div id="dilemmaProgressLine" style="font-size:12px; color:#9aa0a6; margin: 12px 0 10px;">—</div>
 
             <div style="font-size: 15px; font-weight: 800; color: #00e5ff; margin-bottom: 8px;" id="dilemmaTitle">—</div>
             <div style="font-size: 13px; color: #d0d4da; line-height:1.5; margin-bottom: 16px;" id="dilemmaText">—</div>
@@ -234,16 +262,6 @@
     <!-- ИГРЫ -->
     <div class="tab-content" id="tabGames">
         <div class="card" style="text-align:center;">
-            <div style="font-size:13px;font-weight:700;color:#69db7c;margin-bottom:8px;">📅 Игровой стрик: <span id="gameStreakCount">0</span> дн.</div>
-            <div id="gameStreakStatusText" style="font-size:12px;color:#9aa0a6;margin-bottom:10px;"></div>
-            <div id="gameStreakButtons">
-                <button class="btn" id="streakAdBtn" style="background: linear-gradient(135deg, #69db7c, #38d9a9); padding:10px;">Смотреть рекламу (+0)</button>
-                <button class="btn" id="streakSkipBtn" style="margin-top:8px;background:rgba(255,255,255,0.08);padding:10px;">Без рекламы (+0)</button>
-            </div>
-            <button class="btn" id="weeklyWheelBtn" style="margin-top:10px;display:none;background: linear-gradient(135deg, #9775fa, #748ffc);padding:10px;">🎡 Бесплатный спин на ключи</button>
-            <button class="btn" id="directAdBtn" style="margin-top:10px;display:none;background: linear-gradient(135deg, #ff922b, #f76707);padding:10px;">📺 Смотреть рекламу напрямую (+8)</button>
-        </div>
-        <div class="card" style="text-align:center;">
             <div style="display:flex;gap:8px;justify-content:center;margin-bottom:10px;">
                 <button class="btn" id="gamePickBlockBlast" style="padding:8px 14px;font-size:12px;">🧩 Block Blast</button>
                 <button class="btn" id="gamePick2048" style="padding:8px 14px;font-size:12px;background:rgba(255,255,255,0.08);">🔢 2048</button>
@@ -278,7 +296,9 @@
             <div id="historyList" style="max-height: 60vh; overflow-y: auto;"></div>
         </div>
 
-        <div class="card" style="text-align:left;">
+        <!-- Публичные выплаты скрыты до открытия Терминала (см. TERMINAL_CLOSED).
+             Чтобы вернуть — удали style="display:none" со следующей строки. -->
+        <div class="card" style="text-align:left; display:none;">
             <div style="font-size: 13px; font-weight: 700; color: #00e676; margin-bottom: 10px;" id="tPublicPayoutsTitle">🛡️ Публичные выплаты (последние 50)</div>
             <div id="publicPayoutsList" style="max-height: 40vh; overflow-y: auto; font-size:12px; color:#9aa0a6;"></div>
         </div>
