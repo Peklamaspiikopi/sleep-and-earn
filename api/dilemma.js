@@ -50,9 +50,22 @@ async function handleGet(req, res, telegramId) {
     .filter((t) => allTopics.includes(t))
     .map((t) => ({ topic: t, unlocked: ALWAYS_OPEN_TOPICS.includes(t) || unlockedByKey.has(t) }));
 
+  const lockedTopicsRemaining = topicsMeta.filter((t) => !t.unlocked).length;
+
+  const { count: secretTotal } = await supabaseAdmin
+    .from('dilemmas')
+    .select('id', { count: 'exact', head: true })
+    .eq('pool', 'secret')
+    .eq('lang', activeLang);
+  const { count: secretOpenedCount } = await supabaseAdmin
+    .from('user_unlocked_secrets')
+    .select('dilemma_id', { count: 'exact', head: true })
+    .eq('telegram_id', telegramId);
+  const secretRemaining = Math.max(0, (secretTotal || 0) - (secretOpenedCount || 0));
+
   const requestedIsAllowed = topic && topics.includes(topic);
   const activeTopic = requestedIsAllowed ? topic : topics[0];
-  if (!activeTopic) return res.status(200).json({ topics: [], topicsMeta, dilemma: null });
+  if (!activeTopic) return res.status(200).json({ topics: [], topicsMeta, lockedTopicsRemaining, secretRemaining, dilemma: null });
 
   const { data: topicDilemmas } = await supabaseAdmin
     .from('dilemmas')
@@ -62,7 +75,7 @@ async function handleGet(req, res, telegramId) {
     .order('order_index');
 
   if (!topicDilemmas || topicDilemmas.length === 0) {
-    return res.status(200).json({ topics, topicsMeta, dilemma: null });
+    return res.status(200).json({ topics, topicsMeta, lockedTopicsRemaining, secretRemaining, dilemma: null });
   }
 
   let { data: progress } = await supabaseAdmin
@@ -88,6 +101,8 @@ async function handleGet(req, res, telegramId) {
   return res.status(200).json({
     topics,
     topicsMeta,
+    lockedTopicsRemaining,
+    secretRemaining,
     activeTopic,
     dilemma: {
       id: current.id,
