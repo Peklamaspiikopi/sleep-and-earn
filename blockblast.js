@@ -456,6 +456,33 @@
         window.addEventListener('pagehide', cancelActiveDrag);
         window.addEventListener('blur', cancelActiveDrag);
 
+        function showHint() {
+            for (let idx = 0; idx < tray.length; idx++) {
+                const piece = tray[idx];
+                if (!piece) continue;
+                for (let r = 0; r < GRID_SIZE; r++) {
+                    for (let c = 0; c < GRID_SIZE; c++) {
+                        if (canPlace(board, piece.shape, r, c)) {
+                            const holder = trayEl.querySelector(`[data-idx="${idx}"]`);
+                            if (holder) {
+                                holder.style.boxShadow = '0 0 0 3px #ffd43b, 0 0 14px 2px #ffd43b';
+                                setTimeout(() => { holder.style.boxShadow = ''; }, 1600);
+                            }
+                            let blinks = 0;
+                            const blink = () => {
+                                drawBoard(blinks % 2 === 0 ? { shape: piece.shape, row: r, col: c, valid: true } : null);
+                                blinks++;
+                                if (blinks < 6) setTimeout(blink, 260); else drawBoard(null);
+                            };
+                            blink();
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
         renderTray();
         drawBoard(null);
 
@@ -473,6 +500,7 @@
                 container.innerHTML = '';
             },
             getScore() { return score; },
+            hint() { return showHint(); },
         };
     }
 

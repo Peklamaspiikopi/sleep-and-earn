@@ -157,6 +157,43 @@
             render();
         });
 
+        function findHintMove() {
+            let best = null, bestScore = -1;
+            for (let i = 0; i < tubes.length; i++) {
+                for (let j = 0; j < tubes.length; j++) {
+                    if (i === j || !canPour(tubes[i], tubes[j])) continue;
+                    const color = topColor(tubes[i]);
+                    let fromLen = tubes[i].length, toLen = tubes[j].length, moved = 0;
+                    while (fromLen > 0 && tubes[i][fromLen - 1] === color && toLen < TUBE_CAPACITY) {
+                        fromLen--; toLen++; moved++;
+                    }
+                    let s = 1;
+                    if (fromLen === 0) s += 50; // трубка-источник полностью опустела
+                    if (toLen === TUBE_CAPACITY) {
+                        const resultTube = tubes[j].slice(0, tubes[j].length - moved).concat(Array(moved).fill(color));
+                        if (resultTube.every((c) => c === color)) s += 100; // трубка-приёмник собрана целиком
+                    }
+                    if (s > bestScore) { bestScore = s; best = { from: i, to: j }; }
+                }
+            }
+            return best;
+        }
+
+        function showHint() {
+            const move = findHintMove();
+            if (!move) return false;
+            const cells = fieldEl.children;
+            const fromEl = cells[move.from], toEl = cells[move.to];
+            [fromEl, toEl].forEach((el) => {
+                if (!el) return;
+                el.style.boxShadow = '0 0 0 3px #ffd43b, 0 0 14px 2px #ffd43b';
+            });
+            setTimeout(() => {
+                [fromEl, toEl].forEach((el) => { if (el) el.style.boxShadow = ''; });
+            }, 1600);
+            return true;
+        }
+
         render();
 
         return {
@@ -165,6 +202,7 @@
                 container.innerHTML = '';
             },
             getScore() { return Math.max(0, 500 - moves * 10); },
+            hint() { return showHint(); },
         };
     }
 

@@ -123,6 +123,7 @@
         let board = emptyBoard();
         let score = 0;
         let destroyed = false;
+        let previousState = null; // {board, score} до последнего хода — для undo
 
         function render() {
             boardEl.innerHTML = '';
@@ -144,6 +145,7 @@
             if (destroyed) return;
             const result = move(board, dir);
             if (!result.moved) return;
+            previousState = { board: board.map((row) => row.slice()), score };
             board = result.board;
             score += result.gained;
             spawnTile(board);
@@ -153,6 +155,17 @@
             if (!hasMoves(board)) {
                 setTimeout(() => onGameOver(score), 300);
             }
+        }
+
+        function undoMove() {
+            if (!previousState) return false;
+            board = previousState.board;
+            score = previousState.score;
+            previousState = null;
+            onScoreChange(score);
+            scoreEl.textContent = `Очки: ${score}`;
+            render();
+            return true;
         }
 
         let touchStartX = 0, touchStartY = 0;
@@ -190,6 +203,7 @@
                 container.innerHTML = '';
             },
             getScore() { return score; },
+            undo() { return undoMove(); },
         };
     }
 
