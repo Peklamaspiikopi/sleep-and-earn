@@ -296,6 +296,42 @@ async function handlePromoRedeem(req, res, telegramId) {
   return res.status(200).json({ balance: committed.balance, reward: promo.reward });
 }
 
+// ==== action: use_boost ====
+// Списывает один заряд игрового буста (подсказка/отмена хода) из
+// user_inventory. Сам эффект (подсветка хода, откат состояния) —
+// целиком на фронте, здесь только честный учёт остатка.
+const BOOST_ITEM_KEYS = ['blockblast_hint', 'game2048_undo', 'watersort_hint'];
+async function handleUseBoost(req, res, telegramId) {
+  const { itemKey } = req.body || {};
+  if (!BOOST_ITEM_KEYS.includes(itemKey)) {
+    return res.status(400).json({ error: 'Неизвестный буст' });
+  }
+
+  const { data: inv } = await supabaseAdmin
+    .from('user_inventory')
+    .select('quantity')
+    .eq('telegram_id', telegramId)
+    .eq('item_key', itemKey)
+    .maybeSingle();
+
+  if (!inv || inv.quantity <= 0) {
+    return res.status(400).json({ error: 'Буст закончился — купи ещё в магазине' });
+  }
+
+  const { data: updated } = await supabaseAdmin
+    .from('user_inventory')
+    .update({ quantity: inv.quantity - 1 })
+    .eq('telegram_id', telegramId)
+    .eq('item_key', itemKey)
+    .eq('quantity', inv.quantity)
+    .select()
+    .maybeSingle();
+
+  if (!updated) return res.status(409).json({ error: 'Повтори ещё раз' });
+
+  return res.status(200).json({ ok: true, remaining: updated.quantity });
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -311,6 +347,7 @@ module.exports = async (req, res) => {
     case 'promo_redeem': return handlePromoRedeem(req, res, telegramId);
     case 'shop_token_list': return handleShopTokenList(req, res, telegramId);
     case 'shop_token_buy': return handleShopTokenBuy(req, res, telegramId);
+    case 'use_boost': return handleUseBoost(req, res, telegramId);
     default: return res.status(400).json({ error: 'Неизвестное действие' });
   }
 };
