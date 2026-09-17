@@ -24,7 +24,8 @@
             position: fixed; top: 0; left: 50%; transform: translateX(-50%);
             width: 92%; max-width: 390px; z-index: 100;
             display: flex; justify-content: space-between; align-items: center;
-            padding: 12px 2px 10px; background: #111317; border-bottom: 1px solid #2a2d37;
+            padding: calc(12px + var(--tg-content-safe-area-inset-top, 0px)) 2px 10px;
+            background: #111317; border-bottom: 1px solid #2a2d37;
         }
         h1 { font-size: 22px; font-weight: 800; margin: 0; background: linear-gradient(90deg, #00b0ff, #00e676); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .lang-switch { display: flex; background: #1c1e24; padding: 3px; border-radius: 10px; border: 1px solid #2a2d37; }
@@ -148,7 +149,7 @@
         .promo-input { flex: 1; background: #1a1c23; border: 1px solid rgba(0, 176, 255, 0.3); color: #fff; padding: 10px; border-radius: 12px; font-size: 12px; text-align: center; box-shadow: 0 0 8px rgba(0, 176, 255, 0.05); }
         .promo-btn { background: rgba(0, 230, 118, 0.15); color: #00e676; border: 1px solid #00e676; padding: 0 16px; font-weight: 700; border-radius: 12px; cursor: pointer; font-size: 12px; box-shadow: 0 0 10px rgba(0, 230, 118, 0.25); }
 
-        .nav-bar { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 390px; z-index: 100; display: flex; background: #1a1c23; border-radius: 16px; padding: 4px; gap: 4px; border: 1px solid rgba(0, 176, 255, 0.3); box-shadow: 0 0 15px rgba(0, 176, 255, 0.1); }
+        .nav-bar { position: fixed; bottom: calc(10px + var(--tg-content-safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); width: 92%; max-width: 390px; z-index: 100; display: flex; background: #1a1c23; border-radius: 16px; padding: 4px; gap: 4px; border: 1px solid rgba(0, 176, 255, 0.3); box-shadow: 0 0 15px rgba(0, 176, 255, 0.1); }
         .nav-btn { flex: 1; background: transparent; color: #6c727f; border: none; padding: 10px 0; font-size: 13px; font-weight: 700; border-radius: 12px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .nav-btn.active { background: #2a2d37; color: #00b0ff; box-shadow: 0 0 10px rgba(0, 176, 255, 0.3); text-shadow: 0 0 5px rgba(0, 176, 255, 0.5); }
 
@@ -157,6 +158,28 @@
     </style>
     <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+        // Без ready()/expand() Telegram в некоторых способах запуска (например,
+        // кнопка "Открыть" прямо из списка чатов) не резервирует место под свою
+        // шапку — наш fixed-хедер съезжает под статус-бар телефона.
+        try {
+            if (window.Telegram && window.Telegram.WebApp) {
+                var tg = window.Telegram.WebApp;
+                tg.ready();
+                tg.expand();
+                // На части Android-клиентов contentSafeAreaInset.top иногда
+                // приходит равным 0 даже там, где реально есть перекрытие
+                // (кнопка "Открыть" из списка чатов, а не из меню бота).
+                // Если мы точно внутри настоящего Telegram (есть initData),
+                // но inset подозрительно маленький — подстрахуемся минимумом.
+                var isRealTelegram = !!(tg.initData && tg.initData.length > 0);
+                var reportedTop = (tg.contentSafeAreaInset && tg.contentSafeAreaInset.top) || 0;
+                if (isRealTelegram && reportedTop < 24) {
+                    document.documentElement.style.setProperty('--tg-content-safe-area-inset-top', '24px');
+                }
+            }
+        } catch (e) {}
+    </script>
 </head>
 <body>
 
@@ -216,6 +239,7 @@
                         <div style="font-size: 10px; color:#9aa0a6;">секретных ключей</div>
                     </div>
                 </div>
+                <div style="font-size:10px; color:#6a7078; text-align:center; margin-bottom:8px;">🔑 за чекпоинты дилемм (каждые 5 штук) · ✨ за 7‑й день стрика или бесплатное колесо в «Играх»</div>
                 <div style="display:flex; gap:8px; margin-bottom:10px;">
                     <button class="btn" id="unlockTopicBtn" style="flex:1; font-size:12px; padding:10px 6px; background: linear-gradient(135deg, #4dabf7, #748ffc);">Открыть новую тему</button>
                     <button class="btn" id="unlockSecretBtn" style="flex:1; font-size:12px; padding:10px 6px; background: linear-gradient(135deg, #9775fa, #f783ac);">Открыть секретную</button>
@@ -273,6 +297,7 @@
                 <button class="btn" id="gamePickWaterSort" style="padding:8px 14px;font-size:12px;background:rgba(255,255,255,0.08);">💧 Water Sort</button>
             </div>
             <div id="gameJetons" style="font-size:13px;color:#9aa0a6;margin-bottom:10px;">Жетоны: 0</div>
+            <button class="btn" id="gameBoostBtn" style="margin-bottom:10px;display:none;padding:8px 14px;font-size:12px;background:rgba(255,212,59,0.12);border:1px solid #ffd43b;color:#ffd43b;">💡 Подсказка (0)</button>
             <div id="gameContainer"></div>
             <div id="gameClaimBox" style="display:none;margin-top:14px;">
                 <div id="gameClaimScoreText" style="font-size:14px;color:#fff;margin-bottom:10px;"></div>

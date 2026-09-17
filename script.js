@@ -760,6 +760,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         '2048': () => window.Game2048,
         watersort: () => window.WaterSort,
     };
+    const BOOST_ITEM_KEY_BY_GAME = {
+        blockblast: 'blockblast_hint',
+        '2048': 'game2048_undo',
+        watersort: 'watersort_hint',
+    };
+    const BOOST_LABEL_BY_GAME = {
+        blockblast: { ru: '💡 Подсказка', en: '💡 Hint' },
+        '2048': { ru: '↩️ Отменить ход', en: '↩️ Undo move' },
+        watersort: { ru: '💡 Подсказка хода', en: '💡 Move hint' },
+    };
+    const gameBoostBtn = document.getElementById('gameBoostBtn');
+    let isBoostLoading = false;
     let currentGameKey = 'blockblast';
     let currentGameInstance = null;
     let lastGameScore = 0;
@@ -773,6 +785,42 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (gamePickBlockBlast) gamePickBlockBlast.style.background = currentGameKey === 'blockblast' ? '' : 'rgba(255,255,255,0.08)';
         if (gamePick2048) gamePick2048.style.background = currentGameKey === '2048' ? '' : 'rgba(255,255,255,0.08)';
         if (gamePickWaterSort) gamePickWaterSort.style.background = currentGameKey === 'watersort' ? '' : 'rgba(255,255,255,0.08)';
+        updateBoostButton();
+    }
+
+    function updateBoostButton() {
+        if (!gameBoostBtn) return;
+        const itemKey = BOOST_ITEM_KEY_BY_GAME[currentGameKey];
+        const label = (BOOST_LABEL_BY_GAME[currentGameKey] && BOOST_LABEL_BY_GAME[currentGameKey][currentLang]) || '💡';
+        const count = shopOwned[itemKey] || 0;
+        gameBoostBtn.style.display = 'inline-block';
+        gameBoostBtn.innerText = `${label} (${count})`;
+        gameBoostBtn.disabled = count <= 0 || isBoostLoading;
+        gameBoostBtn.style.opacity = count <= 0 ? '0.5' : '1';
+    }
+
+    if (gameBoostBtn) {
+        gameBoostBtn.addEventListener('click', async () => {
+            if (isBoostLoading || !currentGameInstance) return;
+            const itemKey = BOOST_ITEM_KEY_BY_GAME[currentGameKey];
+            if ((shopOwned[itemKey] || 0) <= 0) return;
+            isBoostLoading = true;
+            updateBoostButton();
+            try {
+                const result = await api('economy', { action: 'use_boost', itemKey });
+                shopOwned[itemKey] = result.remaining;
+                if (currentGameKey === '2048' && currentGameInstance.undo) {
+                    currentGameInstance.undo();
+                } else if (currentGameInstance.hint) {
+                    currentGameInstance.hint();
+                }
+            } catch (e) {
+                alert(e.message);
+            } finally {
+                isBoostLoading = false;
+                updateBoostButton();
+            }
+        });
     }
 
     function startCurrentGameRound() {
@@ -812,6 +860,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             switchTab('games');
             updateGameJetonsDisplay();
             updateStreakUI();
+            loadShop().then(updateBoostButton);
+            updateBoostButton();
             if (!currentGameInstance) startCurrentGameRound();
         });
     }
