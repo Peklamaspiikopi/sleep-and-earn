@@ -553,7 +553,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const financeNavBtn = document.getElementById('btnNavFinance');
-    if (financeNavBtn) financeNavBtn.addEventListener('click', loadShop);
+    if (financeNavBtn) financeNavBtn.addEventListener('click', () => { loadShop(); updateFortuneButtonState(); });
 
     // ==== Прямая кнопка рекламы (после покупки direct_ad_unlock) ====
     const directAdBtn = document.getElementById('directAdBtn');
@@ -597,7 +597,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (videoController) {
                 videoController.show()
                     .then((result) => { if (result?.done !== false) finish(); else onFail(); })
-                    .catch(onFail);
+                    .catch((err) => { console.error('Adsgram show failed:', err); onFail(); });
             } else {
                 setTimeout(finish, 15000);
             }
@@ -717,7 +717,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         finishWith(() => api('session', { action: 'streak_ad_complete', sessionId: session.sessionId, timezone: userTimezone }));
                     } else onFail();
                 })
-                .catch(onFail);
+                .catch((err) => { console.error('Adsgram show failed:', err); onFail(); });
         } else {
             setTimeout(() => finishWith(() => api('session', { action: 'streak_ad_complete', sessionId: session.sessionId, timezone: userTimezone })), 15000);
         }
@@ -924,7 +924,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (videoController) {
                 videoController.show()
                     .then((result) => { if (result?.done !== false) finishGameSuccess(); else finishGameFail(); })
-                    .catch(finishGameFail);
+                    .catch((err) => { console.error('Adsgram show failed:', err); finishGameFail(); });
             } else {
                 setTimeout(finishGameSuccess, 15000);
             }
@@ -1058,7 +1058,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (videoController) {
             videoController.show()
                 .then((result) => { if (result?.done !== false) finishSuccess(); else finishFail(); })
-                .catch(finishFail);
+                .catch((err) => { console.error('Adsgram show failed:', err); finishFail(); });
         } else {
             setTimeout(finishSuccess, 13000);
         }
@@ -1133,6 +1133,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const historyLabels = {
         video_reward: { ru: '📺 Просмотр ролика', en: '📺 Video watched' },
         banner_reward: { ru: '📺 Быстрый баннер', en: '📺 Quick banner' },
+        fortune: { ru: '🎰 Фортуна', en: '🎰 Fortune' },
         daily_bonus: { ru: '🎁 Дневной бонус', en: '🎁 Daily bonus' },
         box: { ru: '🎁 Сундук', en: '🎁 Chest' },
         big_box: { ru: '📦 Большая коробка', en: '📦 Big box' },
@@ -1473,7 +1474,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (videoController) {
                 videoController.show()
                     .then((result) => { if (result?.done !== false) finish(); else onFail(); })
-                    .catch(onFail);
+                    .catch((err) => { console.error('Adsgram show failed:', err); onFail(); });
             } else {
                 setTimeout(finish, 13000);
             }
@@ -1530,6 +1531,122 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (unlockSecretBtn) {
         unlockSecretBtn.addEventListener('click', () => unlockSecretDilemma(unlockSecretBtn));
+    }
+
+    // ==== Фортуна за рекламу (раз в день, только ключи) ====
+    const fortuneBtn = document.getElementById('fortuneBtn');
+    const fortuneTilesEl = document.getElementById('fortuneTiles');
+    const fortuneResultText = document.getElementById('fortuneResultText');
+    let isFortuneLoading = false;
+
+    function playFortuneAnimation(outcome) {
+        return new Promise((resolve) => {
+            if (!fortuneTilesEl) { resolve(); return; }
+            const tiles = fortuneTilesEl.querySelectorAll('.fortune-tile');
+            const winIdx = Math.floor(Math.random() * tiles.length);
+            let step = 0;
+            const totalSteps = 14; // цикл замедляется к концу
+            const delays = [90, 90, 90, 90, 110, 110, 130, 150, 180, 220, 260, 300, 340, 380];
+
+            function tick() {
+                tiles.forEach((t, i) => t.classList.toggle('fortune-tile-active', i === step % tiles.length));
+                step++;
+                if (step < totalSteps) {
+                    setTimeout(tick, delays[step] || 380);
+                } else {
+                    tiles.forEach((t, i) => {
+                        t.classList.remove('fortune-tile-active');
+                        if (i === winIdx) {
+                            t.classList.add('fortune-tile-win');
+                            t.innerText = outcome === 'secret_key' ? '✨' : outcome === 'topic_key' ? '🔑' : '❌';
+                        } else {
+                            t.innerText = '❌';
+                        }
+                    });
+                    setTimeout(resolve, 400);
+                }
+            }
+            tick();
+        });
+    }
+
+    function resetFortuneTiles() {
+        if (!fortuneTilesEl) return;
+        fortuneTilesEl.querySelectorAll('.fortune-tile').forEach((t) => {
+            t.classList.remove('fortune-tile-active', 'fortune-tile-win');
+            t.innerText = '❓';
+        });
+    }
+
+    function todayLocalDateString() {
+        try {
+            return new Intl.DateTimeFormat('en-CA', {
+                timeZone: userTimezone || 'UTC',
+                year: 'numeric', month: '2-digit', day: '2-digit',
+            }).format(new Date());
+        } catch (e) {
+            return new Date().toISOString().slice(0, 10);
+        }
+    }
+
+    function updateFortuneButtonState() {
+        if (!fortuneBtn) return;
+        const alreadyToday = userState.last_fortune_date && userState.last_fortune_date === todayLocalDateString();
+        if (alreadyToday) {
+            fortuneBtn.disabled = true;
+            fortuneBtn.innerText = currentLang === 'ru' ? 'Уже сегодня пробовал(а)' : 'Already tried today';
+        } else {
+            fortuneBtn.disabled = false;
+            fortuneBtn.innerText = currentLang === 'ru' ? 'Смотреть рекламу' : 'Watch ad';
+        }
+    }
+
+    if (fortuneBtn) {
+        fortuneBtn.addEventListener('click', async () => {
+            if (isFortuneLoading) return;
+            isFortuneLoading = true;
+            fortuneBtn.disabled = true;
+            resetFortuneTiles();
+            if (fortuneResultText) fortuneResultText.innerText = '';
+            try {
+                const session = await api('session', { action: 'fortune_start', timezone: userTimezone });
+                if (!videoController) throw new Error(currentLang === 'ru' ? 'Реклама пока недоступна' : 'Ads unavailable right now');
+
+                const adResult = await videoController.show();
+                if (adResult && adResult.done === false) {
+                    throw new Error(currentLang === 'ru' ? 'Ролик не досмотрен' : 'Ad was not watched fully');
+                }
+
+                const result = await api('session', { action: 'fortune_complete', sessionId: session.sessionId, timezone: userTimezone });
+                userState.topic_keys = result.topicKeys;
+                userState.secret_keys = result.secretKeys;
+                const topicEl = document.getElementById('topicKeysVal');
+                const secretEl = document.getElementById('secretKeysVal');
+                if (topicEl) topicEl.innerText = result.topicKeys;
+                if (secretEl) secretEl.innerText = result.secretKeys;
+
+                await playFortuneAnimation(result.outcome);
+
+                if (fortuneResultText) {
+                    if (result.outcome === 'secret_key') {
+                        fortuneResultText.innerText = currentLang === 'ru' ? '✨ Секретный ключ! Заходи завтра снова.' : '✨ Secret key! Come back tomorrow.';
+                    } else if (result.outcome === 'topic_key') {
+                        fortuneResultText.innerText = currentLang === 'ru' ? '🔑 Ключ от темы! Заходи завтра снова.' : '🔑 Topic key! Come back tomorrow.';
+                    } else {
+                        fortuneResultText.innerText = currentLang === 'ru' ? 'Не повезло — заходи завтра.' : 'No luck this time — come back tomorrow.';
+                    }
+                }
+                fortuneBtn.innerText = currentLang === 'ru' ? 'Уже сегодня пробовал(а)' : 'Already tried today';
+            } catch (e) {
+                resetFortuneTiles();
+                alert(e.message);
+            } finally {
+                isFortuneLoading = false;
+                if (fortuneBtn.innerText.indexOf('Уже') === -1 && fortuneBtn.innerText.indexOf('Already') === -1) {
+                    fortuneBtn.disabled = false;
+                }
+            }
+        });
     }
 
     // ==== Копирование реф. ссылки ====

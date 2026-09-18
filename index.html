@@ -18,7 +18,7 @@
             padding: 12px 0;
             user-select: none;
         }
-        .container { width: 92%; max-width: 390px; display: flex; flex-direction: column; gap: 12px; padding-top: 66px; padding-bottom: 78px; }
+        .container { width: 92%; max-width: 390px; display: flex; flex-direction: column; gap: 12px; padding-top: calc(76px + var(--tg-content-safe-area-inset-top, 0px)); padding-bottom: 78px; }
 
         .header {
             position: fixed; top: 0; left: 50%; transform: translateX(-50%);
@@ -142,6 +142,10 @@
 
         .grid-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .stat-item { background: #1a1c23; border: 1px solid rgba(0, 176, 255, 0.25); border-radius: 14px; padding: 10px 12px; box-shadow: 0 0 10px rgba(0, 176, 255, 0.05); }
+
+        .fortune-tile { width: 56px; height: 56px; border-radius: 12px; background: #1a1c23; border: 2px solid #2a2d37; display: flex; align-items: center; justify-content: center; font-size: 24px; transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s; }
+        .fortune-tile-active { border-color: #f783ac; box-shadow: 0 0 14px 2px rgba(247, 131, 172, 0.6); transform: scale(1.08); }
+        .fortune-tile-win { border-color: #ffd43b; box-shadow: 0 0 18px 3px rgba(255, 212, 59, 0.7); }
         .stat-item-title { font-size: 11px; color: #8a909a; font-weight: 700; }
         .stat-item-val { font-size: 13px; font-weight: 700; color: #fff; margin-top: 4px; }
 
@@ -168,14 +172,15 @@
                 tg.ready();
                 tg.expand();
                 // На части Android-клиентов contentSafeAreaInset.top иногда
-                // приходит равным 0 даже там, где реально есть перекрытие
+                // приходит равным 0 (или свойство вовсе отсутствует в этой
+                // версии Bot API) даже там, где реально есть перекрытие
                 // (кнопка "Открыть" из списка чатов, а не из меню бота).
-                // Если мы точно внутри настоящего Telegram (есть initData),
-                // но inset подозрительно маленький — подстрахуемся минимумом.
+                // 72px — эмпирический запас под полноценную полосу Telegram
+                // (крестик/шеврон/меню), а не просто под статус-бар телефона.
                 var isRealTelegram = !!(tg.initData && tg.initData.length > 0);
                 var reportedTop = (tg.contentSafeAreaInset && tg.contentSafeAreaInset.top) || 0;
-                if (isRealTelegram && reportedTop < 24) {
-                    document.documentElement.style.setProperty('--tg-content-safe-area-inset-top', '24px');
+                if (isRealTelegram && reportedTop < 72) {
+                    document.documentElement.style.setProperty('--tg-content-safe-area-inset-top', '72px');
                 }
             }
         } catch (e) {}
@@ -284,6 +289,18 @@
             <div style="font-size: 13px; font-weight: 700; color: #ffa94d; margin-bottom: 10px;">🛒 Магазин</div>
             <div id="shopJetonsLine" style="font-size:12px;color:#9aa0a6;margin-bottom:10px;">Жетоны: 0</div>
             <div id="shopList" style="display:flex;flex-direction:column;gap:8px;text-align:left;"></div>
+        </div>
+
+        <div class="card" style="text-align:center;">
+            <div style="font-size: 13px; font-weight: 700; color: #f783ac; margin-bottom: 10px;">🎰 Испытать удачу</div>
+            <div style="font-size:11px;color:#9aa0a6;margin-bottom:10px;">Смотришь ролик — получаешь шанс на ключ. Раз в день.</div>
+            <div id="fortuneTiles" style="display:flex; gap:10px; justify-content:center; margin-bottom:12px;">
+                <div class="fortune-tile">❓</div>
+                <div class="fortune-tile">❓</div>
+                <div class="fortune-tile">❓</div>
+            </div>
+            <div id="fortuneResultText" style="font-size:12px;color:#9aa0a6;min-height:16px;margin-bottom:10px;"></div>
+            <button class="btn" id="fortuneBtn" style="background: linear-gradient(135deg, #f783ac, #9775fa);">Смотреть рекламу</button>
         </div>
 
     </div>
