@@ -152,5 +152,6 @@ module.exports = async (req, res) => {
     ref_count: user.ref_count,
     ref_earn: user.ref_earn,
     age_confirmed: !!user.age_confirmed,
+    last_fortune_date: user.last_fortune_date || null,
   });
 };

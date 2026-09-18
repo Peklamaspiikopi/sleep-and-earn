@@ -27,6 +27,7 @@ const {
   BASE_GAME_REWARD, computeGameBonus,
   DAILY_GAME_LADDER_FULL, DAILY_GAME_LADDER_SKIP, DAY7_POSITION,
   rollKeyWheel, TERMINAL_CLOSED, TERMINAL_CLOSED_MESSAGE, CHECKPOINT_TOKEN_REWARD,
+  FORTUNE_MIN_WATCH_SECONDS, rollFortune,
 } = require('../lib/economyConfig');
 const ALLOWED_GAMES = ['blockblast', '2048', 'watersort'];
 const { logTransaction } = require('../lib/transactions');
@@ -503,6 +504,122 @@ async function handleBannerComplete(req, res, telegramId) {
   await logTransaction(supabaseAdmin, telegramId, 'banner_reward', reward, updated.balance);
 
   return res.status(200).json({ ok: true, reward, balance: updated.balance });
+}
+
+// ==== action: fortune_start ====
+//
+// «Испытать удачу» за рекламу — раз в день, чистая монетизация ещё
+// одного рекламного тачпоинта. НЕ трогает game_tokens/balance вообще,
+// поэтому не завязана на TERMINAL_CLOSED — работает уже сейчас.
+async function handleFortuneStart(req, res, telegramId) {
+  const { timezone } = req.body || {};
+  const { data: user } = await supabaseAdmin
+    .from('users')
+    .select('last_fortune_date, timezone, flagged, reward_locked_permanent')
+    .eq('telegram_id', telegramId)
+    .single();
+
+  if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+  if (user.flagged || user.reward_locked_permanent) {
+    return res.status(403).json({ error: 'Начисления для этого аккаунта временно недоступны' });
+  }
+
+  const today = getLocalDateString(timezone || user.timezone);
+  if (user.last_fortune_date === today) {
+    return res.status(429).json({ error: 'Уже испытывал(а) удачу сегодня — заходи завтра', daily_limit_reached: true });
+  }
+
+  const { data: activeSession } = await supabaseAdmin
+    .from('sessions')
+    .select('id')
+    .eq('telegram_id', telegramId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (activeSession) {
+    return res.status(409).json({ error: 'Уже есть незавершённая сессия' });
+  }
+
+  const { data: session, error } = await supabaseAdmin
+    .from('sessions')
+    .insert({
+      telegram_id: telegramId,
+      session_type: 'fortune',
+      status: 'active',
+      duration_seconds: FORTUNE_MIN_WATCH_SECONDS,
+      started_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error || !session) {
+    return res.status(500).json({ error: 'Не удалось начать' });
+  }
+
+  return res.status(200).json({ sessionId: session.id, durationSeconds: FORTUNE_MIN_WATCH_SECONDS });
+}
+
+// ==== action: fortune_complete ====
+async function handleFortuneComplete(req, res, telegramId) {
+  const { sessionId, timezone } = req.body || {};
+
+  const { data: session } = await supabaseAdmin
+    .from('sessions')
+    .select('*')
+    .eq('id', sessionId)
+    .eq('telegram_id', telegramId)
+    .eq('status', 'active')
+    .eq('session_type', 'fortune')
+    .maybeSingle();
+
+  if (!session) {
+    return res.status(400).json({ error: 'Сессия не найдена или уже завершена' });
+  }
+
+  const elapsedSec = (Date.now() - new Date(session.started_at).getTime()) / 1000;
+  if (elapsedSec < FORTUNE_MIN_WATCH_SECONDS) {
+    return res.status(400).json({ error: 'Слишком рано' });
+  }
+
+  const { data: closedSession } = await supabaseAdmin
+    .from('sessions')
+    .update({ status: 'completed', completed_at: new Date().toISOString() })
+    .eq('id', sessionId)
+    .eq('status', 'active')
+    .select()
+    .maybeSingle();
+
+  if (!closedSession) {
+    return res.status(200).json({ ok: true, alreadyClosed: true });
+  }
+
+  const { data: user } = await supabaseAdmin
+    .from('users')
+    .select('topic_keys, secret_keys, timezone')
+    .eq('telegram_id', telegramId)
+    .single();
+
+  const today = getLocalDateString(timezone || user.timezone);
+  const outcome = rollFortune();
+  const updates = { last_fortune_date: today };
+  if (outcome === 'topic_key') updates.topic_keys = (user.topic_keys || 0) + 1;
+  if (outcome === 'secret_key') updates.secret_keys = (user.secret_keys || 0) + 1;
+
+  const { data: updated } = await supabaseAdmin
+    .from('users')
+    .update(updates)
+    .eq('telegram_id', telegramId)
+    .select()
+    .maybeSingle();
+
+  await logTransaction(supabaseAdmin, telegramId, 'fortune', 0, 0, outcome);
+
+  return res.status(200).json({
+    ok: true,
+    outcome,
+    topicKeys: updated ? updated.topic_keys : user.topic_keys,
+    secretKeys: updated ? updated.secret_keys : user.secret_keys,
+  });
 }
 
 // ==== action: game_start ====
@@ -1108,6 +1225,8 @@ module.exports = async (req, res) => {
     case 'cancel': return handleCancel(req, res, telegramId);
     case 'banner_start': return handleBannerStart(req, res, telegramId);
     case 'banner_complete': return handleBannerComplete(req, res, telegramId);
+    case 'fortune_start': return handleFortuneStart(req, res, telegramId);
+    case 'fortune_complete': return handleFortuneComplete(req, res, telegramId);
     case 'game_start': return handleGameStart(req, res, telegramId);
     case 'game_complete': return handleGameComplete(req, res, telegramId);
     case 'checkpoint_start': return handleCheckpointStart(req, res, telegramId);
