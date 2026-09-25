@@ -31,6 +31,8 @@
         .lang-switch { display: flex; background: #1c1e24; padding: 3px; border-radius: 10px; border: 1px solid #2a2d37; }
         .lang-btn { background: none; border: none; color: #6c727f; font-size: 11px; font-weight: 700; cursor: pointer; padding: 4px 8px; border-radius: 7px; transition: 0.2s; }
         .lang-btn.active { background: #2a2d37; color: #00b0ff; }
+        .lang-select { background: #2a2d37; color: #00b0ff; border: none; border-radius: 7px; font-size: 11px; font-weight: 700; padding: 6px 4px; cursor: pointer; outline: none; max-width: 110px; }
+        .lang-select option { background: #1a1c23; color: #fff; }
 
         .tab-content { display: none; flex-direction: column; gap: 12px; }
         .tab-content.active { display: flex; }
@@ -185,9 +187,6 @@
             }
         } catch (e) {}
     </script>
-    <!-- Временно для отладки: консоль прямо на телефоне (плавающая кнопка
-         внизу справа), без необходимости в компьютере. Убрать перед
-         релизом широкой аудитории. -->
 </head>
 <body>
 
@@ -212,8 +211,14 @@
     <div class="header">
         <h1>MintoStrk</h1>
         <div class="lang-switch">
-            <button class="lang-btn active" id="langRu" onclick="setLanguage('ru')">RU</button>
-            <button class="lang-btn" id="langEn" onclick="setLanguage('en')">EN</button>
+            <select class="lang-select" id="langSelect" onchange="setLanguage(this.value)" aria-label="Language">
+                <option value="ru">Русский</option>
+                <option value="en">English</option>
+                <option value="uk">Українська</option>
+                <option value="es">Español</option>
+                <option value="fr">Français</option>
+                <option value="ar">العربية</option>
+            </select>
         </div>
     </div>
 
@@ -372,10 +377,12 @@
     </div>
 </div>
 
+<script src="i18n-data.js?v=1" defer></script>
+<script src="i18n.js?v=1" defer></script>
 <script src="blockblast.js?v=2" defer></script>
 <script src="game2048.js?v=2" defer></script>
 <script src="watersort.js?v=2" defer></script>
-<script src="script.js?v=18" defer></script>
+<script src="script.js?v=19" defer></script>
 <script>
 function switchTab(tabName) {
     const tabs = { dilemmas: 'tabDilemmas', games: 'tabGames', finance: 'tabFinance', history: 'tabHistory' };
