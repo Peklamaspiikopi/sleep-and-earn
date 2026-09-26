@@ -9,6 +9,7 @@
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
+const { ensureUser } = require('../lib/ensureUser');
 const { logTransaction } = require('../lib/transactions');
 const { minWithdrawalFor } = require('../lib/streakLogic');
 const { isValidTonAddress } = require('../lib/tonAddress');
@@ -53,12 +54,13 @@ async function handleWithdraw(req, res, telegramId) {
     return res.status(409).json({ error: 'У тебя уже есть заявка в обработке' });
   }
 
-  const { data: user } = await supabaseAdmin
+  let { data: user } = await supabaseAdmin
     .from('users')
     .select('balance, video_reward, flagged, reward_locked_permanent')
     .eq('telegram_id', telegramId)
     .single();
 
+  if (!user) user = await ensureUser(supabaseAdmin, telegramId);
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
   if (user.flagged || user.reward_locked_permanent) {
     return res.status(403).json({ error: 'Вывод для этого аккаунта временно недоступен, обратись в поддержку' });
