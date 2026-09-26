@@ -10,6 +10,7 @@
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
+const { ensureUser } = require('../lib/ensureUser');
 const { logTransaction } = require('../lib/transactions');
 const { atomicIncrement } = require('../lib/atomicIncrement');
 const { SHOP_EXTRA_PLAYS_COST, SHOP_EXTRA_PLAYS_AMOUNT, WHEEL_SPIN_COST, rollWheel, TERMINAL_CLOSED, TERMINAL_CLOSED_MESSAGE } = require('../lib/economyConfig');
@@ -62,12 +63,13 @@ async function handleShopTokenBuy(req, res, telegramId) {
     return res.status(400).json({ error: 'Уже куплено' });
   }
 
-  const { data: user } = await supabaseAdmin
+  let { data: user } = await supabaseAdmin
     .from('users')
     .select('game_tokens')
     .eq('telegram_id', telegramId)
     .single();
 
+  if (!user) user = await ensureUser(supabaseAdmin, telegramId);
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
   if ((user.game_tokens || 0) < item.price_tokens) {
     return res.status(400).json({ error: 'Недостаточно жетонов' });
@@ -124,12 +126,13 @@ async function handleShopBuy(req, res, telegramId) {
     return res.status(400).json({ error: 'Неизвестный товар' });
   }
 
-  const { data: user } = await supabaseAdmin
+  let { data: user } = await supabaseAdmin
     .from('users')
     .select('balance')
     .eq('telegram_id', telegramId)
     .single();
 
+  if (!user) user = await ensureUser(supabaseAdmin, telegramId);
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
   if (user.balance < SHOP_EXTRA_PLAYS_COST) {
     return res.status(400).json({ error: 'Недостаточно монет' });
@@ -172,12 +175,13 @@ async function handleWheelSpin(req, res, telegramId) {
   if (TERMINAL_CLOSED) return res.status(403).json({ error: TERMINAL_CLOSED_MESSAGE });
   if (TERMINAL_CLOSED) return res.status(403).json({ error: TERMINAL_CLOSED_MESSAGE });
   if (TERMINAL_CLOSED) return res.status(403).json({ error: TERMINAL_CLOSED_MESSAGE });
-  const { data: user } = await supabaseAdmin
+  let { data: user } = await supabaseAdmin
     .from('users')
     .select('balance')
     .eq('telegram_id', telegramId)
     .single();
 
+  if (!user) user = await ensureUser(supabaseAdmin, telegramId);
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
   if (user.balance < WHEEL_SPIN_COST) {
     return res.status(400).json({ error: 'Недостаточно монет для спина' });
@@ -255,12 +259,13 @@ async function handlePromoRedeem(req, res, telegramId) {
     }
   }
 
-  const { data: user } = await supabaseAdmin
+  let { data: user } = await supabaseAdmin
     .from('users')
     .select('balance')
     .eq('telegram_id', telegramId)
     .single();
 
+  if (!user) user = await ensureUser(supabaseAdmin, telegramId);
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
 
   // Ретрай на CAS: promo_redemptions выше уже необратимо помечает код
