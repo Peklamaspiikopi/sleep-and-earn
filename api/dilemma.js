@@ -9,6 +9,7 @@
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
+const { ensureUser } = require('../lib/ensureUser');
 const { CHECKPOINT_INTERVAL } = require('../lib/dilemmaLogic');
 
 // Порядок открытия новых тем ключами — совпадает с комментарием в
@@ -25,13 +26,34 @@ async function getUnlockedTopics(telegramId) {
   return new Set((rows || []).map((r) => r.topic));
 }
 
+// ==== Язык дилемм ====
+// Тексты дилемм лежат в таблице dilemmas по строке на язык (колонка lang).
+// Для языка без текстов (пока нет перевода) отдаём запасной: uk -> ru, остальные -> en.
+const SUPPORTED_LANGS = ['ru', 'en', 'uk', 'es', 'fr', 'ar'];
+const langHasDilemmasCache = new Map(); // lang -> { ok, at }
+async function resolveLang(lang) {
+  const wanted = SUPPORTED_LANGS.includes(lang) ? lang : 'ru';
+  if (wanted === 'ru' || wanted === 'en') return wanted;
+  const fallback = wanted === 'uk' ? 'ru' : 'en';
+  const cached = langHasDilemmasCache.get(wanted);
+  if (cached && Date.now() - cached.at < 60 * 1000) return cached.ok ? wanted : fallback;
+  const { count } = await supabaseAdmin
+    .from('dilemmas')
+    .select('id', { count: 'exact', head: true })
+    .eq('lang', wanted)
+    .eq('pool', 'main');
+  const ok = (count || 0) > 0;
+  langHasDilemmasCache.set(wanted, { ok, at: Date.now() });
+  return ok ? wanted : fallback;
+}
+
 // ==== action: get ====
 //
 // Темы проходятся по кругу — после последней дилеммы снова первая,
 // прогресс (completed_count) продолжает расти и дальше копит чекпоинты.
 async function handleGet(req, res, telegramId) {
   const { topic, lang } = req.body || {};
-  const activeLang = lang === 'en' ? 'en' : 'ru';
+  const activeLang = await resolveLang(lang);
 
   const { data: topicsRaw } = await supabaseAdmin
     .from('dilemmas')
@@ -130,7 +152,7 @@ async function handleGet(req, res, telegramId) {
 // реального прохождения.
 async function handleChoose(req, res, telegramId) {
   const { topic, dilemmaId, choice, lang } = req.body || {};
-  const activeLang = lang === 'en' ? 'en' : 'ru';
+  const activeLang = await resolveLang(lang);
 
   if (!['a', 'b', 'c'].includes(choice)) return res.status(400).json({ error: 'Некорректный выбор' });
 
@@ -196,12 +218,13 @@ async function handleChoose(req, res, telegramId) {
 
 // ==== action: unlock_topic (тратит 1 topic_key на следующую по порядку тему) ====
 async function handleUnlockTopic(req, res, telegramId) {
-  const { data: user } = await supabaseAdmin
+  let { data: user } = await supabaseAdmin
     .from('users')
     .select('topic_keys')
     .eq('telegram_id', telegramId)
     .single();
 
+  if (!user) user = await ensureUser(supabaseAdmin, telegramId);
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
   if ((user.topic_keys || 0) <= 0) return res.status(400).json({ error: 'Нет доступных ключей' });
 
@@ -235,14 +258,15 @@ async function handleUnlockTopic(req, res, telegramId) {
 // ==== action: unlock_secret (тратит 1 secret_key на случайную неоткрытую секретную дилемму) ====
 async function handleUnlockSecret(req, res, telegramId) {
   const { lang } = req.body || {};
-  const activeLang = lang === 'en' ? 'en' : 'ru';
+  const activeLang = await resolveLang(lang);
 
-  const { data: user } = await supabaseAdmin
+  let { data: user } = await supabaseAdmin
     .from('users')
     .select('secret_keys')
     .eq('telegram_id', telegramId)
     .single();
 
+  if (!user) user = await ensureUser(supabaseAdmin, telegramId);
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
   if ((user.secret_keys || 0) <= 0) return res.status(400).json({ error: 'Нет доступных ключей' });
 
@@ -299,7 +323,7 @@ async function handleUnlockSecret(req, res, telegramId) {
 // ==== action: choose_secret (выбор варианта в уже открытой секретной дилемме) ====
 async function handleChooseSecret(req, res, telegramId) {
   const { dilemmaId, choice, lang } = req.body || {};
-  const activeLang = lang === 'en' ? 'en' : 'ru';
+  const activeLang = await resolveLang(lang);
   if (!['a', 'b', 'c'].includes(choice)) return res.status(400).json({ error: 'Некорректный выбор' });
 
   const { data: owns } = await supabaseAdmin
