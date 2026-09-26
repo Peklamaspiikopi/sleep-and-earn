@@ -13,6 +13,7 @@
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
+const { ensureUser } = require('../lib/ensureUser');
 const { ensureDailyReset, postResetCooldownRemaining, MAX_MANUAL_PER_DAY, getLocalDateString } = require('../lib/userDaily');
 const { atomicIncrement } = require('../lib/atomicIncrement');
 const {
@@ -384,12 +385,13 @@ async function handleCancel(req, res, telegramId) {
 async function handleBannerStart(req, res, telegramId) {
   if (TERMINAL_CLOSED) return res.status(403).json({ error: TERMINAL_CLOSED_MESSAGE });
   const { timezone } = req.body || {};
-  const { data: rawUser } = await supabaseAdmin
+  let { data: rawUser } = await supabaseAdmin
     .from('users')
     .select('last_banner_watched_at, banners_watched_today, manual_limit, manual_limit_max, ads_watched_today, last_reset, last_reset_at, timezone, flagged, reward_locked_permanent')
     .eq('telegram_id', telegramId)
     .single();
 
+  if (!rawUser) rawUser = await ensureUser(supabaseAdmin, telegramId, timezone);
   if (!rawUser) return res.status(404).json({ error: 'Пользователь не найден' });
   if (rawUser.flagged || rawUser.reward_locked_permanent) {
     return res.status(403).json({ error: 'Начисления для этого аккаунта временно недоступны' });
@@ -516,12 +518,13 @@ async function handleBannerComplete(req, res, telegramId) {
 // поэтому не завязана на TERMINAL_CLOSED — работает уже сейчас.
 async function handleFortuneStart(req, res, telegramId) {
   const { timezone } = req.body || {};
-  const { data: user } = await supabaseAdmin
+  let { data: user } = await supabaseAdmin
     .from('users')
     .select('last_fortune_date, timezone, flagged, reward_locked_permanent')
     .eq('telegram_id', telegramId)
     .single();
 
+  if (!user) user = await ensureUser(supabaseAdmin, telegramId, timezone);
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
   if (user.flagged || user.reward_locked_permanent) {
     return res.status(403).json({ error: 'Начисления для этого аккаунта временно недоступны' });
@@ -636,12 +639,13 @@ async function handleCheckpointStart(req, res, telegramId) {
   const { topic } = req.body || {};
   if (!topic) return res.status(400).json({ error: 'Не указана тема дилемм' });
 
-  const { data: user } = await supabaseAdmin
+  let { data: user } = await supabaseAdmin
     .from('users')
     .select('flagged, reward_locked_permanent')
     .eq('telegram_id', telegramId)
     .single();
 
+  if (!user) user = await ensureUser(supabaseAdmin, telegramId);
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
   if (user.flagged || user.reward_locked_permanent) {
     return res.status(403).json({ error: 'Начисления для этого аккаунта временно недоступны' });
@@ -769,12 +773,13 @@ async function handleCheckpointComplete(req, res, telegramId) {
 // наград, а не новый источник токенов.
 async function handleDirectAdStart(req, res, telegramId) {
   const { timezone } = req.body || {};
-  const { data: rawUser } = await supabaseAdmin
+  let { data: rawUser } = await supabaseAdmin
     .from('users')
     .select('game_ads_watched_today, manual_limit, manual_limit_max, ads_watched_today, last_reset, last_reset_at, timezone, flagged, reward_locked_permanent, direct_ad_unlocked')
     .eq('telegram_id', telegramId)
     .single();
 
+  if (!rawUser) rawUser = await ensureUser(supabaseAdmin, telegramId, timezone);
   if (!rawUser) return res.status(404).json({ error: 'Пользователь не найден' });
   if (!rawUser.direct_ad_unlocked) return res.status(403).json({ error: 'Функция не куплена в магазине' });
   if (rawUser.flagged || rawUser.reward_locked_permanent) {
@@ -880,12 +885,13 @@ async function handleGameStart(req, res, telegramId) {
     return res.status(400).json({ error: 'Неизвестная игра' });
   }
 
-  const { data: rawUser } = await supabaseAdmin
+  let { data: rawUser } = await supabaseAdmin
     .from('users')
     .select('game_ads_watched_today, manual_limit, manual_limit_max, ads_watched_today, last_reset, last_reset_at, timezone, flagged, reward_locked_permanent')
     .eq('telegram_id', telegramId)
     .single();
 
+  if (!rawUser) rawUser = await ensureUser(supabaseAdmin, telegramId, timezone);
   if (!rawUser) return res.status(404).json({ error: 'Пользователь не найден' });
   if (rawUser.flagged || rawUser.reward_locked_permanent) {
     return res.status(403).json({ error: 'Начисления для этого аккаунта временно недоступны' });
@@ -1028,18 +1034,21 @@ async function creditReferralIfEligible(telegramId, newStreakCount, referredBy, 
   await atomicIncrement(supabaseAdmin, 'users', { telegram_id: referredBy }, 'ref_count', 1);
 }
 
-async function fetchStreakUser(telegramId) {
-  return supabaseAdmin
+async function fetchStreakUser(telegramId, timezone) {
+  const { data: user } = await supabaseAdmin
     .from('users')
     .select('game_streak_count, game_streak_last_active_date, balance, game_tokens, timezone, flagged, reward_locked_permanent, referred_by, referral_credited')
     .eq('telegram_id', telegramId)
     .single();
+
+  if (user) return { data: user };
+  return { data: await ensureUser(supabaseAdmin, telegramId, timezone) };
 }
 
 // ==== action: streak_skip (без рекламы, половина награды, мгновенно) ====
 async function handleStreakSkip(req, res, telegramId) {
   const { timezone } = req.body || {};
-  const { data: user } = await fetchStreakUser(telegramId);
+  const { data: user } = await fetchStreakUser(telegramId, timezone);
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
   if (user.flagged || user.reward_locked_permanent) {
     return res.status(403).json({ error: 'Начисления для этого аккаунта временно недоступны' });
@@ -1078,7 +1087,7 @@ async function handleStreakSkip(req, res, telegramId) {
 // ==== action: streak_ad_start ====
 async function handleStreakAdStart(req, res, telegramId) {
   const { timezone } = req.body || {};
-  const { data: user } = await fetchStreakUser(telegramId);
+  const { data: user } = await fetchStreakUser(telegramId, timezone);
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
   if (user.flagged || user.reward_locked_permanent) {
     return res.status(403).json({ error: 'Начисления для этого аккаунта временно недоступны' });
@@ -1139,7 +1148,7 @@ async function handleStreakAdComplete(req, res, telegramId) {
     return res.status(400).json({ error: 'Слишком рано' });
   }
 
-  const { data: user } = await fetchStreakUser(telegramId);
+  const { data: user } = await fetchStreakUser(telegramId, timezone);
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
 
   const today = getLocalDateString(timezone || user.timezone);
