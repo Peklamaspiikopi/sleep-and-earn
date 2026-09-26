@@ -7,6 +7,7 @@
 
 const { verifyTelegramInitData } = require('../lib/telegramAuth');
 const { supabaseAdmin } = require('../lib/supabaseAdmin');
+const { ensureUser } = require('../lib/ensureUser');
 const { ensureDailyReset, getLocalDateString, MAX_MANUAL_PER_DAY } = require('../lib/userDaily');
 const { daysToNextReward, daysToNextLimit, daysToNextBigBox, minWithdrawalFor, minAdsRequired } = require('../lib/streakLogic');
 const { getTonUsdRate } = require('../lib/tonRate');
@@ -29,7 +30,6 @@ module.exports = async (req, res) => {
 
   const telegramId = auth.telegramId;
   const tz = (typeof timezone === 'string' && timezone) ? timezone : 'UTC';
-  const today = getLocalDateString(tz);
 
   let referredBy = null;
   if (startParam && typeof startParam === 'string' && startParam.startsWith('ref_')) {
@@ -37,57 +37,26 @@ module.exports = async (req, res) => {
     if (candidate && candidate !== telegramId) referredBy = candidate;
   }
 
-  let { data: user } = await supabaseAdmin
-    .from('users')
-    .select('*')
-    .eq('telegram_id', telegramId)
-    .maybeSingle();
-
+  let user = await ensureUser(supabaseAdmin, telegramId, tz);
   if (!user) {
-    const { data: newUser, error: insertErr } = await supabaseAdmin
+    return res.status(500).json({ error: 'Не удалось создать или найти пользователя' });
+  }
+
+  // ensureUser не знает про referredBy (это специфика именно первого
+  // захода, ensureUser — общий fallback) — проставляем отдельно, только
+  // когда строку только что создали и рефовод ещё не записан.
+  if (referredBy && !user.referred_by) {
+    const { data: withRef } = await supabaseAdmin
       .from('users')
-      .insert([{
-        telegram_id: telegramId,
-        balance: 0,
-        ref_count: 0,
-        ref_earn: 0,
-        manual_limit: MAX_MANUAL_PER_DAY,
-        manual_limit_max: MAX_MANUAL_PER_DAY,
-        video_reward: 10,
-        streak_count: 0,
-        ads_watched_today: 0,
-        active_days_since_level8: 0,
-        active_days_since_limit_bump: 0,
-        active_days_since_big_box: 0,
-        reward_locked_permanent: false,
-        age_confirmed: false,
-        referred_by: referredBy,
-        referral_credited: false,
-        timezone: tz,
-        last_reset: today,
-        loyalty_started_at: today,
-        flagged: false,
-      }])
+      .update({ referred_by: referredBy })
+      .eq('telegram_id', telegramId)
+      .is('referred_by', null)
       .select()
-      .single();
+      .maybeSingle();
+    if (withRef) user = withRef;
+  }
 
-    if (insertErr) {
-      console.error('INSERT ERROR (get-user):', JSON.stringify(insertErr));
-      const { data: existingUser, error: selectErr } = await supabaseAdmin
-        .from('users')
-        .select('*')
-        .eq('telegram_id', telegramId)
-        .maybeSingle();
-      if (selectErr) console.error('RESELECT ERROR (get-user):', JSON.stringify(selectErr));
-      user = existingUser;
-    } else {
-      user = newUser;
-    }
-
-    if (!user) {
-      return res.status(500).json({ error: 'Не удалось создать или найти пользователя' });
-    }
-  } else if (user.timezone !== tz) {
+  if (user.timezone !== tz) {
     // Обновляем таймзону, если поменялась (юзер сменил регион/телефон)
     const { data: tzUser } = await supabaseAdmin
       .from('users')
