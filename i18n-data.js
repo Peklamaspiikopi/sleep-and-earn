@@ -1005,7 +1005,11 @@ window.I18N_KEYS = {
   "bannerLoadingBtn": "Завантаження банера...",
   "bannerDailyLimitBtn": "Банери на сьогодні закінчились",
   "confirmBanner": "Переглянути короткий банер за",
-  "bannerRewardMsg": (r) => `📺 +${r} монет за банер!`
+  "bannerRewardMsg": (r) => `📺 +${r} монет за банер!`,
+  "settingsLangTitle": "Мова",
+  "settingsThemeTitle": "Тема",
+  "guideTitle": "Гід",
+  "guideHtml": "<h3>Що таке MintoStrk</h3><p>Ти проходиш дилеми — життєві ситуації, де потрібно обрати один із варіантів відповіді. За це нараховуються жетони, а іноді й інші нагороди.</p><h3>Дилеми та чекпоінти</h3><p>Обери тему зверху і відповідай на дилеми одну за одною. Кожні 5 пройдених дилем — чекпоінт: подивись рекламу і отримай жетони.</p><h3>Ключі та Фортуна</h3><p>Нові теми й секретні дилеми відкриваються ключами. Єдиний спосіб отримати ключ — раз на день спробувати удачу в розділі «Фортуна» в Магазині.</p><h3>Ігри та бусти</h3><p>На вкладці «Ігри» жетони можна витратити на міні-ігри й бусти (підказка, скасування ходу) — вони допомагають проходити ігри на кшталт Block Blast, 2048 і Water Sort.</p><h3>Стрик</h3><p>Заходь щодня і відмічайся в стрику — жетони зростають з кожним днем поспіль, а на 7-й день дається нагорода монетами.</p><h3>Монети та Термінал</h3><p>Монети — це майбутня валюта для виведення через Термінал. Поки Термінал закритий і відкриється лише з ростом кількості гравців — накопичуй жетони й монети заздалегідь.</p>"
  },
  "es": {
   "alert": "<b>¿Se apaga la pantalla?</b> Para evitar pausas, aumenta el tiempo de pantalla encendida en los ajustes del teléfono.",
@@ -1066,7 +1070,11 @@ window.I18N_KEYS = {
   "bannerLoadingBtn": "Cargando banner...",
   "bannerDailyLimitBtn": "No quedan banners por hoy",
   "confirmBanner": "Ver un banner corto por",
-  "bannerRewardMsg": (r) => `📺 ¡+${r} monedas por el banner!`
+  "bannerRewardMsg": (r) => `📺 ¡+${r} monedas por el banner!`,
+  "settingsLangTitle": "Idioma",
+  "settingsThemeTitle": "Tema",
+  "guideTitle": "Guía",
+  "guideHtml": "<h3>Qué es MintoStrk</h3><p>Recorres dilemas — situaciones de la vida real donde eliges una de las opciones de respuesta. Esto te da tokens y, a veces, otras recompensas.</p><h3>Dilemas y puntos de control</h3><p>Elige un tema arriba y responde los dilemas uno por uno. Cada 5 dilemas completados es un punto de control: mira un anuncio y recibe tokens.</p><h3>Llaves y Fortuna</h3><p>Los nuevos temas y dilemas secretos se desbloquean con llaves. La única forma de conseguir una llave es probar suerte una vez al día en «Испытать удачу» (Probar suerte) en la Tienda.</p><h3>Juegos y potenciadores</h3><p>En la pestaña Juegos puedes gastar tokens en minijuegos y potenciadores (pista, deshacer movimiento) — te ayudan en juegos como Block Blast, 2048 y Water Sort.</p><h3>Racha</h3><p>Entra cada día y marca tu racha — los tokens crecen con cada día consecutivo, y el día 7 da una recompensa en monedas.</p><h3>Monedas y el Terminal</h3><p>Las monedas son la futura moneda de retiro a través del Terminal. Por ahora está cerrado y abrirá a medida que crezca la base de jugadores — acumula tokens y monedas desde ya.</p>"
  },
  "fr": {
   "alert": "<b>L'écran s'éteint ?</b> Pour éviter les pauses, augmente la durée d'affichage dans les réglages du téléphone.",
@@ -1127,7 +1135,11 @@ window.I18N_KEYS = {
   "bannerLoadingBtn": "Chargement de la bannière...",
   "bannerDailyLimitBtn": "Plus de bannières aujourd'hui",
   "confirmBanner": "Regarder une courte bannière pour",
-  "bannerRewardMsg": (r) => `📺 +${r} pièces pour la bannière !`
+  "bannerRewardMsg": (r) => `📺 +${r} pièces pour la bannière !`,
+  "settingsLangTitle": "Langue",
+  "settingsThemeTitle": "Thème",
+  "guideTitle": "Guide",
+  "guideHtml": "<h3>Qu'est-ce que MintoStrk</h3><p>Tu parcours des dilemmes — des situations du quotidien où tu choisis l'une des réponses proposées. Cela te rapporte des jetons, et parfois d'autres récompenses.</p><h3>Dilemmes et points de contrôle</h3><p>Choisis un thème en haut et réponds aux dilemmes un par un. Tous les 5 dilemmes complétés, c'est un point de contrôle : regarde une pub et reçois des jetons.</p><h3>Clés et Fortune</h3><p>Les nouveaux thèmes et les dilemmes secrets se débloquent avec des clés. La seule façon d'obtenir une clé est de tenter sa chance une fois par jour dans « Испытать удачу » (Tenter sa chance) dans la Boutique.</p><h3>Jeux et bonus</h3><p>Dans l'onglet Jeux, tu peux dépenser des jetons sur des mini-jeux et des bonus (indice, annuler un coup) — ils t'aident dans des jeux comme Block Blast, 2048 et Water Sort.</p><h3>Série</h3><p>Reviens chaque jour et pointe ta série — les jetons augmentent à chaque jour consécutif, et le 7e jour offre une récompense en pièces.</p><h3>Pièces et le Terminal</h3><p>Les pièces sont la future monnaie de retrait via le Terminal. Il est fermé pour l'instant et ouvrira à mesure que la base de joueurs grandit — accumule des jetons et des pièces dès maintenant.</p>"
  },
  "ar": {
   "alert": "<b>الشاشة تنطفئ؟</b> لتجنب التوقف، زد مدة تشغيل الشاشة في إعدادات هاتفك.",
@@ -1188,7 +1200,11 @@ window.I18N_KEYS = {
   "bannerLoadingBtn": "جارٍ تحميل البانر...",
   "bannerDailyLimitBtn": "لا مزيد من البانرات اليوم",
   "confirmBanner": "شاهد بانرًا قصيرًا مقابل",
-  "bannerRewardMsg": (r) => `📺 +${r} عملة مقابل البانر!`
+  "bannerRewardMsg": (r) => `📺 +${r} عملة مقابل البانر!`,
+  "settingsLangTitle": "اللغة",
+  "settingsThemeTitle": "المظهر",
+  "guideTitle": "الدليل",
+  "guideHtml": "<h3>ما هو MintoStrk</h3><p>تمر بمعضلات — مواقف حياتية تختار فيها أحد خيارات الإجابة. يمنحك هذا عملات، وأحيانًا مكافآت أخرى.</p><h3>المعضلات ونقاط التفتيش</h3><p>اختر موضوعًا من الأعلى وأجب عن المعضلات واحدة تلو الأخرى. كل 5 معضلات مكتملة تمثل نقطة تفتيش: شاهد إعلانًا واحصل على عملات.</p><h3>المفاتيح والفورتشن</h3><p>تُفتح المواضيع الجديدة والمعضلات السرية بالمفاتيح. الطريقة الوحيدة للحصول على مفتاح هي تجربة الحظ مرة واحدة يوميًا في «Испытать удачу» (جرّب حظك) في المتجر.</p><h3>الألعاب والتعزيزات</h3><p>في تبويب الألعاب يمكنك إنفاق العملات على الألعاب المصغرة والتعزيزات (تلميح، تراجع عن حركة) — تساعدك في ألعاب مثل Block Blast وBlast 2048 وWater Sort.</p><h3>السلسلة</h3><p>ادخل كل يوم وسجّل حضورك في السلسلة — تزداد العملات مع كل يوم متتالٍ، ويمنحك اليوم السابع مكافأة عملات معدنية.</p><h3>العملات المعدنية والمحطة</h3><p>العملات المعدنية هي عملة السحب المستقبلية عبر المحطة. المحطة مغلقة حاليًا وستفتح مع نمو قاعدة اللاعبين — اجمع العملات والعملات المعدنية مسبقًا.</p>"
  }
 };
 window.I18N_LABELS = {
