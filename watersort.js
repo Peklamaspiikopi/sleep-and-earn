@@ -69,6 +69,13 @@
         const onGameOver = opts.onGameOver || function () {};
         const onScoreChange = opts.onScoreChange || function () {};
 
+        // Тюбики и текст тут рисуются прямо на фоне страницы (без своей
+        // тёмной панели, как у canvas в других играх), поэтому им нужно
+        // знать текущую тему — иначе "белый на белом" в светлой теме.
+        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+        const ink = isLight ? '#171a21' : '#fff';
+        const wash = (a) => isLight ? `rgba(0,0,0,${a})` : `rgba(255,255,255,${a})`;
+
         container.innerHTML = '';
         container.style.display = 'flex';
         container.style.flexDirection = 'column';
@@ -77,7 +84,7 @@
         container.style.userSelect = 'none';
 
         const infoEl = document.createElement('div');
-        infoEl.style.cssText = 'font-size:14px;font-weight:700;color:#fff;';
+        infoEl.style.cssText = `font-size:14px;font-weight:700;color:${ink};`;
         infoEl.textContent = 'Ходов: 0';
         container.appendChild(infoEl);
 
@@ -89,7 +96,7 @@
         controlsEl.style.cssText = 'display:flex;gap:10px;';
         const newGameBtn = document.createElement('button');
         newGameBtn.className = 'btn';
-        newGameBtn.style.cssText = 'padding:8px 16px;font-size:13px;background:rgba(255,255,255,0.08);';
+        newGameBtn.style.cssText = 'padding:8px 16px;font-size:13px;width:auto;';
         newGameBtn.textContent = 'Новая головоломка';
         controlsEl.appendChild(newGameBtn);
         container.appendChild(controlsEl);
@@ -107,9 +114,9 @@
                 const tubeEl = document.createElement('div');
                 const isSel = idx === selected;
                 tubeEl.style.cssText = `width:44px;height:${TUBE_CAPACITY * 26 + 10}px;border-radius:0 0 10px 10px;
-                    border:3px solid ${isSel ? '#69db7c' : 'rgba(255,255,255,0.25)'};border-top:none;
+                    border:3px solid ${isSel ? '#69db7c' : wash(0.25)};border-top:none;
                     display:flex;flex-direction:column-reverse;padding:4px;box-sizing:border-box;
-                    background:rgba(255,255,255,0.03);cursor:pointer;`;
+                    background:${wash(0.05)};cursor:pointer;`;
                 tube.forEach((colorIdx) => {
                     const seg = document.createElement('div');
                     seg.style.cssText = `width:100%;height:22px;border-radius:4px;margin-top:2px;background:${COLORS[colorIdx]};`;
