@@ -95,6 +95,13 @@
         const onGameOver = opts.onGameOver || function () {};
         const onScoreChange = opts.onScoreChange || function () {};
 
+        // Очки и подсказка рисуются прямо на фоне страницы — доска
+        // ниже держит свой фиксированный тёмный фон #10131a и темы не
+        // боится, а вот эти два текста были жёстко белыми.
+        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+        const ink = isLight ? '#171a21' : '#fff';
+        const inkSecondary = isLight ? '#5b6270' : '#9aa0a6';
+
         container.innerHTML = '';
         container.style.display = 'flex';
         container.style.flexDirection = 'column';
@@ -104,7 +111,7 @@
         container.style.touchAction = 'none';
 
         const scoreEl = document.createElement('div');
-        scoreEl.style.cssText = 'font-size:22px;font-weight:800;color:#fff;text-shadow:0 0 8px rgba(237,194,46,0.6);';
+        scoreEl.style.cssText = `font-size:22px;font-weight:800;color:${ink};text-shadow:0 0 8px rgba(237,194,46,0.6);`;
         scoreEl.textContent = 'Очки: 0';
         container.appendChild(scoreEl);
 
@@ -116,7 +123,7 @@
         container.appendChild(boardEl);
 
         const hint = document.createElement('div');
-        hint.style.cssText = 'font-size:12px;color:#9aa0a6;';
+        hint.style.cssText = `font-size:12px;color:${inkSecondary};`;
         hint.textContent = 'Свайпни в любую сторону';
         container.appendChild(hint);
 
