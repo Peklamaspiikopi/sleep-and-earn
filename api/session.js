@@ -49,48 +49,11 @@ async function handleStart(req, res, telegramId) {
     .from('users')
     .select('*')
     .eq('telegram_id', telegramId)
+    .limit(1)
     .maybeSingle();
 
-  if (!user) {
-    const { data: newUser, error: insertErr } = await supabaseAdmin
-      .from('users')
-      .insert([{
-        telegram_id: telegramId,
-        balance: 0,
-        ref_count: 0,
-        ref_earn: 0,
-        manual_limit: MAX_MANUAL_PER_DAY,
-        manual_limit_max: MAX_MANUAL_PER_DAY,
-        video_reward: 10,
-        streak_count: 0,
-        ads_watched_today: 0,
-        active_days_since_level8: 0,
-        active_days_since_limit_bump: 0,
-        active_days_since_big_box: 0,
-        reward_locked_permanent: false,
-        age_confirmed: false,
-        timezone: 'UTC',
-        last_reset: new Date().toISOString().slice(0, 10),
-        loyalty_started_at: new Date().toISOString().slice(0, 10),
-        flagged: false,
-      }])
-      .select()
-      .single();
-
-    if (insertErr) {
-      console.error('INSERT ERROR (session start):', JSON.stringify(insertErr));
-      const { data: existingUser } = await supabaseAdmin
-        .from('users')
-        .select('*')
-        .eq('telegram_id', telegramId)
-        .maybeSingle();
-      user = existingUser;
-    } else {
-      user = newUser;
-    }
-
-    if (!user) return res.status(500).json({ error: 'Не удалось создать или найти пользователя' });
-  }
+  if (!user) user = await ensureUser(supabaseAdmin, telegramId);
+  if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
 
   const resetResult = await ensureDailyReset(supabaseAdmin, user, telegramId, user.timezone);
   user = resetResult.user;
