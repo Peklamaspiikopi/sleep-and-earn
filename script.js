@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             coinWord: "монет",
             limitBtn: "Лимит на сегодня исчерпан",
             watchingBtn: "Загрузка ролика...",
-            honesty: "🛡️ <b>Правило честности:</b> Мы за прозрачное сотрудничество. Любые накрутки фиксируются системой.",
+            honesty: "🛡️ Мы за прозрачное сотрудничество. Любые накрутки фиксируются системой. Первое нарушение можно простить: обнулим нечестно накрученный баланс, аккаунт останется активным — это разовая уступка. А ещё каждый честно досмотренный до конца ролик — это твой бонус и вклад в рост проекта: чем больше активных игроков, тем быстрее откроется Терминал.",
             withdrawLimit: (min) => `🔒 Минимальный вывод: <b>${min} Монет</b>`,
             promoPlaceholder: "Введите промокод...",
             walletPlaceholder: "Адрес TON-кошелька для вывода",
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             settingsLangTitle: "Язык",
             settingsThemeTitle: "Тема",
             guideTitle: "Гид",
-            guideHtml: "<h3>Что такое MintoStrk</h3><p>Ты проходишь дилеммы — жизненные ситуации, где нужно выбрать один из вариантов ответа. За это начисляются жетоны, а иногда и другие награды.</p><h3>Дилеммы и чекпоинты</h3><p>Выбери тему сверху и отвечай на дилеммы одну за другой. Каждые 5 пройденных дилемм — чекпоинт: посмотри рекламу и получи жетоны.</p><h3>Ключи и Фортуна</h3><p>Новые темы и секретные дилеммы открываются ключами. Единственный способ получить ключ — раз в день попытать удачу в «Испытать удачу» в Магазине.</p><h3>Игры и бусты</h3><p>На вкладке «Игры» жетоны можно потратить на мини-игры и бусты (подсказка, отмена хода) — они помогают проходить игры вроде Block Blast, 2048 и Water Sort.</p><h3>Стрик</h3><p>Заходи каждый день и отмечайся в стрике — жетоны растут с каждым днём подряд, а на 7-й день положена награда монетами.</p><h3>Монеты и Терминал</h3><p>Монеты — это будущая валюта для вывода через Терминал. Пока Терминал закрыт и открывается только по мере роста числа игроков — набирай жетоны и монеты заранее.</p>",
+            guideHtml: "<h3>Что такое MintoStrk</h3><p>Ты проходишь дилеммы — жизненные ситуации, где нужно выбрать один из вариантов ответа. За это начисляются жетоны, а иногда и другие награды.</p><h3>Дилеммы и чекпоинты</h3><p>Выбери тему сверху и отвечай на дилеммы одну за другой. Каждые 5 пройденных дилемм — чекпоинт: посмотри рекламу и получи жетоны.</p><h3>Ключи и Фортуна</h3><p>Новые темы и секретные дилеммы открываются ключами. Единственный способ получить ключ — раз в день попытать удачу в «Испытать удачу» в Магазине.</p><h3>Игры и бусты</h3><p>На вкладке «Игры» жетоны можно потратить на мини-игры и бусты (подсказка, отмена хода) — они помогают проходить игры вроде Block Blast, 2048 и Water Sort.</p><h3>Стрик</h3><p>Заходи каждый день и отмечайся в стрике — жетоны растут с каждым днём подряд, а на 7-й день положена награда монетами.</p><h3>Монеты и Терминал</h3><p>Монеты — это будущая валюта для вывода через Терминал. Пока Терминал закрыт и открывается только по мере роста числа игроков — набирай жетоны и монеты заранее.</p><p style=\"margin-top:10px;font-size:11px;opacity:0.7;\">Полные правила — в <a href=\"terms.html\" target=\"_blank\" style=\"color:#00b0ff;\">условиях использования</a>.</p>",
         },
         en: {
             alert: "<b>Screen turning off?</b> Extend display timeout in your phone settings.",
@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             coinWord: "coins",
             limitBtn: "Daily limit reached",
             watchingBtn: "Loading video...",
-            honesty: "🛡️ <b>Fair Play:</b> We stand for transparent cooperation. Any cheating is logged.",
+            honesty: "🛡️ We stand for transparent cooperation. Any cheating is logged. A first violation can be forgiven: we'll zero out the unfairly earned balance and keep the account active — a one-time exception. Every ad you genuinely watch to the end is both your bonus and a step toward growing the project: the more active players, the sooner the Terminal opens.",
             withdrawLimit: (min) => `🔒 Min Withdrawal: <b>${min} Coins</b>`,
             promoPlaceholder: "Enter promo code...",
             walletPlaceholder: "TON wallet address for withdrawal",
@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             settingsLangTitle: "Language",
             settingsThemeTitle: "Theme",
             guideTitle: "Guide",
-            guideHtml: "<h3>What is MintoStrk</h3><p>You go through dilemmas — everyday situations where you pick one of the answer options. Doing so earns you tokens, and sometimes other rewards.</p><h3>Dilemmas and checkpoints</h3><p>Pick a topic above and answer dilemmas one by one. Every 5 completed dilemmas is a checkpoint: watch an ad and get tokens.</p><h3>Keys and Fortune</h3><p>New topics and secret dilemmas are unlocked with keys. The only way to get a key is trying your luck once a day in the Fortune feature (Испытать удачу) in the Shop.</p><h3>Games and boosts</h3><p>On the Games tab you can spend tokens on mini-games and boosts (hint, undo move) — they help you get through games like Block Blast, 2048 and Water Sort.</p><h3>Streak</h3><p>Check in every day to grow your streak — tokens grow with each consecutive day, and day 7 gives a coin reward.</p><h3>Coins and the Terminal</h3><p>Coins are the future withdrawal currency via the Terminal. It's closed for now and will open as the player base grows — stock up on tokens and coins early.</p>",
+            guideHtml: "<h3>What is MintoStrk</h3><p>You go through dilemmas — everyday situations where you pick one of the answer options. Doing so earns you tokens, and sometimes other rewards.</p><h3>Dilemmas and checkpoints</h3><p>Pick a topic above and answer dilemmas one by one. Every 5 completed dilemmas is a checkpoint: watch an ad and get tokens.</p><h3>Keys and Fortune</h3><p>New topics and secret dilemmas are unlocked with keys. The only way to get a key is trying your luck once a day in the Fortune feature (Испытать удачу) in the Shop.</p><h3>Games and boosts</h3><p>On the Games tab you can spend tokens on mini-games and boosts (hint, undo move) — they help you get through games like Block Blast, 2048 and Water Sort.</p><h3>Streak</h3><p>Check in every day to grow your streak — tokens grow with each consecutive day, and day 7 gives a coin reward.</p><h3>Coins and the Terminal</h3><p>Coins are the future withdrawal currency via the Terminal. It's closed for now and will open as the player base grows — stock up on tokens and coins early.</p><p style=\"margin-top:10px;font-size:11px;opacity:0.7;\">Full rules are in the <a href=\"terms.html\" target=\"_blank\" style=\"color:#00b0ff;\">terms of use</a>.</p>",
         }
     };
 
@@ -695,7 +695,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const DAILY_GAME_LADDER_SKIP_MIRROR = [1, 2, 2, 3, 4, 5, 7];
     const DAY7_BONUS_COINS_MIRROR = 10;
     const gameStreakCountEl = document.getElementById('gameStreakCount');
-    const gameStreakTotalEl = document.getElementById('gameStreakTotalVal');
     const streakWeekStripEl = document.getElementById('streakWeekStrip');
     const gameStreakStatusText = document.getElementById('gameStreakStatusText');
     const gameStreakButtons = document.getElementById('gameStreakButtons');
@@ -730,7 +729,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     function updateStreakUI() {
         const count = userState.game_streak_count || 0;
         if (gameStreakCountEl) gameStreakCountEl.innerText = count;
-        if (gameStreakTotalEl) gameStreakTotalEl.innerText = count;
         renderStreakWeek(count, !!userState.game_streak_checked_in_today);
         const nextPos = count % 7; // 0-индекс следующего дня
         const fullReward = DAILY_GAME_LADDER_FULL_MIRROR[nextPos];
