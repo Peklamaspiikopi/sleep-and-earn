@@ -95,6 +95,13 @@
         const onGameOver = opts.onGameOver || function () {};
         const onScoreChange = opts.onScoreChange || function () {};
 
+        // Очки и пустые слоты лотка рисуются прямо на фоне страницы —
+        // канвас доски ниже держит свой фиксированный тёмный фон и темы
+        // не боится, а эти два элемента были жёстко под тёмную тему.
+        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+        const ink = isLight ? '#171a21' : '#fff';
+        const wash = (a) => isLight ? `rgba(0,0,0,${a})` : `rgba(255,255,255,${a})`;
+
         container.innerHTML = '';
         container.style.display = 'flex';
         container.style.flexDirection = 'column';
@@ -104,7 +111,7 @@
         container.style.touchAction = 'none'; // важно для drag пальцем — не даём странице скроллиться
 
         const scoreEl = document.createElement('div');
-        scoreEl.style.cssText = 'font-size:22px;font-weight:800;color:#fff;text-shadow:0 0 8px rgba(105,219,124,0.6);';
+        scoreEl.style.cssText = `font-size:22px;font-weight:800;color:${ink};text-shadow:0 0 8px rgba(105,219,124,0.6);`;
         scoreEl.textContent = 'Очки: 0';
         container.appendChild(scoreEl);
 
@@ -220,7 +227,7 @@
                 const holder = document.createElement('div');
                 holder.dataset.idx = String(idx);
                 holder.style.cssText = `flex:1;min-height:64px;display:flex;align-items:center;justify-content:center;
-                    border-radius:10px;background:rgba(255,255,255,0.05);
+                    border-radius:10px;background:${wash(0.06)};
                     border:2px solid transparent;touch-action:none;`;
                 if (!piece) { trayEl.appendChild(holder); return; }
                 const { rows, cols } = shapeSize(piece.shape);
