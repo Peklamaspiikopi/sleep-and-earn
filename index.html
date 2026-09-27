@@ -110,7 +110,7 @@
         .week-day { flex: 1; background: #1a1420; border: 1px solid rgba(171,71,188,0.3); border-radius: 8px; padding: 6px 2px; text-align: center; transition: transform 0.15s; }
         [data-theme="light"] .week-day { background: #f6ecfb; }
         .week-day.active { border-color: #e040fb; box-shadow: 0 0 10px rgba(224,64,251,0.5); background: rgba(224,64,251,0.12); }
-        .week-day-num { font-size: 9px; color: #8a909a; }
+        .week-day-num { font-size: 9px; color: var(--text-secondary); }
         .week-day-reward { font-size: 11px; font-weight: 700; color: #e1bee7; margin-top: 2px; }
         [data-theme="light"] .week-day-reward { color: #7b1fa2; }
         .progress-hint { font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; }
@@ -136,6 +136,7 @@
         .promo-btn:active, .week-day:active, .fortune-tile:active, .stat-item:active {
             transform: scale(0.96);
         }
+        .btn-secondary { background: var(--border); color: var(--text); transition: transform 0.15s, background-color 0.25s, color 0.25s; }
 
         #watchBtn {
             background: linear-gradient(135deg, #0088ff, #00e5ff);
@@ -160,7 +161,7 @@
 
         .ref-card { border-color: rgba(0, 176, 255, 0.4); box-shadow: 0 0 12px rgba(0, 176, 255, 0.1); background: rgba(0, 176, 255, 0.04); }
         .ref-box { display: flex; gap: 6px; margin-top: 8px; }
-        .ref-input { flex: 1; background: #111317; border: 1px solid rgba(0, 230, 118, 0.4); color: #00e676; font-weight: 600; padding: 8px; border-radius: 10px; font-size: 11px; text-align: center; box-shadow: 0 0 8px rgba(0, 230, 118, 0.15); }
+        .ref-input { flex: 1; background: var(--bg); border: 1px solid rgba(0, 230, 118, 0.4); color: #00e676; font-weight: 600; padding: 8px; border-radius: 10px; font-size: 11px; text-align: center; box-shadow: 0 0 8px rgba(0, 230, 118, 0.15); transition: background-color 0.25s; }
         .ref-btn { background: #00b0ff; color: #fff; border: 1px solid #00e5ff; padding: 0 12px; font-size: 11px; font-weight: 700; border-radius: 10px; cursor: pointer; box-shadow: 0 0 8px rgba(0, 176, 255, 0.4); transition: transform 0.15s; }
 
         .streak-day { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; background: var(--surface); border: 1px solid var(--border); color: var(--text-muted); }
@@ -252,7 +253,7 @@
 <div class="modal-overlay" id="ageGateModal" style="display:none; z-index:9999;">
     <div class="modal-content">
         <div style="font-size: 18px; color: #ff5252; font-weight: 800; margin-bottom: 10px;" id="tAgeGateTitle">⚠️ Внимание!</div>
-        <div style="font-size: 13px; color: #9aa0a6; line-height: 1.5; margin-bottom: 15px; text-align: left;" id="tAgeGateText">MintoStrk доступен только пользователям 18+. Продолжая, вы подтверждаете, что вам есть 18 лет и вы согласны с <a href="terms.html" target="_blank" style="color:#00b0ff;" id="tAgeGateTermsLink">условиями использования</a>.</div>
+        <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 15px; text-align: left;" id="tAgeGateText">MintoStrk доступен только пользователям 18+. Продолжая, вы подтверждаете, что вам есть 18 лет и вы согласны с <a href="terms.html" target="_blank" style="color:#00b0ff;" id="tAgeGateTermsLink">условиями использования</a>.</div>
         <button class="btn" id="ageGateBtn">Подтверждаю, мне есть 18</button>
     </div>
 </div>
@@ -260,7 +261,7 @@
 <div class="modal-overlay" id="welcomeModal">
     <div class="modal-content">
         <div style="font-size: 18px; color: #00b0ff; font-weight: 800; margin-bottom: 10px; text-shadow: 0 0 8px rgba(0, 176, 255, 0.6);" id="tModalTitle">🚀 Первый запуск!</div>
-        <div style="font-size: 13px; color: #9aa0a6; line-height: 1.5; margin-bottom: 15px; text-align: left;" id="tModalText">Привет!</div>
+        <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 15px; text-align: left;" id="tModalText">Привет!</div>
         <button class="btn" id="tModalBtn" onclick="closeModal()">Понятно</button>
     </div>
 </div>
@@ -298,43 +299,42 @@
     <!-- ДИЛЕММЫ -->
     <div class="tab-content active" id="tabDilemmas">
         <div class="card" style="text-align:center;">
-            <div style="font-size:13px;font-weight:700;color:#69db7c;margin-bottom:2px;">📅 Стрик: <span id="gameStreakCount">0</span> дн. подряд</div>
-            <div style="font-size:11px;color:#9aa0a6;margin-bottom:10px;" id="tStreakTotalLine">Всего активных дней: <b id="gameStreakTotalVal" style="color:#fff;">0</b></div>
+            <div style="font-size:13px;font-weight:700;color:#69db7c;margin-bottom:10px;">📅 Стрик: <span id="gameStreakCount">0</span> дн. подряд</div>
             <div id="streakWeekStrip" style="display:flex; gap:6px; justify-content:center; margin-bottom:10px;"></div>
-            <div id="gameStreakStatusText" style="font-size:12px;color:#9aa0a6;margin-bottom:10px;"></div>
+            <div id="gameStreakStatusText" style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;"></div>
             <div id="gameStreakButtons">
                 <button class="btn" id="streakAdBtn" style="background: linear-gradient(135deg, #69db7c, #38d9a9); padding:10px;">Смотреть рекламу (+0)</button>
-                <button class="btn" id="streakSkipBtn" style="margin-top:8px;background:rgba(255,255,255,0.08);padding:10px;">Без рекламы (+0)</button>
+                <button class="btn btn-secondary" id="streakSkipBtn" style="margin-top:8px;padding:10px;">Без рекламы (+0)</button>
             </div>
             <button class="btn" id="directAdBtn" style="margin-top:10px;display:none;background: linear-gradient(135deg, #ff922b, #f76707);padding:10px;">📺 Смотреть рекламу напрямую (+8)</button>
         </div>
 
         <div class="card" id="dilemmaCard" style="text-align:left;">
-            <button class="btn" id="topicSelectorToggle" type="button" style="width:100%; display:flex; justify-content:space-between; align-items:center; background:#2a2d37; margin-bottom:0;">
+            <button class="btn" id="topicSelectorToggle" type="button" style="width:100%; display:flex; justify-content:space-between; align-items:center; background:var(--border); color:var(--text); margin-bottom:0;">
                 <span id="currentTopicLabel">—</span>
                 <span id="topicSelectorArrow">▾</span>
             </button>
             <div id="topicSelectorPanel" style="display:none; margin-top:10px;">
                 <div style="display:flex; justify-content:space-around; margin-bottom:10px;">
                     <div style="text-align:center;">
-                        <div style="font-size: 20px; font-weight: 800; color:#fff;" id="topicKeysVal">0</div>
-                        <div style="font-size: 10px; color:#9aa0a6;">ключей от тем</div>
+                        <div style="font-size: 20px; font-weight: 800; color:var(--text);" id="topicKeysVal">0</div>
+                        <div style="font-size: 10px; color:var(--text-secondary);">ключей от тем</div>
                     </div>
                     <div style="text-align:center;">
-                        <div style="font-size: 20px; font-weight: 800; color:#fff;" id="secretKeysVal">0</div>
-                        <div style="font-size: 10px; color:#9aa0a6;">секретных ключей</div>
+                        <div style="font-size: 20px; font-weight: 800; color:var(--text);" id="secretKeysVal">0</div>
+                        <div style="font-size: 10px; color:var(--text-secondary);">секретных ключей</div>
                     </div>
                 </div>
-                <div style="font-size:10px; color:#6a7078; text-align:center; margin-bottom:8px;">🔑 ✨ ключи выдаются только в Фортуне (раз в день, за рекламу)</div>
+                <div style="font-size:10px; color:var(--text-muted); text-align:center; margin-bottom:8px;">🔑 ✨ ключи выдаются только в Фортуне (раз в день, за рекламу)</div>
                 <div style="display:flex; gap:8px; margin-bottom:10px;">
                     <button class="btn" id="unlockTopicBtn" style="flex:1; font-size:12px; padding:10px 6px; background: linear-gradient(135deg, #4dabf7, #748ffc);">Открыть новую тему</button>
                     <button class="btn" id="unlockSecretBtn" style="flex:1; font-size:12px; padding:10px 6px; background: linear-gradient(135deg, #9775fa, #f783ac);">Открыть секретную</button>
                 </div>
-                <div style="font-size:11px; color:#9aa0a6; text-align:center; margin-bottom:10px;" id="topicsRemainingLine">Осталось открыть тем: — · секретных дилемм: —</div>
+                <div style="font-size:11px; color:var(--text-secondary); text-align:center; margin-bottom:10px;" id="topicsRemainingLine">Осталось открыть тем: — · секретных дилемм: —</div>
                 <div id="topicSelectorGrid" style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;"></div>
             </div>
 
-            <div id="dilemmaProgressLine" style="font-size:12px; color:#9aa0a6; margin: 12px 0 10px;">—</div>
+            <div id="dilemmaProgressLine" style="font-size:12px; color:var(--text-secondary); margin: 12px 0 10px;">—</div>
 
             <div style="font-size: 15px; font-weight: 800; color: #00e5ff; margin-bottom: 8px;" id="dilemmaTitle">—</div>
             <div style="font-size: 13px; color: #d0d4da; line-height:1.5; margin-bottom: 16px;" id="dilemmaText">—</div>
@@ -342,7 +342,7 @@
             <div id="dilemmaOptions" style="display:flex; flex-direction:column; gap:8px;"></div>
 
             <div id="dilemmaConsequenceBox" style="display:none; margin-top:14px; padding:12px; border-radius:10px; background:#1b1e27; border:1px solid #2a2d37;">
-                <div style="font-size:12px; color:#9aa0a6; margin-bottom:6px;" id="tConsequenceLabel">Что произошло:</div>
+                <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;" id="tConsequenceLabel">Что произошло:</div>
                 <div style="font-size:13px; color:#e0e0e0;" id="dilemmaConsequenceText">—</div>
                 <button class="btn" id="dilemmaNextBtn" style="margin-top:12px;">Дальше</button>
             </div>
@@ -360,7 +360,7 @@
         <div class="card" style="text-align:center; padding: 30px 20px;">
             <div style="font-size: 40px; margin-bottom: 12px;">🚧</div>
             <div style="font-size: 15px; font-weight: 700; color: #ffd43b; margin-bottom: 10px;" id="tTerminalClosedTitle">Терминал временно закрыт</div>
-            <div style="font-size: 13px; color: #9aa0a6; line-height: 1.5;" id="tTerminalClosedText">Идёт обновление экономики. Зарабатывай жетоны в дилеммах и играх — они пересчитаются в монеты, когда Терминал снова откроется.</div>
+            <div style="font-size: 13px; color:var(--text-secondary); line-height: 1.5;" id="tTerminalClosedText">Идёт обновление экономики. Зарабатывай жетоны в дилеммах и играх — они пересчитаются в монеты, когда Терминал снова откроется.</div>
         </div>
     </div>
 
@@ -368,19 +368,19 @@
     <div class="tab-content" id="tabFinance">
         <div class="card" style="text-align:center;">
             <div style="font-size: 13px; font-weight: 700; color: #ffa94d; margin-bottom: 10px;">🛒 Магазин</div>
-            <div id="shopJetonsLine" style="font-size:12px;color:#9aa0a6;margin-bottom:10px;">Жетоны: 0</div>
+            <div id="shopJetonsLine" style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;">Жетоны: 0</div>
             <div id="shopList" style="display:flex;flex-direction:column;gap:8px;text-align:left;"></div>
         </div>
 
         <div class="card" style="text-align:center;">
             <div style="font-size: 13px; font-weight: 700; color: #f783ac; margin-bottom: 10px;">🎰 Испытать удачу</div>
-            <div style="font-size:11px;color:#9aa0a6;margin-bottom:10px;">Смотришь ролик — получаешь шанс на ключ. Раз в день.</div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;">Смотришь ролик — получаешь шанс на ключ. Раз в день.</div>
             <div id="fortuneTiles" style="display:flex; gap:10px; justify-content:center; margin-bottom:12px;">
                 <div class="fortune-tile">❓</div>
                 <div class="fortune-tile">❓</div>
                 <div class="fortune-tile">❓</div>
             </div>
-            <div id="fortuneResultText" style="font-size:12px;color:#9aa0a6;min-height:16px;margin-bottom:10px;"></div>
+            <div id="fortuneResultText" style="font-size:12px;color:var(--text-secondary);min-height:16px;margin-bottom:10px;"></div>
             <button class="btn" id="fortuneBtn" style="background: linear-gradient(135deg, #f783ac, #9775fa);">Смотреть рекламу</button>
         </div>
 
@@ -390,17 +390,17 @@
     <div class="tab-content" id="tabGames">
         <div class="card" style="text-align:center;">
             <div style="display:flex;gap:8px;justify-content:center;margin-bottom:10px;">
-                <button class="btn" id="gamePickBlockBlast" style="padding:8px 14px;font-size:12px;">🧩 Block Blast</button>
-                <button class="btn" id="gamePick2048" style="padding:8px 14px;font-size:12px;background:rgba(255,255,255,0.08);">🔢 2048</button>
-                <button class="btn" id="gamePickWaterSort" style="padding:8px 14px;font-size:12px;background:rgba(255,255,255,0.08);">💧 Water Sort</button>
+                <button class="btn btn-secondary" id="gamePickBlockBlast" style="padding:8px 14px;font-size:12px;width:auto;">🧩 Block Blast</button>
+                <button class="btn btn-secondary" id="gamePick2048" style="padding:8px 14px;font-size:12px;width:auto;">🔢 2048</button>
+                <button class="btn btn-secondary" id="gamePickWaterSort" style="padding:8px 14px;font-size:12px;width:auto;">💧 Water Sort</button>
             </div>
-            <div id="gameJetons" style="font-size:13px;color:#9aa0a6;margin-bottom:10px;">Жетоны: 0</div>
+            <div id="gameJetons" style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;">Жетоны: 0</div>
             <button class="btn" id="gameBoostBtn" style="margin-bottom:10px;display:none;padding:8px 14px;font-size:12px;background:rgba(255,212,59,0.12);border:1px solid #ffd43b;color:#ffd43b;">💡 Подсказка (0)</button>
             <div id="gameContainer"></div>
             <div id="gameClaimBox" style="display:none;margin-top:14px;">
-                <div id="gameClaimScoreText" style="font-size:14px;color:#fff;margin-bottom:10px;"></div>
+                <div id="gameClaimScoreText" style="font-size:14px;color:var(--text);margin-bottom:10px;"></div>
                 <button class="btn" id="gameClaimBtn" style="background: linear-gradient(135deg, #ffd43b, #ffa94d);">Получить награду</button>
-                <button class="btn" id="gameRestartBtn" style="margin-top:8px;background:rgba(255,255,255,0.08);">Играть ещё раз без награды</button>
+                <button class="btn btn-secondary" id="gameRestartBtn" style="margin-top:8px;">Играть ещё раз без награды</button>
             </div>
         </div>
     </div>
@@ -413,7 +413,7 @@
                 <input type="text" id="myRefLink" class="ref-input" readonly value="Загрузка...">
                 <button class="ref-btn" id="copyRefBtn" onclick="copyRefLink()">Копировать</button>
             </div>
-            <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; color: #9aa0a6;">
+            <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; color:var(--text-secondary);">
                 <span>👥 <span id="tRefCountLabel">Приглашено:</span> <b id="refCount" style="color:#ab47bc; text-shadow:0 0 6px rgba(171,71,188,0.5);">0</b></span>
             </div>
             <div style="margin-top: 8px; font-size: 11px; color: #ab47bc;" id="tRefBonusText">Реферал засчитывается, когда приглашённый друг наберёт несколько активных дней — доход с вывода посчитаем, когда Терминал откроется</div>
@@ -428,12 +428,12 @@
              Чтобы вернуть — удали style="display:none" со следующей строки. -->
         <div class="card" style="text-align:left; display:none;">
             <div style="font-size: 13px; font-weight: 700; color: #00e676; margin-bottom: 10px;" id="tPublicPayoutsTitle">🛡️ Публичные выплаты (последние 50)</div>
-            <div id="publicPayoutsList" style="max-height: 40vh; overflow-y: auto; font-size:12px; color:#9aa0a6;"></div>
+            <div id="publicPayoutsList" style="max-height: 40vh; overflow-y: auto; font-size:12px; color:var(--text-secondary);"></div>
         </div>
 
         <div class="card" style="text-align:center; border-color: rgba(0, 176, 255, 0.35);">
             <div style="font-size: 30px; margin-bottom: 8px;">🚀</div>
-            <div style="font-size: 13px; color: #9aa0a6; line-height: 1.5;" id="tTerminalHint">Терминал откроется, когда наберётся достаточно активных игроков — чем больше сейчас людей заходит и играет каждый день, тем быстрее это произойдёт.</div>
+            <div style="font-size: 13px; color:var(--text-secondary); line-height: 1.5;" id="tTerminalHint">Терминал откроется, когда наберётся достаточно активных игроков — чем больше сейчас людей заходит и играет каждый день, тем быстрее это произойдёт.</div>
         </div>
 
         <div class="honesty-card" id="tHonesty">
