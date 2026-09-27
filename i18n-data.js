@@ -948,7 +948,7 @@ window.I18N_ROWS = [
 window.I18N_KEYS = {
  "uk": {
   "alert": "<b>Екран гасне?</b> Щоб уникнути пауз, збільште час роботи дисплея в налаштуваннях телефона.",
-  "honesty": "🛡️ <b>Правило чесності:</b> Ми за прозору співпрацю. Будь-які накрутки фіксуються системою.",
+  "honesty": "🛡️ Ми за прозору співпрацю. Будь-які накрутки фіксуються системою. Перше порушення можна пробачити: обнулимо нечесно накручений баланс, акаунт залишиться активним — це одноразовий виняток. А ще кожен чесно переглянутий до кінця ролик — це і твій бонус, і внесок у зростання проєкту: що більше активних гравців, то швидше відкриється Термінал.",
   "navTerminal": "Термінал",
   "navCabinet": "Магазин",
   "navDilemmas": "Дилеми",
@@ -960,7 +960,7 @@ window.I18N_KEYS = {
   "modalText": "Привіт! Проходь дилеми або вмикай термінал і починай заробляти монети. Заходь щодня — нагорода зростає!",
   "modalBtn": "Зрозуміло",
   "ageGateTitle": "⚠️ Увага!",
-  "ageGateText": "MintoStrk доступний лише користувачам 18+. Продовжуючи, ви підтверджуєте, що вам є 18 років і ви погоджуєтесь з <a href=\\\"terms.html\\\" target=\\\"_blank\\\" style=\\\"color:#00b0ff;\\\">умовами використання</a>.",
+  "ageGateText": "MintoStrk доступний лише користувачам 18+. Продовжуючи, ви підтверджуєте, що вам є 18 років і ви погоджуєтесь з <a href=\"terms.html\" target=\"_blank\" style=\"color:#00b0ff;\">умовами використання</a>.",
   "ageGateBtn": "Підтверджую, мені є 18",
   "adErrorAlert": "❌ Реклама не завантажилась.\n\nЯкщо ввімкнено VPN або AdBlock — вимкніть їх і спробуйте знову.",
   "refTitle": "🔗 Ваше реферальне посилання:",
@@ -1009,11 +1009,11 @@ window.I18N_KEYS = {
   "settingsLangTitle": "Мова",
   "settingsThemeTitle": "Тема",
   "guideTitle": "Гід",
-  "guideHtml": "<h3>Що таке MintoStrk</h3><p>Ти проходиш дилеми — життєві ситуації, де потрібно обрати один із варіантів відповіді. За це нараховуються жетони, а іноді й інші нагороди.</p><h3>Дилеми та чекпоінти</h3><p>Обери тему зверху і відповідай на дилеми одну за одною. Кожні 5 пройдених дилем — чекпоінт: подивись рекламу і отримай жетони.</p><h3>Ключі та Фортуна</h3><p>Нові теми й секретні дилеми відкриваються ключами. Єдиний спосіб отримати ключ — раз на день спробувати удачу в розділі «Фортуна» в Магазині.</p><h3>Ігри та бусти</h3><p>На вкладці «Ігри» жетони можна витратити на міні-ігри й бусти (підказка, скасування ходу) — вони допомагають проходити ігри на кшталт Block Blast, 2048 і Water Sort.</p><h3>Стрик</h3><p>Заходь щодня і відмічайся в стрику — жетони зростають з кожним днем поспіль, а на 7-й день дається нагорода монетами.</p><h3>Монети та Термінал</h3><p>Монети — це майбутня валюта для виведення через Термінал. Поки Термінал закритий і відкриється лише з ростом кількості гравців — накопичуй жетони й монети заздалегідь.</p>"
+  "guideHtml": "<h3>Що таке MintoStrk</h3><p>Ти проходиш дилеми — життєві ситуації, де потрібно обрати один із варіантів відповіді. За це нараховуються жетони, а іноді й інші нагороди.</p><h3>Дилеми та чекпоінти</h3><p>Обери тему зверху і відповідай на дилеми одну за одною. Кожні 5 пройдених дилем — чекпоінт: подивись рекламу і отримай жетони.</p><h3>Ключі та Фортуна</h3><p>Нові теми й секретні дилеми відкриваються ключами. Єдиний спосіб отримати ключ — раз на день спробувати удачу в розділі «Фортуна» в Магазині.</p><h3>Ігри та бусти</h3><p>На вкладці «Ігри» жетони можна витратити на міні-ігри й бусти (підказка, скасування ходу) — вони допомагають проходити ігри на кшталт Block Blast, 2048 і Water Sort.</p><h3>Стрик</h3><p>Заходь щодня і відмічайся в стрику — жетони зростають з кожним днем поспіль, а на 7-й день дається нагорода монетами.</p><h3>Монети та Термінал</h3><p>Монети — це майбутня валюта для виведення через Термінал. Поки Термінал закритий і відкриється лише з ростом кількості гравців — накопичуй жетони й монети заздалегідь.</p><p style=\"margin-top:10px;font-size:11px;opacity:0.7;\">Повні правила — в <a href=\"terms.html\" target=\"_blank\" style=\"color:#00b0ff;\">умовах використання</a>.</p>"
  },
  "es": {
   "alert": "<b>¿Se apaga la pantalla?</b> Para evitar pausas, aumenta el tiempo de pantalla encendida en los ajustes del teléfono.",
-  "honesty": "🛡️ <b>Juego limpio:</b> Apostamos por una cooperación transparente. Cualquier trampa queda registrada por el sistema.",
+  "honesty": "🛡️ Apostamos por una cooperación transparente. Cualquier trampa queda registrada por el sistema. La primera infracción se puede perdonar: pondremos a cero el saldo obtenido de forma injusta y la cuenta seguirá activa — es una excepción única. Además, cada anuncio que veas de verdad hasta el final es tu bono y un paso hacia el crecimiento del proyecto: cuantos más jugadores activos, antes se abrirá el Terminal.",
   "navTerminal": "Terminal",
   "navCabinet": "Tienda",
   "navDilemmas": "Dilemas",
@@ -1025,7 +1025,7 @@ window.I18N_KEYS = {
   "modalText": "¡Hola! Resuelve dilemas o activa el terminal y empieza a ganar monedas. ¡Entra cada día: la recompensa crece!",
   "modalBtn": "Entendido",
   "ageGateTitle": "⚠️ ¡Atención!",
-  "ageGateText": "MintoStrk solo está disponible para mayores de 18 años. Al continuar, confirmas que tienes 18 años o más y aceptas los <a href=\\\"terms.html\\\" target=\\\"_blank\\\" style=\\\"color:#00b0ff;\\\">términos de uso</a>.",
+  "ageGateText": "MintoStrk solo está disponible para mayores de 18 años. Al continuar, confirmas que tienes 18 años o más y aceptas los <a href=\"terms.html\" target=\"_blank\" style=\"color:#00b0ff;\">términos de uso</a>.",
   "ageGateBtn": "Confirmo que tengo 18 años",
   "adErrorAlert": "❌ El anuncio no se cargó.\n\nSi tienes VPN o AdBlock activado, desactívalo e inténtalo de nuevo.",
   "refTitle": "🔗 Tu enlace de referido:",
@@ -1074,11 +1074,11 @@ window.I18N_KEYS = {
   "settingsLangTitle": "Idioma",
   "settingsThemeTitle": "Tema",
   "guideTitle": "Guía",
-  "guideHtml": "<h3>Qué es MintoStrk</h3><p>Recorres dilemas — situaciones de la vida real donde eliges una de las opciones de respuesta. Esto te da tokens y, a veces, otras recompensas.</p><h3>Dilemas y puntos de control</h3><p>Elige un tema arriba y responde los dilemas uno por uno. Cada 5 dilemas completados es un punto de control: mira un anuncio y recibe tokens.</p><h3>Llaves y Fortuna</h3><p>Los nuevos temas y dilemas secretos se desbloquean con llaves. La única forma de conseguir una llave es probar suerte una vez al día en «Испытать удачу» (Probar suerte) en la Tienda.</p><h3>Juegos y potenciadores</h3><p>En la pestaña Juegos puedes gastar tokens en minijuegos y potenciadores (pista, deshacer movimiento) — te ayudan en juegos como Block Blast, 2048 y Water Sort.</p><h3>Racha</h3><p>Entra cada día y marca tu racha — los tokens crecen con cada día consecutivo, y el día 7 da una recompensa en monedas.</p><h3>Monedas y el Terminal</h3><p>Las monedas son la futura moneda de retiro a través del Terminal. Por ahora está cerrado y abrirá a medida que crezca la base de jugadores — acumula tokens y monedas desde ya.</p>"
+  "guideHtml": "<h3>Qué es MintoStrk</h3><p>Recorres dilemas — situaciones de la vida real donde eliges una de las opciones de respuesta. Esto te da tokens y, a veces, otras recompensas.</p><h3>Dilemas y puntos de control</h3><p>Elige un tema arriba y responde los dilemas uno por uno. Cada 5 dilemas completados es un punto de control: mira un anuncio y recibe tokens.</p><h3>Llaves y Fortuna</h3><p>Los nuevos temas y dilemas secretos se desbloquean con llaves. La única forma de conseguir una llave es probar suerte una vez al día en «Испытать удачу» (Probar suerte) en la Tienda.</p><h3>Juegos y potenciadores</h3><p>En la pestaña Juegos puedes gastar tokens en minijuegos y potenciadores (pista, deshacer movimiento) — te ayudan en juegos como Block Blast, 2048 y Water Sort.</p><h3>Racha</h3><p>Entra cada día y marca tu racha — los tokens crecen con cada día consecutivo, y el día 7 da una recompensa en monedas.</p><h3>Monedas y el Terminal</h3><p>Las monedas son la futura moneda de retiro a través del Terminal. Por ahora está cerrado y abrirá a medida que crezca la base de jugadores — acumula tokens y monedas desde ya.</p><p style=\"margin-top:10px;font-size:11px;opacity:0.7;\">Las reglas completas están en los <a href=\"terms.html\" target=\"_blank\" style=\"color:#00b0ff;\">términos de uso</a>.</p>"
  },
  "fr": {
   "alert": "<b>L'écran s'éteint ?</b> Pour éviter les pauses, augmente la durée d'affichage dans les réglages du téléphone.",
-  "honesty": "🛡️ <b>Fair-play :</b> Nous sommes pour une coopération transparente. Toute triche est enregistrée par le système.",
+  "honesty": "🛡️ Nous sommes pour une coopération transparente. Toute triche est enregistrée par le système. Un premier manquement peut être pardonné : nous remettrons à zéro le solde obtenu injustement et le compte restera actif — c'est une exception unique. De plus, chaque publicité réellement regardée jusqu'au bout est à la fois ton bonus et une contribution à la croissance du projet : plus il y a de joueurs actifs, plus vite le Terminal ouvrira.",
   "navTerminal": "Terminal",
   "navCabinet": "Boutique",
   "navDilemmas": "Dilemmes",
@@ -1090,7 +1090,7 @@ window.I18N_KEYS = {
   "modalText": "Salut ! Résous des dilemmes ou active le terminal et commence à gagner des pièces. Reviens chaque jour — la récompense augmente !",
   "modalBtn": "Compris",
   "ageGateTitle": "⚠️ Attention !",
-  "ageGateText": "MintoStrk est réservé aux utilisateurs de 18 ans et plus. En continuant, vous confirmez avoir 18 ans ou plus et accepter les <a href=\\\"terms.html\\\" target=\\\"_blank\\\" style=\\\"color:#00b0ff;\\\">conditions d'utilisation</a>.",
+  "ageGateText": "MintoStrk est réservé aux utilisateurs de 18 ans et plus. En continuant, vous confirmez avoir 18 ans ou plus et accepter les <a href=\"terms.html\" target=\"_blank\" style=\"color:#00b0ff;\">conditions d'utilisation</a>.",
   "ageGateBtn": "Je confirme avoir 18 ans",
   "adErrorAlert": "❌ La pub n'a pas pu se charger.\n\nSi un VPN ou AdBlock est activé, désactive-le et réessaie.",
   "refTitle": "🔗 Ton lien de parrainage :",
@@ -1139,11 +1139,11 @@ window.I18N_KEYS = {
   "settingsLangTitle": "Langue",
   "settingsThemeTitle": "Thème",
   "guideTitle": "Guide",
-  "guideHtml": "<h3>Qu'est-ce que MintoStrk</h3><p>Tu parcours des dilemmes — des situations du quotidien où tu choisis l'une des réponses proposées. Cela te rapporte des jetons, et parfois d'autres récompenses.</p><h3>Dilemmes et points de contrôle</h3><p>Choisis un thème en haut et réponds aux dilemmes un par un. Tous les 5 dilemmes complétés, c'est un point de contrôle : regarde une pub et reçois des jetons.</p><h3>Clés et Fortune</h3><p>Les nouveaux thèmes et les dilemmes secrets se débloquent avec des clés. La seule façon d'obtenir une clé est de tenter sa chance une fois par jour dans « Испытать удачу » (Tenter sa chance) dans la Boutique.</p><h3>Jeux et bonus</h3><p>Dans l'onglet Jeux, tu peux dépenser des jetons sur des mini-jeux et des bonus (indice, annuler un coup) — ils t'aident dans des jeux comme Block Blast, 2048 et Water Sort.</p><h3>Série</h3><p>Reviens chaque jour et pointe ta série — les jetons augmentent à chaque jour consécutif, et le 7e jour offre une récompense en pièces.</p><h3>Pièces et le Terminal</h3><p>Les pièces sont la future monnaie de retrait via le Terminal. Il est fermé pour l'instant et ouvrira à mesure que la base de joueurs grandit — accumule des jetons et des pièces dès maintenant.</p>"
+  "guideHtml": "<h3>Qu'est-ce que MintoStrk</h3><p>Tu parcours des dilemmes — des situations du quotidien où tu choisis l'une des réponses proposées. Cela te rapporte des jetons, et parfois d'autres récompenses.</p><h3>Dilemmes et points de contrôle</h3><p>Choisis un thème en haut et réponds aux dilemmes un par un. Tous les 5 dilemmes complétés, c'est un point de contrôle : regarde une pub et reçois des jetons.</p><h3>Clés et Fortune</h3><p>Les nouveaux thèmes et les dilemmes secrets se débloquent avec des clés. La seule façon d'obtenir une clé est de tenter sa chance une fois par jour dans « Испытать удачу » (Tenter sa chance) dans la Boutique.</p><h3>Jeux et bonus</h3><p>Dans l'onglet Jeux, tu peux dépenser des jetons sur des mini-jeux et des bonus (indice, annuler un coup) — ils t'aident dans des jeux comme Block Blast, 2048 et Water Sort.</p><h3>Série</h3><p>Reviens chaque jour et pointe ta série — les jetons augmentent à chaque jour consécutif, et le 7e jour offre une récompense en pièces.</p><h3>Pièces et le Terminal</h3><p>Les pièces sont la future monnaie de retrait via le Terminal. Il est fermé pour l'instant et ouvrira à mesure que la base de joueurs grandit — accumule des jetons et des pièces dès maintenant.</p><p style=\"margin-top:10px;font-size:11px;opacity:0.7;\">Les règles complètes se trouvent dans les <a href=\"terms.html\" target=\"_blank\" style=\"color:#00b0ff;\">conditions d'utilisation</a>.</p>"
  },
  "ar": {
   "alert": "<b>الشاشة تنطفئ؟</b> لتجنب التوقف، زد مدة تشغيل الشاشة في إعدادات هاتفك.",
-  "honesty": "🛡️ <b>قاعدة النزاهة:</b> نحن مع التعاون الشفاف. يتم تسجيل أي تلاعب في النظام.",
+  "honesty": "🛡️ نحن مع التعاون الشفاف. يتم تسجيل أي تلاعب في النظام. يمكن التغاضي عن أول مخالفة: سنصفّر الرصيد المكتسب بشكل غير عادل ويبقى الحساب نشطًا — هذا استثناء لمرة واحدة. كما أن كل إعلان تشاهده فعليًا حتى النهاية هو مكافأتك ومساهمة في نمو المشروع: كلما زاد عدد اللاعبين النشطين، فُتحت المحطة أسرع.",
   "navTerminal": "المحطة",
   "navCabinet": "المتجر",
   "navDilemmas": "المعضلات",
@@ -1155,7 +1155,7 @@ window.I18N_KEYS = {
   "modalText": "مرحبًا! أجب عن المعضلات أو شغّل المحطة وابدأ بكسب العملات. ادخل كل يوم — المكافأة تزداد!",
   "modalBtn": "فهمت",
   "ageGateTitle": "⚠️ تنبيه!",
-  "ageGateText": "MintoStrk متاح فقط للمستخدمين بعمر 18 عامًا فأكثر. بالمتابعة، تؤكد أن عمرك 18 عامًا أو أكثر وتوافق على <a href=\\\"terms.html\\\" target=\\\"_blank\\\" style=\\\"color:#00b0ff;\\\">شروط الاستخدام</a>.",
+  "ageGateText": "MintoStrk متاح فقط للمستخدمين بعمر 18 عامًا فأكثر. بالمتابعة، تؤكد أن عمرك 18 عامًا أو أكثر وتوافق على <a href=\"terms.html\" target=\"_blank\" style=\"color:#00b0ff;\">شروط الاستخدام</a>.",
   "ageGateBtn": "أؤكد أن عمري 18 عامًا",
   "adErrorAlert": "❌ تعذّر تحميل الإعلان.\n\nإذا كان VPN أو AdBlock مفعّلًا، فعطّله وحاول مرة أخرى.",
   "refTitle": "🔗 رابط الإحالة الخاص بك:",
@@ -1204,7 +1204,7 @@ window.I18N_KEYS = {
   "settingsLangTitle": "اللغة",
   "settingsThemeTitle": "المظهر",
   "guideTitle": "الدليل",
-  "guideHtml": "<h3>ما هو MintoStrk</h3><p>تمر بمعضلات — مواقف حياتية تختار فيها أحد خيارات الإجابة. يمنحك هذا عملات، وأحيانًا مكافآت أخرى.</p><h3>المعضلات ونقاط التفتيش</h3><p>اختر موضوعًا من الأعلى وأجب عن المعضلات واحدة تلو الأخرى. كل 5 معضلات مكتملة تمثل نقطة تفتيش: شاهد إعلانًا واحصل على عملات.</p><h3>المفاتيح والفورتشن</h3><p>تُفتح المواضيع الجديدة والمعضلات السرية بالمفاتيح. الطريقة الوحيدة للحصول على مفتاح هي تجربة الحظ مرة واحدة يوميًا في «Испытать удачу» (جرّب حظك) في المتجر.</p><h3>الألعاب والتعزيزات</h3><p>في تبويب الألعاب يمكنك إنفاق العملات على الألعاب المصغرة والتعزيزات (تلميح، تراجع عن حركة) — تساعدك في ألعاب مثل Block Blast وBlast 2048 وWater Sort.</p><h3>السلسلة</h3><p>ادخل كل يوم وسجّل حضورك في السلسلة — تزداد العملات مع كل يوم متتالٍ، ويمنحك اليوم السابع مكافأة عملات معدنية.</p><h3>العملات المعدنية والمحطة</h3><p>العملات المعدنية هي عملة السحب المستقبلية عبر المحطة. المحطة مغلقة حاليًا وستفتح مع نمو قاعدة اللاعبين — اجمع العملات والعملات المعدنية مسبقًا.</p>"
+  "guideHtml": "<h3>ما هو MintoStrk</h3><p>تمر بمعضلات — مواقف حياتية تختار فيها أحد خيارات الإجابة. يمنحك هذا عملات، وأحيانًا مكافآت أخرى.</p><h3>المعضلات ونقاط التفتيش</h3><p>اختر موضوعًا من الأعلى وأجب عن المعضلات واحدة تلو الأخرى. كل 5 معضلات مكتملة تمثل نقطة تفتيش: شاهد إعلانًا واحصل على عملات.</p><h3>المفاتيح والفورتشن</h3><p>تُفتح المواضيع الجديدة والمعضلات السرية بالمفاتيح. الطريقة الوحيدة للحصول على مفتاح هي تجربة الحظ مرة واحدة يوميًا في «Испытать удачу» (جرّب حظك) في المتجر.</p><h3>الألعاب والتعزيزات</h3><p>في تبويب الألعاب يمكنك إنفاق العملات على الألعاب المصغرة والتعزيزات (تلميح، تراجع عن حركة) — تساعدك في ألعاب مثل Block Blast وBlast 2048 وWater Sort.</p><h3>السلسلة</h3><p>ادخل كل يوم وسجّل حضورك في السلسلة — تزداد العملات مع كل يوم متتالٍ، ويمنحك اليوم السابع مكافأة عملات معدنية.</p><h3>العملات المعدنية والمحطة</h3><p>العملات المعدنية هي عملة السحب المستقبلية عبر المحطة. المحطة مغلقة حاليًا وستفتح مع نمو قاعدة اللاعبين — اجمع العملات والعملات المعدنية مسبقًا.</p><p style=\"margin-top:10px;font-size:11px;opacity:0.7;\">القواعد الكاملة موجودة في <a href=\"terms.html\" target=\"_blank\" style=\"color:#00b0ff;\">شروط الاستخدام</a>.</p>"
  }
 };
 window.I18N_LABELS = {
