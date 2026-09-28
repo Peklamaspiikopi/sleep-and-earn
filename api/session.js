@@ -35,6 +35,16 @@ const { logTransaction } = require('../lib/transactions');
 const crypto = require('crypto');
 
 const MIN_WATCH_SECONDS = 12;
+
+// Ролик RichAds идёт от 10 секунд (у Adsgram сервер требует 15), а
+// игрок мог показать его как запасной вариант — для него минимум ниже.
+// Минимум считается от старта сессии, так что реально досмотреть ролик
+// быстрее 10 секунд всё равно нельзя.
+const RICHADS_MIN_WATCH_SECONDS = 9;
+function minWatchFor(req, baseSeconds) {
+  const provider = req.body && req.body.provider;
+  return provider === 'richads' ? Math.min(baseSeconds, RICHADS_MIN_WATCH_SECONDS) : baseSeconds;
+}
 const SESSION_TTL_SECONDS = 120;
 const COOLDOWN_MIN_SECONDS = 75;
 const COOLDOWN_MAX_SECONDS = 120;
@@ -587,7 +597,7 @@ async function handleFortuneComplete(req, res, telegramId) {
   }
 
   const elapsedSec = (Date.now() - new Date(session.started_at).getTime()) / 1000;
-  if (elapsedSec < FORTUNE_MIN_WATCH_SECONDS) {
+  if (elapsedSec < minWatchFor(req, FORTUNE_MIN_WATCH_SECONDS)) {
     return res.status(400).json({ error: 'Слишком рано' });
   }
 
@@ -723,7 +733,7 @@ async function handleCheckpointComplete(req, res, telegramId) {
   if (!session) return res.status(409).json({ error: 'Сессия не найдена или уже обработана' });
 
   const elapsedSec = (Date.now() - new Date(session.started_at).getTime()) / 1000;
-  if (elapsedSec < GAME_MIN_WATCH_SECONDS) {
+  if (elapsedSec < minWatchFor(req, GAME_MIN_WATCH_SECONDS)) {
     await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
     return res.status(400).json({ error: 'Слишком рано' });
   }
@@ -835,7 +845,7 @@ async function handleDirectAdComplete(req, res, telegramId) {
   if (!session) return res.status(409).json({ error: 'Сессия не найдена или уже обработана' });
 
   const elapsedSec = (Date.now() - new Date(session.started_at).getTime()) / 1000;
-  if (elapsedSec < GAME_MIN_WATCH_SECONDS) {
+  if (elapsedSec < minWatchFor(req, GAME_MIN_WATCH_SECONDS)) {
     await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
     return res.status(400).json({ error: 'Слишком рано' });
   }
@@ -956,7 +966,7 @@ async function handleGameComplete(req, res, telegramId) {
   }
 
   const elapsedSec = (Date.now() - new Date(session.started_at).getTime()) / 1000;
-  if (elapsedSec < GAME_MIN_WATCH_SECONDS) {
+  if (elapsedSec < minWatchFor(req, GAME_MIN_WATCH_SECONDS)) {
     await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
     return res.status(400).json({ error: 'Слишком рано' });
   }
@@ -1143,7 +1153,7 @@ async function handleStreakAdComplete(req, res, telegramId) {
   if (!session) return res.status(409).json({ error: 'Сессия не найдена или уже обработана' });
 
   const elapsedSec = (Date.now() - new Date(session.started_at).getTime()) / 1000;
-  if (elapsedSec < GAME_MIN_WATCH_SECONDS) {
+  if (elapsedSec < minWatchFor(req, GAME_MIN_WATCH_SECONDS)) {
     await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
     return res.status(400).json({ error: 'Слишком рано' });
   }
