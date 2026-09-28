@@ -323,6 +323,11 @@ async function handleComplete(req, res, telegramId) {
 }
 
 // ==== action: cancel (ролик/чекпоинт дилеммы) ====
+// Типы сессий, у которых при старте ничего не списывается, кроме самой
+// записи в sessions — при отмене возвращать нечего. Всё остальное
+// (старый видео-поток Терминала) списывало manual_limit на старте.
+const NON_MANUAL_LIMIT_SESSION_TYPES = ['banner', 'fortune', 'dilemma_checkpoint', 'direct_ad', 'streak_checkin'];
+
 async function handleCancel(req, res, telegramId) {
   const { sessionId } = req.body || {};
 
@@ -339,7 +344,25 @@ async function handleCancel(req, res, telegramId) {
     return res.status(200).json({ ok: true, alreadyClosed: true });
   }
 
-  await atomicIncrement(supabaseAdmin, 'users', { telegram_id: telegramId }, 'manual_limit', 1);
+  // checkpoint_start списывает чекпоинт ДО показа рекламы. Если реклама
+  // не показалась и сессию отменили — чекпоинт нужно вернуть, иначе
+  // игрок теряет прогресс, ничего не получив.
+  if (session.session_type === 'dilemma_checkpoint') {
+    if (session.dilemma_topic) {
+      await atomicIncrement(
+        supabaseAdmin, 'dilemma_progress',
+        { telegram_id: telegramId, topic: session.dilemma_topic },
+        'pending_checkpoints', 1
+      );
+    }
+    return res.status(200).json({ ok: true });
+  }
+
+  const type = session.session_type || '';
+  const spentManualLimit = !NON_MANUAL_LIMIT_SESSION_TYPES.includes(type) && !type.startsWith('game_');
+  if (spentManualLimit) {
+    await atomicIncrement(supabaseAdmin, 'users', { telegram_id: telegramId }, 'manual_limit', 1);
+  }
 
   return res.status(200).json({ ok: true });
 }
@@ -374,15 +397,22 @@ async function handleBannerStart(req, res, telegramId) {
     }
   }
 
+  // Просроченную активную сессию (реклама не показалась, игрок ушёл)
+  // не считаем блокирующей и закрываем — иначе она держит 409 вечно.
   const { data: activeSession } = await supabaseAdmin
     .from('sessions')
-    .select('id')
+    .select('id, expires_at')
     .eq('telegram_id', telegramId)
     .eq('status', 'active')
+    .limit(1)
     .maybeSingle();
 
   if (activeSession) {
-    return res.status(409).json({ error: 'Уже есть незавершённая сессия' });
+    if (new Date(activeSession.expires_at).getTime() < Date.now()) {
+      await supabaseAdmin.from('sessions').update({ status: 'expired' }).eq('id', activeSession.id);
+    } else {
+      return res.status(409).json({ error: 'Уже есть незавершённая сессия' });
+    }
   }
 
   const { data: session, error } = await supabaseAdmin
@@ -498,15 +528,22 @@ async function handleFortuneStart(req, res, telegramId) {
     return res.status(429).json({ error: 'Уже испытывал(а) удачу сегодня — заходи завтра', daily_limit_reached: true });
   }
 
+  // Просроченную активную сессию (реклама не показалась, игрок ушёл)
+  // не считаем блокирующей и закрываем — иначе она держит 409 вечно.
   const { data: activeSession } = await supabaseAdmin
     .from('sessions')
-    .select('id')
+    .select('id, expires_at')
     .eq('telegram_id', telegramId)
     .eq('status', 'active')
+    .limit(1)
     .maybeSingle();
 
   if (activeSession) {
-    return res.status(409).json({ error: 'Уже есть незавершённая сессия' });
+    if (new Date(activeSession.expires_at).getTime() < Date.now()) {
+      await supabaseAdmin.from('sessions').update({ status: 'expired' }).eq('id', activeSession.id);
+    } else {
+      return res.status(409).json({ error: 'Уже есть незавершённая сессия' });
+    }
   }
 
   const { data: session, error } = await supabaseAdmin
