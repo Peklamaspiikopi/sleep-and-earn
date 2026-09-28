@@ -212,6 +212,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // Сервер заводит "активную" сессию (а у чекпоинта ещё и списывает
+    // прогресс) ДО показа рекламы. Если реклама не показалась или
+    // закрыта не до конца — сессию нужно отменить, иначе следующий клик
+    // упирается в 409 "Уже есть незавершённая сессия" на 5 минут, а
+    // чекпоинт пропадает. Две попытки — на случай сетевого сбоя.
+    async function cancelSession(sessionId) {
+        if (!sessionId) return false;
+        for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+                await api('session', { action: 'cancel', sessionId });
+                return true;
+            } catch (e) {
+                console.error('session-cancel failed, attempt', attempt, e);
+            }
+        }
+        return false;
+    }
+
     function renderUser() {
         const set = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
         set('balance', userState.balance);
@@ -543,6 +561,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const finishBannerFail = async () => {
                 isBannerLoading = false;
+                await cancelSession(session.sessionId);
                 await refreshUser();
                 alert(translations[currentLang].adErrorAlert);
             };
@@ -677,7 +696,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     directAdBtn.disabled = false;
                 }
             };
-            const onFail = () => { isDirectAdLoading = false; directAdBtn.disabled = false; };
+            const onFail = () => { cancelSession(session.sessionId); isDirectAdLoading = false; directAdBtn.disabled = false; };
 
             if (videoController) {
                 Promise.resolve().then(() => videoController.show())
@@ -788,6 +807,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const onFail = () => {
+            cancelSession(session.sessionId);
             isStreakLoading = false;
             if (streakAdBtn) streakAdBtn.disabled = false;
             if (streakSkipBtn) streakSkipBtn.disabled = false;
@@ -984,6 +1004,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             const finishGameFail = () => {
+                cancelSession(session.sessionId);
                 isGameClaimLoading = false;
                 gameClaimBtn.disabled = false;
                 gameClaimBtn.innerText = 'Получить награду';
@@ -1607,7 +1628,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             };
 
-            const onFail = () => {
+            const onFail = async () => {
+                // Возвращает списанный чекпоинт и снимает блокировку сессии
+                await cancelSession(session.sessionId);
+                loadDilemma(currentDilemmaTopic);
                 isWatching = false;
                 dilemmaCheckpointBtn.disabled = false;
             };
@@ -1757,8 +1781,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             fortuneBtn.disabled = true;
             resetFortuneTiles();
             if (fortuneResultText) fortuneResultText.innerText = '';
+            let fortuneSession = null;
             try {
                 const session = await api('session', { action: 'fortune_start', timezone: userTimezone });
+                fortuneSession = session;
                 if (!videoController) throw new Error(I18N.tr('Реклама пока недоступна', 'Ads unavailable right now'));
 
                 const adResult = await videoController.show();
@@ -1788,6 +1814,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 fortuneBtn.innerText = I18N.tr('Уже сегодня пробовал(а)', 'Already tried today');
             } catch (e) {
                 resetFortuneTiles();
+                // Если сессия уже закрыта (fortune_complete прошёл) — cancel
+                // вернёт alreadyClosed и ничего не сломает.
+                if (fortuneSession) await cancelSession(fortuneSession.sessionId);
                 alert(e.message);
             } finally {
                 isFortuneLoading = false;
