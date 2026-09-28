@@ -465,6 +465,79 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 1000);
     }
 
+    // ==== RichAds: запасной источник рекламы ====
+    // Порядок: сначала Adsgram; если он не смог показать ролик (SDK не
+    // загрузился, нет объявлений, лимит) — пробуем RichAds. Если игрок
+    // сам закрыл ролик Adsgram раньше времени — второй ролик НЕ
+    // показываем, это его выбор, а не сбой.
+    // RichAds подгружаем лениво, только при первой необходимости: его
+    // тег умеет сам показывать рекламу по клику, и пока он не загружен,
+    // на остальных пользователей он никак не влияет.
+    const RICHADS_ENABLED = true;
+    const RICHADS_DEBUG = false; // true = тестовые ролики + alert с ответом SDK (для проверки)
+    const RICHADS_PUB_ID = '1023620';
+    const RICHADS_APP_ID = '9037';
+    let richadsLoading = null;
+
+    function loadRichAds() {
+        if (richadsLoading) return richadsLoading;
+        richadsLoading = new Promise((resolve) => {
+            const el = document.createElement('script');
+            el.src = 'https://richinfo.co/richpartners/telegram/js/tg-ob.js';
+            el.onload = () => {
+                try {
+                    const controller = new window.TelegramAdsController();
+                    controller.initialize({ pubId: RICHADS_PUB_ID, appId: RICHADS_APP_ID, debug: RICHADS_DEBUG });
+                    resolve(controller);
+                } catch (e) {
+                    console.error('RichAds init failed:', e);
+                    richadsLoading = null;
+                    resolve(null);
+                }
+            };
+            el.onerror = () => { richadsLoading = null; resolve(null); };
+            document.head.appendChild(el);
+        });
+        return richadsLoading;
+    }
+
+    async function showRichAds() {
+        const controller = await loadRichAds();
+        if (!controller || typeof controller.triggerInterstitialVideo !== 'function') return false;
+        try {
+            const result = await controller.triggerInterstitialVideo();
+            console.log('RichAds resolved:', result);
+            if (RICHADS_DEBUG) alert('RichAds resolve: ' + JSON.stringify(result));
+            // Формат ответа в документации RichAds не описан: считаем
+            // успехом resolve, если в нём нет явной пометки об ошибке.
+            return !(result && (result.error === true || result.success === false || result.done === false));
+        } catch (result) {
+            console.error('RichAds rejected:', result);
+            if (RICHADS_DEBUG) alert('RichAds reject: ' + JSON.stringify(result));
+            return false;
+        }
+    }
+
+    // Возвращает { ok, provider, userClosed }.
+    async function showRewardedAd() {
+        if (videoController) {
+            try {
+                const result = await videoController.show();
+                if (result?.done !== false) return { ok: true, provider: 'adsgram' };
+                console.error('Adsgram resolved with done:false', result);
+                return { ok: false, userClosed: true };
+            } catch (err) {
+                console.error('Adsgram show failed:', err);
+                if (err && err.error === false) return { ok: false, userClosed: true };
+            }
+        }
+        if (RICHADS_ENABLED && await showRichAds()) return { ok: true, provider: 'richads' };
+        return { ok: false, userClosed: false };
+    }
+    function adsUnavailableAlert() {
+        alert(I18N.tr('Реклама сейчас недоступна, попробуй чуть позже', 'Ads are unavailable right now, try again later'));
+    }
+
     // Подстраховка на случай, если что-то (включая сам SDK Adsgram)
     // кидает ошибку мимо всех наших try/catch — чтобы она точно была
     // видна в консоли отладки на телефоне.
@@ -683,9 +756,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            const finish = async () => {
+            const finish = async (provider) => {
                 try {
-                    const result = await api('session', { action: 'direct_ad_complete', sessionId: session.sessionId });
+                    const result = await api('session', { action: 'direct_ad_complete', sessionId: session.sessionId, provider });
                     userState.game_tokens = result.gameTokens;
                     updateGameJetonsDisplay();
                     alert(`+${result.reward} жетонов!`);
@@ -698,14 +771,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
             const onFail = () => { cancelSession(session.sessionId); isDirectAdLoading = false; directAdBtn.disabled = false; };
 
-            if (videoController) {
-                Promise.resolve().then(() => videoController.show())
-                    .then((result) => { if (result?.done !== false) finish(); else { console.error('Adsgram resolved with done:false', result); onFail(); } })
-                    .catch((err) => { console.error('Adsgram show failed:', err); onFail(); });
-            } else {
-                alert(I18N.tr('Реклама сейчас недоступна, попробуй чуть позже', 'Ads are unavailable right now, try again later'));
-                onFail();
-            }
+            showRewardedAd().then((ad) => {
+                if (ad.ok) finish(ad.provider);
+                else { if (!ad.userClosed) adsUnavailableAlert(); onFail(); }
+            });
         });
     }
 
@@ -813,18 +882,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (streakSkipBtn) streakSkipBtn.disabled = false;
         };
 
-        if (videoController) {
-            Promise.resolve().then(() => videoController.show())
-                .then((result) => {
-                    if (result?.done !== false) {
-                        finishWith(() => api('session', { action: 'streak_ad_complete', sessionId: session.sessionId, timezone: userTimezone }));
-                    } else { console.error('Adsgram resolved with done:false', result); onFail(); }
-                })
-                .catch((err) => { console.error('Adsgram show failed:', err); onFail(); });
-        } else {
-            alert(I18N.tr('Реклама сейчас недоступна, попробуй чуть позже', 'Ads are unavailable right now, try again later'));
-            onFail();
-        }
+        showRewardedAd().then((ad) => {
+            if (ad.ok) {
+                finishWith(() => api('session', { action: 'streak_ad_complete', sessionId: session.sessionId, timezone: userTimezone, provider: ad.provider }));
+            } else {
+                if (!ad.userClosed) adsUnavailableAlert();
+                onFail();
+            }
+        });
     }
 
     if (streakAdBtn) streakAdBtn.addEventListener('click', () => claimStreak(true));
@@ -986,9 +1051,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            const finishGameSuccess = async () => {
+            const finishGameSuccess = async (provider) => {
                 try {
-                    const result = await api('session', { action: 'game_complete', sessionId: session.sessionId, score: lastGameScore });
+                    const result = await api('session', { action: 'game_complete', sessionId: session.sessionId, score: lastGameScore, provider });
                     userState.game_tokens = result.gameTokens;
                     updateGameJetonsDisplay();
                     alert(`🧩 +${result.reward} жетонов!`);
@@ -1014,14 +1079,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             // гарантирует настоящий полный просмотр (см. разбор done-семантики
             // Interstitial в чате). Для claim'а награды это важнее, чем для
             // бонусного баннера.
-            if (videoController) {
-                Promise.resolve().then(() => videoController.show())
-                    .then((result) => { if (result?.done !== false) finishGameSuccess(); else { console.error('Adsgram resolved with done:false', result); finishGameFail(); } })
-                    .catch((err) => { console.error('Adsgram show failed:', err); finishGameFail(); });
-            } else {
-                alert(I18N.tr('Реклама сейчас недоступна, попробуй чуть позже', 'Ads are unavailable right now, try again later'));
-                finishGameFail();
-            }
+            showRewardedAd().then((ad) => {
+                if (ad.ok) finishGameSuccess(ad.provider);
+                else { if (!ad.userClosed) adsUnavailableAlert(); finishGameFail(); }
+            });
         });
     }
 
@@ -1613,9 +1674,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            const finish = async () => {
+            const finish = async (provider) => {
                 try {
-                    const result = await api('session', { action: 'checkpoint_complete', sessionId: session.sessionId });
+                    const result = await api('session', { action: 'checkpoint_complete', sessionId: session.sessionId, provider });
                     userState.game_tokens = result.gameTokens;
                     updateGameJetonsDisplay();
                     alert(I18N.tr(`🎉 +${result.reward} жетонов!`, `🎉 +${result.reward} tokens!`));
@@ -1636,14 +1697,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 dilemmaCheckpointBtn.disabled = false;
             };
 
-            if (videoController) {
-                Promise.resolve().then(() => videoController.show())
-                    .then((result) => { if (result?.done !== false) finish(); else { console.error('Adsgram resolved with done:false', result); onFail(); } })
-                    .catch((err) => { console.error('Adsgram show failed:', err); onFail(); });
-            } else {
-                alert(I18N.tr('Реклама сейчас недоступна, попробуй чуть позже', 'Ads are unavailable right now, try again later'));
-                onFail();
-            }
+            showRewardedAd().then((ad) => {
+                if (ad.ok) finish(ad.provider);
+                else { if (!ad.userClosed) adsUnavailableAlert(); onFail(); }
+            });
         });
     }
 
@@ -1785,14 +1842,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const session = await api('session', { action: 'fortune_start', timezone: userTimezone });
                 fortuneSession = session;
-                if (!videoController) throw new Error(I18N.tr('Реклама пока недоступна', 'Ads unavailable right now'));
-
-                const adResult = await videoController.show();
-                if (adResult && adResult.done === false) {
-                    throw new Error(I18N.tr('Ролик не досмотрен', 'Ad was not watched fully'));
+                const ad = await showRewardedAd();
+                if (!ad.ok) {
+                    throw new Error(ad.userClosed
+                        ? I18N.tr('Ролик не досмотрен', 'Ad was not watched fully')
+                        : I18N.tr('Реклама пока недоступна', 'Ads unavailable right now'));
                 }
 
-                const result = await api('session', { action: 'fortune_complete', sessionId: session.sessionId, timezone: userTimezone });
+                const result = await api('session', { action: 'fortune_complete', sessionId: session.sessionId, timezone: userTimezone, provider: ad.provider });
                 userState.topic_keys = result.topicKeys;
                 userState.secret_keys = result.secretKeys;
                 const topicEl = document.getElementById('topicKeysVal');
