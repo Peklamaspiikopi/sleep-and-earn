@@ -108,7 +108,6 @@
         container.style.alignItems = 'center';
         container.style.gap = '14px';
         container.style.userSelect = 'none';
-        container.style.touchAction = 'none';
 
         const scoreEl = document.createElement('div');
         scoreEl.style.cssText = `font-size:22px;font-weight:800;color:${ink};text-shadow:0 0 8px rgba(237,194,46,0.6);`;
@@ -119,7 +118,7 @@
         const cellsPerSide = SIZE;
         boardEl.style.cssText = `display:grid;grid-template-columns:repeat(${cellsPerSide},1fr);gap:8px;
             width:min(88vw,320px);height:min(88vw,320px);background:#10131a;border-radius:12px;padding:8px;
-            box-shadow:0 0 0 2px rgba(255,255,255,0.08) inset;box-sizing:border-box;`;
+            box-shadow:0 0 0 2px rgba(255,255,255,0.08) inset;box-sizing:border-box;touch-action:none;`; // только доска блокирует скролл, не вся страница
         container.appendChild(boardEl);
 
         const hint = document.createElement('div');
