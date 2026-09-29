@@ -108,7 +108,6 @@
         container.style.alignItems = 'center';
         container.style.gap = '14px';
         container.style.userSelect = 'none';
-        container.style.touchAction = 'none'; // важно для drag пальцем — не даём странице скроллиться
 
         const scoreEl = document.createElement('div');
         scoreEl.style.cssText = `font-size:22px;font-weight:800;color:${ink};text-shadow:0 0 8px rgba(105,219,124,0.6);`;
@@ -119,12 +118,12 @@
         const boardPx = 328;
         canvas.width = boardPx;
         canvas.height = boardPx;
-        canvas.style.cssText = 'width:min(92vw,360px);height:min(92vw,360px);border-radius:12px;background:#10131a;box-shadow:0 0 0 2px rgba(255,255,255,0.08) inset;';
+        canvas.style.cssText = 'width:min(92vw,360px);height:min(92vw,360px);border-radius:12px;background:#10131a;box-shadow:0 0 0 2px rgba(255,255,255,0.08) inset;touch-action:none;'; // touch-action только на самой доске — не даём странице скроллиться, но не мешаем прокрутке вокруг
         container.appendChild(canvas);
         const ctx = canvas.getContext('2d');
 
         const trayEl = document.createElement('div');
-        trayEl.style.cssText = 'display:flex;gap:10px;justify-content:center;width:100%;max-width:360px;';
+        trayEl.style.cssText = 'display:flex;gap:10px;justify-content:center;width:100%;max-width:360px;touch-action:none;'; // фигуры тащат пальцем — тоже блокируем скролл только тут
         container.appendChild(trayEl);
 
         let board = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
