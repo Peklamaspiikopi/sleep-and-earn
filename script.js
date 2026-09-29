@@ -1779,10 +1779,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } else {
                     // Остальные плитки — чисто оформление (там ничего не
                     // "было", исход решается один раз и не зависит от
-                    // плитки), но крестик на всех трёх выглядит как
-                    // тройной проигрыш. Показываем на них ключ/монеты,
-                    // как будто там что-то лежало — так экран честного
-                    // проигрыша не читается как "везде пусто".
+                    // плитки). При проигрыше крестик на всех трёх выглядит
+                    // как тройной провал, поэтому там показываем ключ/
+                    // монеты, как будто что-то лежало. А вот при реальном
+                    // выигрыше ключа эти же декоративные ключи на других
+                    // плитках читаются как "выиграл сразу три" — здесь
+                    // оставляем их крестиками, чтобы было видно, что
+                    // выигрыш ровно один.
+                    const isWin = outcome === 'secret_key' || outcome === 'topic_key';
                     const decoyIcons = ['🔑', '🪙'];
                     tiles.forEach((t, i) => {
                         t.classList.remove('fortune-tile-active');
@@ -1790,7 +1794,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             t.classList.add('fortune-tile-win');
                             t.innerText = outcome === 'secret_key' ? '✨' : outcome === 'topic_key' ? '🔑' : '❌';
                         } else {
-                            t.innerText = decoyIcons[Math.floor(Math.random() * decoyIcons.length)];
+                            t.innerText = isWin ? '❌' : decoyIcons[Math.floor(Math.random() * decoyIcons.length)];
                         }
                     });
                     setTimeout(resolve, 400);
