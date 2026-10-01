@@ -287,7 +287,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const st = adStats[adProvider];
         const left = Math.max(0, st.limit - st.used);
         const sec = Math.max(0, Math.round((adResetAt - Date.now()) / 1000));
-        info.innerText = I18N.tr(`Осталось ${left}/${st.limit} · сброс через ${fmtResetClock(sec)}`);
+        info.innerText = I18N.tr(`Осталось ${left}/${st.limit} · ⏱ ${fmtResetClock(sec)}`);
         info.classList.toggle('empty', left === 0);
     }
 
@@ -564,6 +564,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const RICHADS_PUB_ID = '1023620';
     const RICHADS_APP_ID = '9037';
     let richadsLoading = null;
+    let lastAdDiag = ''; // короткий код причины последней неудачи — виден в окне «реклама недоступна»
 
     function loadRichAds() {
         if (richadsLoading) return richadsLoading;
@@ -589,7 +590,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function showRichAds() {
         const controller = await loadRichAds();
-        if (!controller || typeof controller.triggerInterstitialVideo !== 'function') return false;
+        if (!controller || typeof controller.triggerInterstitialVideo !== 'function') { lastAdDiag = 'richads: SDK не загрузился/не инициализировался'; return false; }
         try {
             const shownAt = Date.now();
             const result = await controller.triggerInterstitialVideo();
@@ -602,14 +603,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             // считаем, что рекламы не было, и награду не выдаём.
             if (Date.now() - shownAt < RICHADS_MIN_SHOWN_MS) {
                 console.error('RichAds resolved too fast, treating as no ad:', Date.now() - shownAt, 'ms');
+                lastAdDiag = 'richads: ответ за ' + (Date.now() - shownAt) + ' мс (ролика не было)';
                 return false;
             }
             if (RICHADS_DEBUG) alert('RichAds resolve: ' + JSON.stringify(result));
             // Формат ответа в документации RichAds не описан: считаем
             // успехом resolve, если в нём нет явной пометки об ошибке.
-            return !(result && (result.error === true || result.success === false || result.done === false));
+            const okResult = !(result && (result.error === true || result.success === false || result.done === false));
+            if (!okResult) lastAdDiag = 'richads: ' + JSON.stringify(result).slice(0, 80);
+            return okResult;
         } catch (result) {
             console.error('RichAds rejected:', result);
+            lastAdDiag = 'richads: отказ ' + (typeof result === 'string' ? result : JSON.stringify(result || '')).slice(0, 80);
             if (RICHADS_DEBUG) alert('RichAds reject: ' + JSON.stringify(result));
             return false;
         }
@@ -627,16 +632,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const result = await videoController.show();
                 if (result?.done !== false) return { ok: true, provider: 'adsgram' };
                 console.error('Adsgram resolved with done:false', result);
+                lastAdDiag = 'adsgram: done=false ' + (result && result.description || '');
                 return { ok: false, userClosed: true };
             } catch (err) {
                 console.error('Adsgram show failed:', err);
                 if (err && err.error === false) return { ok: false, userClosed: true };
+                lastAdDiag = 'adsgram: ' + ((err && (err.description || err.state)) || 'ошибка') ;
             }
+        } else {
+            lastAdDiag = 'adsgram: SDK не загрузился (нет window.Adsgram)';
         }
         return { ok: false, userClosed: false };
     }
     function adsUnavailableAlert() {
-        alert(I18N.tr('Реклама у этого партнёра сейчас недоступна. Попробуй позже или переключи партнёра вверху.', 'Ads from this partner are unavailable right now. Try later or switch the partner at the top.'));
+        alert(I18N.tr('Реклама у этого партнёра сейчас недоступна. Попробуй позже или переключи партнёра вверху.', 'Ads from this partner are unavailable right now. Try later or switch the partner at the top.') + (lastAdDiag ? '\n\n[' + lastAdDiag + ']' : ''));
     }
 
     // Подстраховка на случай, если что-то (включая сам SDK Adsgram)
