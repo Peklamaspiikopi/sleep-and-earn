@@ -1371,3 +1371,10 @@ window.I18N_LABELS = {
   "💡 تلميح الحركة"
  ]
 };
+
+// Переключатель рекламных партнёров
+window.I18N_ROWS.push(
+["Осталось {} · сброс через {}", "Left {1} · resets in {2}", "Залишилось {1} · скидання через {2}", "Quedan {1} · se reinicia en {2}", "Restant {1} · réinit. dans {2}", "المتبقي {1} · إعادة التعيين خلال {2}"],
+["Лимит рекламы {} на сегодня исчерпан ({}). Переключи партнёра вверху или подожди {}.", "{1} ad limit for today is used up ({2}). Switch the partner at the top or wait {3}.", "Ліміт реклами {1} на сьогодні вичерпано ({2}). Перемкни партнера вгорі або зачекай {3}.", "Se agotó el límite de anuncios de {1} por hoy ({2}). Cambia de socio arriba o espera {3}.", "La limite de pubs {1} pour aujourd'hui est atteinte ({2}). Change de partenaire en haut ou attends {3}.", "تم استنفاد حد إعلانات {1} لليوم ({2}). بدّل الشريك في الأعلى أو انتظر {3}."],
+["Реклама у этого партнёра сейчас недоступна. Попробуй позже или переключи партнёра вверху.", "Ads from this partner are unavailable right now. Try later or switch the partner at the top.", "Реклама від цього партнера зараз недоступна. Спробуй пізніше або перемкни партнера вгорі.", "Los anuncios de este socio no están disponibles ahora. Inténtalo más tarde o cambia de socio arriba.", "Les pubs de ce partenaire sont indisponibles pour le moment. Réessaie plus tard ou change de partenaire en haut.", "إعلانات هذا الشريك غير متاحة حاليًا. حاول لاحقًا أو بدّل الشريك في الأعلى."]
+);
