@@ -176,8 +176,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             body: JSON.stringify({ initData, ...body }),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(I18N.tr(data.error || 'Ошибка сервера'));
+        if (!res.ok) {
+            const err = new Error(I18N.tr(data.error || 'Ошибка сервера'));
+            err.data = data;
+            err.status = res.status;
+            throw err;
+        }
         return data;
+    }
+
+    // Завершение рекламной сессии. Если сервер говорит «слишком рано»
+    // (ролик у партнёра оказался короче серверного минимума, хотя игрок
+    // его реально досмотрел) — ждём остаток и повторяем один раз, вместо
+    // того чтобы терять награду и оставлять сессию висеть. Минимум
+    // времени при этом остаётся в силе: раньше срока награды не будет.
+    async function apiComplete(path, body) {
+        try {
+            return await api(path, body);
+        } catch (e) {
+            const wait = e && e.data && e.data.retryAfterSeconds;
+            if (wait && wait <= 20) {
+                await new Promise((r) => setTimeout(r, (wait + 1) * 1000));
+                return await api(path, body);
+            }
+            throw e;
+        }
     }
 
     let userState = {
@@ -620,11 +643,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const finishBannerSuccess = async () => {
                 try {
-                    const result = await api('session', { action: 'banner_complete', sessionId: session.sessionId });
+                    const result = await apiComplete('session', { action: 'banner_complete', sessionId: session.sessionId });
                     userState.balance = result.balance;
                     renderUser();
                     alert(translations[currentLang].bannerRewardMsg(result.reward));
                 } catch (e) {
+                    await cancelSession(session.sessionId);
                     alert(e.message);
                 } finally {
                     isBannerLoading = false;
@@ -758,11 +782,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const finish = async (provider) => {
                 try {
-                    const result = await api('session', { action: 'direct_ad_complete', sessionId: session.sessionId, provider });
+                    const result = await apiComplete('session', { action: 'direct_ad_complete', sessionId: session.sessionId, provider });
                     userState.game_tokens = result.gameTokens;
                     updateGameJetonsDisplay();
                     alert(`+${result.reward} жетонов!`);
                 } catch (e) {
+                    await cancelSession(session.sessionId);
                     alert(e.message);
                 } finally {
                     isDirectAdLoading = false;
@@ -840,7 +865,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (streakAdBtn) streakAdBtn.disabled = true;
         if (streakSkipBtn) streakSkipBtn.disabled = true;
 
-        const finishWith = async (apiCall) => {
+        const finishWith = async (apiCall, sessionIdToCancel) => {
             try {
                 const result = await apiCall();
                 userState.game_tokens = result.gameTokens;
@@ -851,6 +876,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 updateStreakUI();
                 alert(result.bonusCoins > 0 ? `+${result.reward} жетонов и +${result.bonusCoins} монет!` : `+${result.reward} жетонов!`);
             } catch (e) {
+                if (sessionIdToCancel) await cancelSession(sessionIdToCancel);
                 alert(e.message);
             } finally {
                 isStreakLoading = false;
@@ -884,7 +910,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         showRewardedAd().then((ad) => {
             if (ad.ok) {
-                finishWith(() => api('session', { action: 'streak_ad_complete', sessionId: session.sessionId, timezone: userTimezone, provider: ad.provider }));
+                finishWith(() => apiComplete('session', { action: 'streak_ad_complete', sessionId: session.sessionId, timezone: userTimezone, provider: ad.provider }), session.sessionId);
             } else {
                 if (!ad.userClosed) adsUnavailableAlert();
                 onFail();
@@ -1053,11 +1079,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const finishGameSuccess = async (provider) => {
                 try {
-                    const result = await api('session', { action: 'game_complete', sessionId: session.sessionId, score: lastGameScore, provider });
+                    const result = await apiComplete('session', { action: 'game_complete', sessionId: session.sessionId, score: lastGameScore, provider });
                     userState.game_tokens = result.gameTokens;
                     updateGameJetonsDisplay();
                     alert(`🧩 +${result.reward} жетонов!`);
                 } catch (e) {
+                    await cancelSession(session.sessionId);
                     alert(e.message);
                 } finally {
                     isGameClaimLoading = false;
@@ -1676,12 +1703,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const finish = async (provider) => {
                 try {
-                    const result = await api('session', { action: 'checkpoint_complete', sessionId: session.sessionId, provider });
+                    const result = await apiComplete('session', { action: 'checkpoint_complete', sessionId: session.sessionId, provider });
                     userState.game_tokens = result.gameTokens;
                     updateGameJetonsDisplay();
                     alert(I18N.tr(`🎉 +${result.reward} жетонов!`, `🎉 +${result.reward} tokens!`));
                     loadDilemma(currentDilemmaTopic);
                 } catch (e) {
+                    // Возвращает списанный чекпоинт и снимает блокировку
+                    await cancelSession(session.sessionId);
+                    loadDilemma(currentDilemmaTopic);
                     alert(e.message);
                 } finally {
                     isWatching = false;
@@ -1853,7 +1883,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         : I18N.tr('Реклама пока недоступна', 'Ads unavailable right now'));
                 }
 
-                const result = await api('session', { action: 'fortune_complete', sessionId: session.sessionId, timezone: userTimezone, provider: ad.provider });
+                const result = await apiComplete('session', { action: 'fortune_complete', sessionId: session.sessionId, timezone: userTimezone, provider: ad.provider });
                 userState.topic_keys = result.topicKeys;
                 userState.secret_keys = result.secretKeys;
                 const topicEl = document.getElementById('topicKeysVal');
