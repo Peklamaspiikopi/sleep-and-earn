@@ -33,7 +33,6 @@ const {
 const ALLOWED_GAMES = ['blockblast', '2048', 'watersort'];
 const { logTransaction } = require('../lib/transactions');
 const crypto = require('crypto');
-const { adProviderOf, getAdStats, providerBlock } = require('../lib/adProviders');
 
 const MIN_WATCH_SECONDS = 12;
 
@@ -42,10 +41,8 @@ const MIN_WATCH_SECONDS = 12;
 // Минимум считается от старта сессии, так что реально досмотреть ролик
 // быстрее 10 секунд всё равно нельзя.
 const RICHADS_MIN_WATCH_SECONDS = 9;
-function minWatchFor(session, req, baseSeconds) {
-  // Провайдер берём из самой сессии (записан при старте), а не из
-  // запроса завершения — так его нельзя сменить уже после показа.
-  const provider = (session && session.ad_provider) || (req.body && req.body.provider);
+function minWatchFor(req, baseSeconds) {
+  const provider = req.body && req.body.provider;
   return provider === 'richads' ? Math.min(baseSeconds, RICHADS_MIN_WATCH_SECONDS) : baseSeconds;
 }
 const SESSION_TTL_SECONDS = 120;
@@ -86,8 +83,6 @@ async function handleStart(req, res, telegramId) {
     return res.status(400).json({ error: 'Дневной лимит роликов исчерпан' });
   }
 
-  await releaseActiveSessions(telegramId);
-  { const blocked = await providerBlock(supabaseAdmin, req, telegramId); if (blocked) return res.status(429).json(blocked); }
   const { data: activeSession } = await supabaseAdmin
     .from('sessions')
     .select('id, expires_at')
@@ -147,7 +142,7 @@ async function handleStart(req, res, telegramId) {
     reward,
     started_at: startedAt.toISOString(),
     expires_at: expiresAt.toISOString(),
-    status: 'active', ad_provider: adProviderOf(req),
+    status: 'active',
     session_type: type,
     dilemma_topic: null,
   }]);
@@ -343,59 +338,6 @@ async function handleComplete(req, res, telegramId) {
 // (старый видео-поток Терминала) списывало manual_limit на старте.
 const NON_MANUAL_LIMIT_SESSION_TYPES = ['banner', 'fortune', 'dilemma_checkpoint', 'direct_ad', 'streak_checkin'];
 
-// Возвращает то, что было списано на старте сессии (чекпоинт или
-// manual_limit). Вызывать только для строки, которую только что
-// перевели active -> cancelled (иначе возможен двойной возврат).
-async function refundCancelledSession(telegramId, session) {
-  // checkpoint_start списывает чекпоинт ДО показа рекламы. Если реклама
-  // не показалась и сессию отменили — чекпоинт нужно вернуть, иначе
-  // игрок теряет прогресс, ничего не получив.
-  if (session.session_type === 'dilemma_checkpoint') {
-    if (session.dilemma_topic) {
-      await atomicIncrement(
-        supabaseAdmin, 'dilemma_progress',
-        { telegram_id: telegramId, topic: session.dilemma_topic },
-        'pending_checkpoints', 1
-      );
-    }
-    return;
-  }
-
-  const type = session.session_type || '';
-  const spentManualLimit = !NON_MANUAL_LIMIT_SESSION_TYPES.includes(type) && !type.startsWith('game_');
-  if (spentManualLimit) {
-    await atomicIncrement(supabaseAdmin, 'users', { telegram_id: telegramId }, 'manual_limit', 1);
-  }
-}
-
-// Закрывает ВСЕ «висящие» active-сессии игрока (с возвратом списанного)
-// перед стартом новой. Игрок физически смотрит один ролик за раз, а
-// старая сессия остаётся active, если приложение свернули/закрыли во
-// время рекламы, пропал интернет или complete вернул ошибку — раньше
-// это давало 409 «Уже есть незавершённая сессия» на 2–5 минут.
-// Двойной оплаты нет: награду получает только сессия, которую клиент
-// завершит по её id, а отмена идёт через CAS по status = 'active'.
-async function releaseActiveSessions(telegramId) {
-  const { data: stale, error } = await supabaseAdmin
-    .from('sessions')
-    .update({ status: 'cancelled', completed_at: new Date().toISOString() })
-    .eq('telegram_id', telegramId)
-    .eq('status', 'active')
-    .select();
-  if (error) { console.error('releaseActiveSessions failed:', error); return; }
-  for (const row of stale || []) {
-    try { await refundCancelledSession(telegramId, row); }
-    catch (e) { console.error('refund after release failed:', row.id, e); }
-  }
-}
-
-// ==== action: ad_stats (остаток показов по партнёрам) ====
-async function handleAdStats(req, res, telegramId) {
-  const { data: u } = await supabaseAdmin.from('users').select('timezone').eq('telegram_id', telegramId).maybeSingle();
-  const stats = await getAdStats(supabaseAdmin, telegramId, (req.body && req.body.timezone) || (u && u.timezone));
-  return res.status(200).json(stats);
-}
-
 async function handleCancel(req, res, telegramId) {
   const { sessionId } = req.body || {};
 
@@ -412,7 +354,26 @@ async function handleCancel(req, res, telegramId) {
     return res.status(200).json({ ok: true, alreadyClosed: true });
   }
 
-  await refundCancelledSession(telegramId, session);
+  // checkpoint_start списывает чекпоинт ДО показа рекламы. Если реклама
+  // не показалась и сессию отменили — чекпоинт нужно вернуть, иначе
+  // игрок теряет прогресс, ничего не получив.
+  if (session.session_type === 'dilemma_checkpoint') {
+    if (session.dilemma_topic) {
+      await atomicIncrement(
+        supabaseAdmin, 'dilemma_progress',
+        { telegram_id: telegramId, topic: session.dilemma_topic },
+        'pending_checkpoints', 1
+      );
+    }
+    return res.status(200).json({ ok: true });
+  }
+
+  const type = session.session_type || '';
+  const spentManualLimit = !NON_MANUAL_LIMIT_SESSION_TYPES.includes(type) && !type.startsWith('game_');
+  if (spentManualLimit) {
+    await atomicIncrement(supabaseAdmin, 'users', { telegram_id: telegramId }, 'manual_limit', 1);
+  }
+
   return res.status(200).json({ ok: true });
 }
 
@@ -448,8 +409,6 @@ async function handleBannerStart(req, res, telegramId) {
 
   // Просроченную активную сессию (реклама не показалась, игрок ушёл)
   // не считаем блокирующей и закрываем — иначе она держит 409 вечно.
-  await releaseActiveSessions(telegramId);
-  { const blocked = await providerBlock(supabaseAdmin, req, telegramId); if (blocked) return res.status(429).json(blocked); }
   const { data: activeSession } = await supabaseAdmin
     .from('sessions')
     .select('id, expires_at')
@@ -471,7 +430,7 @@ async function handleBannerStart(req, res, telegramId) {
     .insert({
       telegram_id: telegramId,
       session_type: 'banner',
-      status: 'active', ad_provider: adProviderOf(req),
+      status: 'active',
       mode: 'manual',
       reward: 0,
       duration_seconds: BANNER_MIN_WATCH_SECONDS,
@@ -508,7 +467,7 @@ async function handleBannerComplete(req, res, telegramId) {
 
   const elapsedSec = (Date.now() - new Date(session.started_at).getTime()) / 1000;
   if (elapsedSec < BANNER_MIN_WATCH_SECONDS) {
-    return res.status(400).json({ error: 'Слишком рано', retryAfterSeconds: Math.max(1, Math.ceil((BANNER_MIN_WATCH_SECONDS) - elapsedSec)) });
+    return res.status(400).json({ error: 'Слишком рано' });
   }
 
   const { data: closedSession } = await supabaseAdmin
@@ -581,8 +540,6 @@ async function handleFortuneStart(req, res, telegramId) {
 
   // Просроченную активную сессию (реклама не показалась, игрок ушёл)
   // не считаем блокирующей и закрываем — иначе она держит 409 вечно.
-  await releaseActiveSessions(telegramId);
-  { const blocked = await providerBlock(supabaseAdmin, req, telegramId); if (blocked) return res.status(429).json(blocked); }
   const { data: activeSession } = await supabaseAdmin
     .from('sessions')
     .select('id, expires_at')
@@ -604,7 +561,7 @@ async function handleFortuneStart(req, res, telegramId) {
     .insert({
       telegram_id: telegramId,
       session_type: 'fortune',
-      status: 'active', ad_provider: adProviderOf(req),
+      status: 'active',
       mode: 'manual',
       reward: 0,
       duration_seconds: FORTUNE_MIN_WATCH_SECONDS,
@@ -640,8 +597,8 @@ async function handleFortuneComplete(req, res, telegramId) {
   }
 
   const elapsedSec = (Date.now() - new Date(session.started_at).getTime()) / 1000;
-  if (elapsedSec < minWatchFor(session, req, FORTUNE_MIN_WATCH_SECONDS)) {
-    return res.status(400).json({ error: 'Слишком рано', retryAfterSeconds: Math.max(1, Math.ceil((minWatchFor(session, req, FORTUNE_MIN_WATCH_SECONDS)) - elapsedSec)) });
+  if (elapsedSec < minWatchFor(req, FORTUNE_MIN_WATCH_SECONDS)) {
+    return res.status(400).json({ error: 'Слишком рано' });
   }
 
   const { data: closedSession } = await supabaseAdmin
@@ -715,8 +672,6 @@ async function handleCheckpointStart(req, res, telegramId) {
     return res.status(400).json({ error: 'Нет доступных чекпоинтов' });
   }
 
-  await releaseActiveSessions(telegramId);
-  { const blocked = await providerBlock(supabaseAdmin, req, telegramId); if (blocked) return res.status(429).json(blocked); }
   const { data: activeSession } = await supabaseAdmin
     .from('sessions')
     .select('id, expires_at')
@@ -746,7 +701,7 @@ async function handleCheckpointStart(req, res, telegramId) {
     .insert({
       telegram_id: telegramId, mode: 'manual', duration_seconds: GAME_MIN_WATCH_SECONDS,
       reward: 0, started_at: now.toISOString(), expires_at: expiresAt.toISOString(),
-      status: 'active', ad_provider: adProviderOf(req), session_type: 'dilemma_checkpoint', dilemma_topic: topic,
+      status: 'active', session_type: 'dilemma_checkpoint', dilemma_topic: topic,
     })
     .select()
     .single();
@@ -778,9 +733,9 @@ async function handleCheckpointComplete(req, res, telegramId) {
   if (!session) return res.status(409).json({ error: 'Сессия не найдена или уже обработана' });
 
   const elapsedSec = (Date.now() - new Date(session.started_at).getTime()) / 1000;
-  if (elapsedSec < minWatchFor(session, req, GAME_MIN_WATCH_SECONDS)) {
+  if (elapsedSec < minWatchFor(req, GAME_MIN_WATCH_SECONDS)) {
     await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
-    return res.status(400).json({ error: 'Слишком рано', retryAfterSeconds: Math.max(1, Math.ceil((minWatchFor(session, req, GAME_MIN_WATCH_SECONDS)) - elapsedSec)) });
+    return res.status(400).json({ error: 'Слишком рано' });
   }
 
   const { data: user } = await supabaseAdmin
@@ -846,8 +801,6 @@ async function handleDirectAdStart(req, res, telegramId) {
     return res.status(429).json({ error: 'Дневной лимит наград исчерпан, возвращайся завтра', daily_limit_reached: true });
   }
 
-  await releaseActiveSessions(telegramId);
-  { const blocked = await providerBlock(supabaseAdmin, req, telegramId); if (blocked) return res.status(429).json(blocked); }
   const { data: activeSession } = await supabaseAdmin
     .from('sessions')
     .select('id, expires_at')
@@ -866,7 +819,7 @@ async function handleDirectAdStart(req, res, telegramId) {
     .insert({
       telegram_id: telegramId, mode: 'manual', duration_seconds: GAME_MIN_WATCH_SECONDS,
       reward: 0, started_at: now.toISOString(), expires_at: expiresAt.toISOString(),
-      status: 'active', ad_provider: adProviderOf(req), session_type: 'direct_ad',
+      status: 'active', session_type: 'direct_ad',
     })
     .select()
     .single();
@@ -892,9 +845,9 @@ async function handleDirectAdComplete(req, res, telegramId) {
   if (!session) return res.status(409).json({ error: 'Сессия не найдена или уже обработана' });
 
   const elapsedSec = (Date.now() - new Date(session.started_at).getTime()) / 1000;
-  if (elapsedSec < minWatchFor(session, req, GAME_MIN_WATCH_SECONDS)) {
+  if (elapsedSec < minWatchFor(req, GAME_MIN_WATCH_SECONDS)) {
     await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
-    return res.status(400).json({ error: 'Слишком рано', retryAfterSeconds: Math.max(1, Math.ceil((minWatchFor(session, req, GAME_MIN_WATCH_SECONDS)) - elapsedSec)) });
+    return res.status(400).json({ error: 'Слишком рано' });
   }
 
   const reward = BASE_GAME_REWARD; // без бонуса по очкам — раунд не игрался
@@ -960,8 +913,6 @@ async function handleGameStart(req, res, telegramId) {
     return res.status(429).json({ error: 'Дневной лимит наград за игры исчерпан, возвращайся завтра', daily_limit_reached: true });
   }
 
-  await releaseActiveSessions(telegramId);
-  { const blocked = await providerBlock(supabaseAdmin, req, telegramId); if (blocked) return res.status(429).json(blocked); }
   const { data: activeSession } = await supabaseAdmin
     .from('sessions')
     .select('id, expires_at')
@@ -985,7 +936,7 @@ async function handleGameStart(req, res, telegramId) {
       reward: 0,
       started_at: now.toISOString(),
       expires_at: expiresAt.toISOString(),
-      status: 'active', ad_provider: adProviderOf(req),
+      status: 'active',
       session_type: `game_${game}`,
     })
     .select()
@@ -1015,9 +966,9 @@ async function handleGameComplete(req, res, telegramId) {
   }
 
   const elapsedSec = (Date.now() - new Date(session.started_at).getTime()) / 1000;
-  if (elapsedSec < minWatchFor(session, req, GAME_MIN_WATCH_SECONDS)) {
+  if (elapsedSec < minWatchFor(req, GAME_MIN_WATCH_SECONDS)) {
     await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
-    return res.status(400).json({ error: 'Слишком рано', retryAfterSeconds: Math.max(1, Math.ceil((minWatchFor(session, req, GAME_MIN_WATCH_SECONDS)) - elapsedSec)) });
+    return res.status(400).json({ error: 'Слишком рано' });
   }
 
   const reward = BASE_GAME_REWARD + computeGameBonus(safeScore);
@@ -1157,8 +1108,6 @@ async function handleStreakAdStart(req, res, telegramId) {
     return res.status(429).json({ error: 'Уже отмечался сегодня' });
   }
 
-  await releaseActiveSessions(telegramId);
-  { const blocked = await providerBlock(supabaseAdmin, req, telegramId); if (blocked) return res.status(429).json(blocked); }
   const { data: activeSession } = await supabaseAdmin
     .from('sessions')
     .select('id, expires_at')
@@ -1177,7 +1126,7 @@ async function handleStreakAdStart(req, res, telegramId) {
     .insert({
       telegram_id: telegramId, mode: 'manual', duration_seconds: GAME_MIN_WATCH_SECONDS,
       reward: 0, started_at: now.toISOString(), expires_at: expiresAt.toISOString(),
-      status: 'active', ad_provider: adProviderOf(req), session_type: 'streak_checkin',
+      status: 'active', session_type: 'streak_checkin',
     })
     .select()
     .single();
@@ -1204,9 +1153,9 @@ async function handleStreakAdComplete(req, res, telegramId) {
   if (!session) return res.status(409).json({ error: 'Сессия не найдена или уже обработана' });
 
   const elapsedSec = (Date.now() - new Date(session.started_at).getTime()) / 1000;
-  if (elapsedSec < minWatchFor(session, req, GAME_MIN_WATCH_SECONDS)) {
+  if (elapsedSec < minWatchFor(req, GAME_MIN_WATCH_SECONDS)) {
     await supabaseAdmin.from('sessions').update({ status: 'active' }).eq('id', sessionId);
-    return res.status(400).json({ error: 'Слишком рано', retryAfterSeconds: Math.max(1, Math.ceil((minWatchFor(session, req, GAME_MIN_WATCH_SECONDS)) - elapsedSec)) });
+    return res.status(400).json({ error: 'Слишком рано' });
   }
 
   const { data: user } = await fetchStreakUser(telegramId, timezone);
@@ -1278,7 +1227,6 @@ module.exports = async (req, res) => {
     case 'checkpoint_complete': return handleCheckpointComplete(req, res, telegramId);
     case 'direct_ad_start': return handleDirectAdStart(req, res, telegramId);
     case 'direct_ad_complete': return handleDirectAdComplete(req, res, telegramId);
-    case 'ad_stats': return handleAdStats(req, res, telegramId);
     case 'streak_skip': return handleStreakSkip(req, res, telegramId);
     case 'streak_ad_start': return handleStreakAdStart(req, res, telegramId);
     case 'streak_ad_complete': return handleStreakAdComplete(req, res, telegramId);
