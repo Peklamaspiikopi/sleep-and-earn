@@ -51,6 +51,18 @@
         }
         .icon-btn:active { transform: scale(0.9); }
 
+        /* ==== Переключатель рекламного партнёра ==== */
+        .ad-switch { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+        .ad-seg { display: flex; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 2px; }
+        .ad-opt { display: flex; align-items: center; gap: 3px; border: none; background: transparent; color: var(--text-muted); font-size: 9.5px; font-weight: 800; padding: 3px 7px 3px 4px; border-radius: 999px; cursor: pointer; outline: none; white-space: nowrap; transition: background-color 0.2s, color 0.2s, box-shadow 0.2s; }
+        .ad-opt svg { width: 13px; height: 13px; flex: none; display: block; }
+        .ad-opt:not(.active) svg { opacity: 0.75; }
+        /* Цвета партнёров: Adsgram — градиент логотипа, RichAds — красный */
+        #adProvAdsgram.active { background: linear-gradient(120deg, #ff7a18 0%, #ff2d95 32%, #8a3cff 64%, #00b4ff 100%); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.35); box-shadow: 0 0 8px rgba(255, 45, 149, 0.5); }
+        #adProvAdsgram.active .adsg-logo path { fill: #fff; }
+        #adProvRichads.active { background: #ff3b30; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.3); box-shadow: 0 0 8px rgba(255, 59, 48, 0.55); }
+        .ad-left { font-size: 9px; color: var(--text-secondary); font-weight: 600; white-space: nowrap; }
+        .ad-left.empty { color: #ff5252; }
         .ad-hint { margin: -2px 4px 10px; text-align: center; font-size: 10px; line-height: 1.35; color: var(--text-muted); }
 
         /* ==== Заставка загрузки: молот бьёт по наковальне ==== */
@@ -364,13 +376,26 @@
 
     <div class="header">
         <h1>MintoStrk</h1>
+        <div class="ad-switch" id="adSwitch">
+            <div class="ad-seg">
+                <button class="ad-opt active" id="adProvAdsgram" type="button">
+                    <svg class="adsg-logo" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="adsgGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff7a18"/><stop offset="0.35" stop-color="#ff2d95"/><stop offset="0.7" stop-color="#8a3cff"/><stop offset="1" stop-color="#00b4ff"/></linearGradient></defs><path fill="url(#adsgGrad)" fill-rule="evenodd" d="M50 6 L94 84 H6 Z M50 38 L67 68 H33 Z"/></svg>
+                    <span>Adsgram</span>
+                </button>
+                <button class="ad-opt" id="adProvRichads" type="button">
+                    <svg viewBox="0 0 900 900" aria-hidden="true"><rect width="900" height="900" rx="190" fill="#ff3b30"/><polygon fill="#fff" points="196,328 323,430 450,328 577,430 703,328 703,572 196,572"/></svg>
+                    <span>RichAds</span>
+                </button>
+            </div>
+            <div class="ad-left" id="adLeftText">…</div>
+        </div>
         <div class="header-actions">
             <button class="icon-btn" id="guideBtn" onclick="openGuide()" aria-label="Guide">💡</button>
             <button class="icon-btn" id="settingsBtn" onclick="openSettings()" aria-label="Settings">🌐</button>
         </div>
     </div>
 
-    <div class="ad-hint">💡 Нет рекламы? Из-за VPN (или его отсутствия) показ может не работать — попробуй другую страну VPN.</div>
+    <div class="ad-hint">💡 Нет рекламы? Из-за VPN (или его отсутствия) показ может не работать — смени страну VPN или переключи партнёра.</div>
 
     <!-- ДИЛЕММЫ -->
     <div class="tab-content active" id="tabDilemmas">
@@ -526,12 +551,12 @@
     </div>
 </div>
 
-<script src="i18n-data.js?v=5" defer></script>
+<script src="i18n-data.js?v=6" defer></script>
 <script src="i18n.js?v=1" defer></script>
 <script src="blockblast.js?v=2" defer></script>
 <script src="game2048.js?v=2" defer></script>
 <script src="watersort.js?v=2" defer></script>
-<script src="script.js?v=24" defer></script>
+<script src="script.js?v=26" defer></script>
 <script>
 function switchTab(tabName) {
     const tabs = { dilemmas: 'tabDilemmas', games: 'tabGames', finance: 'tabFinance', history: 'tabHistory' };
