@@ -176,8 +176,37 @@ document.addEventListener('DOMContentLoaded', async () => {
             body: JSON.stringify({ initData, ...body }),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(I18N.tr(data.error || 'Ошибка сервера'));
+        if (!res.ok) {
+            let msg = I18N.tr(data.error || 'Ошибка сервера');
+            if (data.providerLimit) {
+                const pname = data.provider === 'richads' ? 'RichAds' : 'Adsgram';
+                msg = I18N.tr(`Лимит рекламы ${pname} на сегодня исчерпан (${data.used}/${data.limit}). Переключи партнёра вверху или подожди ${fmtResetClock(data.resetSeconds)}.`);
+            }
+            const err = new Error(msg);
+            err.data = data;
+            err.status = res.status;
+            throw err;
+        }
         return data;
+    }
+
+    // Завершение рекламной сессии. Если сервер говорит «слишком рано»
+    // (ролик у партнёра оказался короче серверного минимума, хотя игрок
+    // его реально досмотрел) — ждём остаток и повторяем один раз, вместо
+    // того чтобы терять награду и оставлять сессию висеть. Минимум
+    // времени при этом остаётся в силе: раньше срока награды не будет.
+    async function apiComplete(path, body) {
+        let result;
+        try {
+            result = await api(path, body);
+        } catch (e) {
+            const wait = e && e.data && e.data.retryAfterSeconds;
+            if (!(wait && wait <= 20)) throw e;
+            await new Promise((r) => setTimeout(r, (wait + 1) * 1000));
+            result = await api(path, body);
+        }
+        refreshAdStats();
+        return result;
     }
 
     let userState = {
@@ -222,6 +251,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         for (let attempt = 0; attempt < 2; attempt++) {
             try {
                 await api('session', { action: 'cancel', sessionId });
+                refreshAdStats();
                 return true;
             } catch (e) {
                 console.error('session-cancel failed, attempt', attempt, e);
@@ -229,6 +259,61 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         return false;
     }
+
+    // ==== Выбор рекламного партнёра (Adsgram / RichAds) ====
+    // Игрок сам выбирает, откуда показывать рекламу. Автоматического
+    // переключения между партнёрами нет: если у выбранного лимит на
+    // сегодня исчерпан, сервер скажет об этом, и игрок переключится сам.
+    const AD_PROVIDER_KEY = 'mintostrk_ad_provider';
+    let adProvider = 'adsgram';
+    try { if (localStorage.getItem(AD_PROVIDER_KEY) === 'richads') adProvider = 'richads'; } catch (e) {}
+    let adStats = null;
+    let adResetAt = 0;
+
+    function fmtResetClock(sec) {
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        return `${h}:${String(m).padStart(2, '0')}`;
+    }
+
+    function renderAdSwitch() {
+        const a = document.getElementById('adProvAdsgram');
+        const r = document.getElementById('adProvRichads');
+        if (a) a.classList.toggle('active', adProvider === 'adsgram');
+        if (r) r.classList.toggle('active', adProvider === 'richads');
+        const info = document.getElementById('adLeftText');
+        if (!info) return;
+        if (!adStats) { info.innerText = '…'; return; }
+        const st = adStats[adProvider];
+        const left = Math.max(0, st.limit - st.used);
+        const sec = Math.max(0, Math.round((adResetAt - Date.now()) / 1000));
+        info.innerText = I18N.tr(`Осталось ${left}/${st.limit} · ⏱ ${fmtResetClock(sec)}`);
+        info.classList.toggle('empty', left === 0);
+    }
+
+    async function refreshAdStats() {
+        try {
+            adStats = await api('session', { action: 'ad_stats', timezone: userTimezone });
+            adResetAt = Date.now() + adStats.resetSeconds * 1000;
+            renderAdSwitch();
+        } catch (e) { console.error('ad_stats failed', e); }
+    }
+
+    function setAdProvider(p) {
+        adProvider = p === 'richads' ? 'richads' : 'adsgram';
+        try { localStorage.setItem(AD_PROVIDER_KEY, adProvider); } catch (e) {}
+        renderAdSwitch();
+        if (adProvider === 'richads' && RICHADS_ENABLED) loadRichAds(); // прогреваем заранее
+    }
+
+    (function initAdSwitch() {
+        const a = document.getElementById('adProvAdsgram');
+        const r = document.getElementById('adProvRichads');
+        if (a) a.addEventListener('click', () => setAdProvider('adsgram'));
+        if (r) r.addEventListener('click', () => setAdProvider('richads'));
+        renderAdSwitch();
+        setInterval(renderAdSwitch, 30000); // обратный отсчёт до сброса
+    })();
 
     function renderUser() {
         const set = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
@@ -474,10 +559,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // тег умеет сам показывать рекламу по клику, и пока он не загружен,
     // на остальных пользователей он никак не влияет.
     const RICHADS_ENABLED = true;
+    const RICHADS_MIN_SHOWN_MS = 5000; // быстрее — считаем, что ролик не показывался
     const RICHADS_DEBUG = false; // true = тестовые ролики + alert с ответом SDK (для проверки)
     const RICHADS_PUB_ID = '1023620';
     const RICHADS_APP_ID = '9037';
     let richadsLoading = null;
+    let lastAdDiag = ''; // короткий код причины последней неудачи — виден в окне «реклама недоступна»
 
     function loadRichAds() {
         if (richadsLoading) return richadsLoading;
@@ -503,39 +590,62 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function showRichAds() {
         const controller = await loadRichAds();
-        if (!controller || typeof controller.triggerInterstitialVideo !== 'function') return false;
+        if (!controller || typeof controller.triggerInterstitialVideo !== 'function') { lastAdDiag = 'richads: SDK не загрузился/не инициализировался'; return false; }
         try {
+            const shownAt = Date.now();
             const result = await controller.triggerInterstitialVideo();
             console.log('RichAds resolved:', result);
+            // RichAds не присылает события «реклама недоступна» и не даёт
+            // серверного подтверждения просмотра (их поддержка: в этом
+            // случае ничего сделать нельзя), поэтому промис может
+            // завершиться мгновенно, хотя ролика не было. Их интерстишл —
+            // видео ~10 сек: если «показ» закончился быстрее порога,
+            // считаем, что рекламы не было, и награду не выдаём.
+            if (Date.now() - shownAt < RICHADS_MIN_SHOWN_MS) {
+                console.error('RichAds resolved too fast, treating as no ad:', Date.now() - shownAt, 'ms');
+                lastAdDiag = 'richads: ответ за ' + (Date.now() - shownAt) + ' мс (ролика не было)';
+                return false;
+            }
             if (RICHADS_DEBUG) alert('RichAds resolve: ' + JSON.stringify(result));
             // Формат ответа в документации RichAds не описан: считаем
             // успехом resolve, если в нём нет явной пометки об ошибке.
-            return !(result && (result.error === true || result.success === false || result.done === false));
+            const okResult = !(result && (result.error === true || result.success === false || result.done === false));
+            if (!okResult) lastAdDiag = 'richads: ' + JSON.stringify(result).slice(0, 80);
+            return okResult;
         } catch (result) {
             console.error('RichAds rejected:', result);
+            lastAdDiag = 'richads: отказ ' + (typeof result === 'string' ? result : JSON.stringify(result || '')).slice(0, 80);
             if (RICHADS_DEBUG) alert('RichAds reject: ' + JSON.stringify(result));
             return false;
         }
     }
 
-    // Возвращает { ok, provider, userClosed }.
+    // Показывает ролик ТОЛЬКО у выбранного игроком партнёра, без
+    // автоматического запасного варианта. Возвращает { ok, provider, userClosed }.
     async function showRewardedAd() {
+        if (adProvider === 'richads') {
+            if (RICHADS_ENABLED && await showRichAds()) return { ok: true, provider: 'richads' };
+            return { ok: false, userClosed: false };
+        }
         if (videoController) {
             try {
                 const result = await videoController.show();
                 if (result?.done !== false) return { ok: true, provider: 'adsgram' };
                 console.error('Adsgram resolved with done:false', result);
+                lastAdDiag = 'adsgram: done=false ' + (result && result.description || '');
                 return { ok: false, userClosed: true };
             } catch (err) {
                 console.error('Adsgram show failed:', err);
                 if (err && err.error === false) return { ok: false, userClosed: true };
+                lastAdDiag = 'adsgram: ' + ((err && (err.description || err.state)) || 'ошибка') ;
             }
+        } else {
+            lastAdDiag = 'adsgram: SDK не загрузился (нет window.Adsgram)';
         }
-        if (RICHADS_ENABLED && await showRichAds()) return { ok: true, provider: 'richads' };
         return { ok: false, userClosed: false };
     }
     function adsUnavailableAlert() {
-        alert(I18N.tr('Реклама сейчас недоступна, попробуй чуть позже', 'Ads are unavailable right now, try again later'));
+        alert(I18N.tr('Реклама у этого партнёра сейчас недоступна. Попробуй позже или переключи партнёра вверху.', 'Ads from this partner are unavailable right now. Try later or switch the partner at the top.') + (lastAdDiag ? '\n\n[' + lastAdDiag + ']' : ''));
     }
 
     // Подстраховка на случай, если что-то (включая сам SDK Adsgram)
@@ -620,11 +730,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const finishBannerSuccess = async () => {
                 try {
-                    const result = await api('session', { action: 'banner_complete', sessionId: session.sessionId });
+                    const result = await apiComplete('session', { action: 'banner_complete', sessionId: session.sessionId });
                     userState.balance = result.balance;
                     renderUser();
                     alert(translations[currentLang].bannerRewardMsg(result.reward));
                 } catch (e) {
+                    await cancelSession(session.sessionId);
                     alert(e.message);
                 } finally {
                     isBannerLoading = false;
@@ -748,7 +859,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             let session;
             try {
-                session = await api('session', { action: 'direct_ad_start', timezone: userTimezone });
+                session = await api('session', { action: 'direct_ad_start', provider: adProvider, timezone: userTimezone });
             } catch (e) {
                 alert(e.message);
                 isDirectAdLoading = false;
@@ -758,11 +869,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const finish = async (provider) => {
                 try {
-                    const result = await api('session', { action: 'direct_ad_complete', sessionId: session.sessionId, provider });
+                    const result = await apiComplete('session', { action: 'direct_ad_complete', sessionId: session.sessionId, provider });
                     userState.game_tokens = result.gameTokens;
                     updateGameJetonsDisplay();
                     alert(`+${result.reward} жетонов!`);
                 } catch (e) {
+                    await cancelSession(session.sessionId);
                     alert(e.message);
                 } finally {
                     isDirectAdLoading = false;
@@ -840,7 +952,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (streakAdBtn) streakAdBtn.disabled = true;
         if (streakSkipBtn) streakSkipBtn.disabled = true;
 
-        const finishWith = async (apiCall) => {
+        const finishWith = async (apiCall, sessionIdToCancel) => {
             try {
                 const result = await apiCall();
                 userState.game_tokens = result.gameTokens;
@@ -851,6 +963,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 updateStreakUI();
                 alert(result.bonusCoins > 0 ? `+${result.reward} жетонов и +${result.bonusCoins} монет!` : `+${result.reward} жетонов!`);
             } catch (e) {
+                if (sessionIdToCancel) await cancelSession(sessionIdToCancel);
                 alert(e.message);
             } finally {
                 isStreakLoading = false;
@@ -866,7 +979,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let session;
         try {
-            session = await api('session', { action: 'streak_ad_start', timezone: userTimezone });
+            session = await api('session', { action: 'streak_ad_start', provider: adProvider, timezone: userTimezone });
         } catch (e) {
             alert(e.message);
             isStreakLoading = false;
@@ -884,7 +997,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         showRewardedAd().then((ad) => {
             if (ad.ok) {
-                finishWith(() => api('session', { action: 'streak_ad_complete', sessionId: session.sessionId, timezone: userTimezone, provider: ad.provider }));
+                finishWith(() => apiComplete('session', { action: 'streak_ad_complete', sessionId: session.sessionId, timezone: userTimezone, provider: ad.provider }), session.sessionId);
             } else {
                 if (!ad.userClosed) adsUnavailableAlert();
                 onFail();
@@ -1042,7 +1155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             let session;
             try {
-                session = await api('session', { action: 'game_start', game: currentGameKey, timezone: userTimezone });
+                session = await api('session', { action: 'game_start', provider: adProvider, game: currentGameKey, timezone: userTimezone });
             } catch (e) {
                 alert(e.message);
                 isGameClaimLoading = false;
@@ -1053,11 +1166,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const finishGameSuccess = async (provider) => {
                 try {
-                    const result = await api('session', { action: 'game_complete', sessionId: session.sessionId, score: lastGameScore, provider });
+                    const result = await apiComplete('session', { action: 'game_complete', sessionId: session.sessionId, score: lastGameScore, provider });
                     userState.game_tokens = result.gameTokens;
                     updateGameJetonsDisplay();
                     alert(`🧩 +${result.reward} жетонов!`);
                 } catch (e) {
+                    await cancelSession(session.sessionId);
                     alert(e.message);
                 } finally {
                     isGameClaimLoading = false;
@@ -1666,7 +1780,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             let session;
             try {
-                session = await api('session', { action: 'checkpoint_start', topic: currentDilemmaTopic });
+                session = await api('session', { action: 'checkpoint_start', provider: adProvider, topic: currentDilemmaTopic });
             } catch (e) {
                 alert(e.message);
                 isWatching = false;
@@ -1676,12 +1790,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const finish = async (provider) => {
                 try {
-                    const result = await api('session', { action: 'checkpoint_complete', sessionId: session.sessionId, provider });
+                    const result = await apiComplete('session', { action: 'checkpoint_complete', sessionId: session.sessionId, provider });
                     userState.game_tokens = result.gameTokens;
                     updateGameJetonsDisplay();
                     alert(I18N.tr(`🎉 +${result.reward} жетонов!`, `🎉 +${result.reward} tokens!`));
                     loadDilemma(currentDilemmaTopic);
                 } catch (e) {
+                    // Возвращает списанный чекпоинт и снимает блокировку
+                    await cancelSession(session.sessionId);
+                    loadDilemma(currentDilemmaTopic);
                     alert(e.message);
                 } finally {
                     isWatching = false;
@@ -1844,7 +1961,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (fortuneResultText) fortuneResultText.innerText = '';
             let fortuneSession = null;
             try {
-                const session = await api('session', { action: 'fortune_start', timezone: userTimezone });
+                const session = await api('session', { action: 'fortune_start', provider: adProvider, timezone: userTimezone });
                 fortuneSession = session;
                 const ad = await showRewardedAd();
                 if (!ad.ok) {
@@ -1853,7 +1970,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         : I18N.tr('Реклама пока недоступна', 'Ads unavailable right now'));
                 }
 
-                const result = await api('session', { action: 'fortune_complete', sessionId: session.sessionId, timezone: userTimezone, provider: ad.provider });
+                const result = await apiComplete('session', { action: 'fortune_complete', sessionId: session.sessionId, timezone: userTimezone, provider: ad.provider });
                 userState.topic_keys = result.topicKeys;
                 userState.secret_keys = result.secretKeys;
                 const topicEl = document.getElementById('topicKeysVal');
@@ -1899,7 +2016,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ==== Старт ====
     setLanguage(currentLang);
-    await refreshUser();
+    await Promise.all([refreshUser(), refreshAdStats()]);
     await loadDilemma(null);
     if (window.hideSplash) window.hideSplash();
 
