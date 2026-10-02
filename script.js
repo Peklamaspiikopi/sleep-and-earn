@@ -563,6 +563,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     const RICHADS_DEBUG = false; // true = тестовые ролики + alert с ответом SDK (для проверки)
     const RICHADS_PUB_ID = '1023620';
     const RICHADS_APP_ID = '9037';
+    // Если SDK не загрузился при открытии приложения (сеть/VPN блокировали
+    // sad.adsgram.ai), а потом игрок сменил VPN или сеть — подгружаем его
+    // заново прямо при попытке показать рекламу, без перезапуска приложения.
+    let adsgramLoading = null;
+    function loadAdsgramSdk() {
+        if (window.Adsgram) { initAdsgram(); return Promise.resolve(!!videoController); }
+        if (adsgramLoading) return adsgramLoading;
+        adsgramLoading = new Promise((resolve) => {
+            const el = document.createElement('script');
+            el.src = 'https://sad.adsgram.ai/js/sad.min.js?r=' + Date.now();
+            let timer = null;
+            const finish = (ok) => { clearTimeout(timer); adsgramLoading = null; resolve(ok); };
+            timer = setTimeout(() => finish(false), 8000);
+            el.onload = () => { initAdsgram(); finish(!!videoController); };
+            el.onerror = () => finish(false);
+            document.head.appendChild(el);
+        });
+        return adsgramLoading;
+    }
+
     let richadsLoading = null;
     let lastAdDiag = ''; // короткий код причины последней неудачи — виден в окне «реклама недоступна»
 
@@ -575,7 +595,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 try {
                     const controller = new window.TelegramAdsController();
                     controller.initialize({ pubId: RICHADS_PUB_ID, appId: RICHADS_APP_ID, debug: RICHADS_DEBUG });
-                    resolve(controller);
+                    setTimeout(() => resolve(controller), 800); // пауза на внутреннюю инициализацию SDK
                 } catch (e) {
                     console.error('RichAds init failed:', e);
                     richadsLoading = null;
@@ -627,6 +647,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (RICHADS_ENABLED && await showRichAds()) return { ok: true, provider: 'richads' };
             return { ok: false, userClosed: false };
         }
+        if (!videoController) await loadAdsgramSdk();
         if (videoController) {
             try {
                 const result = await videoController.show();
