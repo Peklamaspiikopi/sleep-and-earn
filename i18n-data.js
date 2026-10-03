@@ -1381,3 +1381,9 @@ window.I18N_ROWS.push(
 ["Реклама у этого партнёра сейчас недоступна. Попробуй позже или переключи партнёра вверху.", "Ads from this partner are unavailable right now. Try later or switch the partner at the top.", "Реклама від цього партнера зараз недоступна. Спробуй пізніше або перемкни партнера вгорі.", "Los anuncios de este socio no están disponibles ahora. Inténtalo más tarde o cambia de socio arriba.", "Les pubs de ce partenaire sont indisponibles pour le moment. Réessaie plus tard ou change de partenaire en haut.", "إعلانات هذا الشريك غير متاحة حاليًا. حاول لاحقًا أو بدّل الشريك في الأعلى."],
 ["💡 Нет рекламы? Из-за VPN (или его отсутствия) показ может не работать — смени страну VPN или переключи партнёра.", "💡 No ads? Because of a VPN (or the lack of one) ads may not load — try a VPN in another country or switch the partner.", "💡 Немає реклами? Через VPN (або його відсутність) показ може не працювати — змін країну VPN або перемкни партнера.", "💡 ¿No hay anuncios? Por la VPN (o por no usarla) pueden no cargar: prueba una VPN de otro país o cambia de socio.", "💡 Pas de pub ? À cause du VPN (ou de son absence), l'affichage peut échouer : change de pays VPN ou de partenaire.", "💡 لا توجد إعلانات؟ قد لا تعمل بسبب الـVPN (أو عدمه) — جرّب VPN من بلد آخر أو بدّل الشريك."]
 );
+
+// Прогресс по теме дилемм
+window.I18N_ROWS.push(
+["Пройдено в теме: {} из {}", "Done in topic: {1} of {2}", "Пройдено в темі: {1} з {2}", "Completadas en el tema: {1} de {2}", "Terminées dans le thème : {1} sur {2}", "المكتمل في الموضوع: {1} من {2}"],
+["круг {}", "round {1}", "коло {1}", "ronda {1}", "tour {1}", "الجولة {1}"]
+);
