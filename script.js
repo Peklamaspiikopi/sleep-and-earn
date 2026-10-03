@@ -608,11 +608,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         return richadsLoading;
     }
 
+    // ---- Диагностика RichAds (для переписки с их поддержкой) ----
+    // Пустой объект {} в «отказе» мог быть настоящим Error (его message не
+    // попадает в JSON), поэтому описываем причину явно. Плюс показываем, какие
+    // запросы к чужим доменам реально ушли во время показа, и что Telegram
+    // сообщает о платформе — это отвечает на вопрос «приходят ли запросы» и
+    // «открыто ли как мини-апп».
+    function describeRejection(r) {
+        if (r === undefined || r === null || r === '') return 'пусто';
+        if (typeof r === 'string') return r.slice(0, 80);
+        const parts = [];
+        if (r.name) parts.push(r.name);
+        if (r.message) parts.push(r.message);
+        if (r.code) parts.push('code=' + r.code);
+        if (r.status) parts.push('status=' + r.status);
+        if (!parts.length) { try { parts.push(JSON.stringify(r)); } catch (e) { parts.push(String(r)); } }
+        return parts.join(' ').slice(0, 80);
+    }
+    function recentNetDiag(sinceMs) {
+        try {
+            const t0 = performance.now() - (Date.now() - sinceMs) - 50;
+            const list = performance.getEntriesByType('resource')
+                .filter((e) => e.startTime >= t0 && e.name.indexOf(location.origin) !== 0)
+                .slice(-4)
+                .map((e) => {
+                    let u; try { u = new URL(e.name); } catch (x) { return ''; }
+                    return e.initiatorType + ' ' + u.hostname + u.pathname.slice(0, 16) + ' ' + (e.responseStatus || '?');
+                })
+                .filter(Boolean);
+            return list.length ? list.join('; ') : 'запросов не видно';
+        } catch (e) { return 'н/д'; }
+    }
+    function tgDiag() {
+        const w = window.Telegram && window.Telegram.WebApp;
+        return w ? ('tg ' + (w.platform || '?') + ' init=' + ((w.initData || '').length)) : 'tg: нет WebApp';
+    }
+
     async function showRichAds() {
         const controller = await loadRichAds();
         if (!controller || typeof controller.triggerInterstitialVideo !== 'function') { lastAdDiag = 'richads: SDK не загрузился/не инициализировался'; return false; }
         try {
-            const shownAt = Date.now();
+            var shownAt = Date.now();
             const result = await controller.triggerInterstitialVideo();
             console.log('RichAds resolved:', result);
             // RichAds не присылает события «реклама недоступна» и не даёт
@@ -623,7 +659,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // считаем, что рекламы не было, и награду не выдаём.
             if (Date.now() - shownAt < RICHADS_MIN_SHOWN_MS) {
                 console.error('RichAds resolved too fast, treating as no ad:', Date.now() - shownAt, 'ms');
-                lastAdDiag = 'richads: ответ за ' + (Date.now() - shownAt) + ' мс (ролика не было)';
+                lastAdDiag = 'richads: ответ за ' + (Date.now() - shownAt) + ' мс (ролика не было) | сеть: ' + recentNetDiag(shownAt) + ' | ' + tgDiag();
                 return false;
             }
             if (RICHADS_DEBUG) alert('RichAds resolve: ' + JSON.stringify(result));
@@ -634,7 +670,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return okResult;
         } catch (result) {
             console.error('RichAds rejected:', result);
-            lastAdDiag = 'richads: отказ ' + (typeof result === 'string' ? result : JSON.stringify(result || '')).slice(0, 80);
+            lastAdDiag = 'richads: отказ ' + describeRejection(result) + ' | сеть: ' + recentNetDiag(typeof shownAt === 'number' ? shownAt : Date.now() - 3000) + ' | ' + tgDiag();
             if (RICHADS_DEBUG) alert('RichAds reject: ' + JSON.stringify(result));
             return false;
         }
@@ -1698,10 +1734,52 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // ==== Запоминаем, на какой теме игрок остановился ====
+    // Место ВНУТРИ темы уже хранит сервер (completed_count), а вот выбранную
+    // тему при каждом запуске сбрасывало на первую по списку. Помним её на
+    // устройстве (localStorage) и в облаке Telegram (CloudStorage — между
+    // устройствами).
+    const LAST_TOPIC_KEY = 'mintostrk_last_topic';
+    function saveLastTopic(topic) {
+        if (!topic) return;
+        try { localStorage.setItem(LAST_TOPIC_KEY, topic); } catch (e) {}
+        try {
+            const cs = tg && tg.CloudStorage;
+            if (cs && tg.isVersionAtLeast && tg.isVersionAtLeast('6.9')) cs.setItem(LAST_TOPIC_KEY, topic, () => {});
+        } catch (e) {}
+    }
+    async function readLastTopic() {
+        let topic = null;
+        try { topic = localStorage.getItem(LAST_TOPIC_KEY); } catch (e) {}
+        if (topic) return topic;
+        try {
+            const cs = tg && tg.CloudStorage;
+            if (cs && tg.isVersionAtLeast && tg.isVersionAtLeast('6.9')) {
+                topic = await Promise.race([
+                    new Promise((res) => cs.getItem(LAST_TOPIC_KEY, (err, v) => res(err ? null : (v || null)))),
+                    new Promise((res) => setTimeout(() => res(null), 1500)),
+                ]);
+            }
+        } catch (e) {}
+        return topic || null;
+    }
+
     function renderDilemmaProgress(progress) {
         if (!dilemmaProgressLine) return;
         const label = I18N.tr(`Прогресс: ${progress.inCycle}/${progress.cycleLength} до чекпоинта · пройдено всего: ${progress.completedCount}`, `Progress: ${progress.inCycle}/${progress.cycleLength} to checkpoint · total completed: ${progress.completedCount}`);
-        dilemmaProgressLine.innerText = label;
+        // «Пройдено в теме: 6 из 25 · круг 5» — тема проходится по кругу, поэтому
+        // считаем остаток от общего числа и показываем номер круга.
+        let topicLine = '';
+        const total = progress.totalInTopic;
+        if (total > 0) {
+            const done = progress.completedCount % total;
+            const round = Math.floor(progress.completedCount / total) + 1;
+            topicLine = I18N.tr(`Пройдено в теме: ${done} из ${total}`);
+            if (round > 1) topicLine += ' · ' + I18N.tr(`круг ${round}`);
+            topicLine += '\n';
+        }
+        dilemmaProgressLine.style.whiteSpace = 'pre-line';
+        dilemmaProgressLine.innerText = topicLine + label;
 
         if (dilemmaCheckpointCard) {
             dilemmaCheckpointCard.style.display = progress.pendingCheckpoints > 0 ? 'block' : 'none';
@@ -1739,6 +1817,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const result = await api('dilemma', { action: 'get', topic, lang: currentLang });
             currentDilemmaTopic = result.activeTopic;
+            saveLastTopic(currentDilemmaTopic);
 
             if (currentTopicLabel) {
                 const name = I18N.pick(topicNames[currentDilemmaTopic]) || currentDilemmaTopic || '—';
@@ -2038,7 +2117,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==== Старт ====
     setLanguage(currentLang);
     await Promise.all([refreshUser(), refreshAdStats()]);
-    await loadDilemma(null);
+    await loadDilemma(await readLastTopic());
     if (window.hideSplash) window.hideSplash();
 
     // ==== Возрастной гейт (18+) ====
