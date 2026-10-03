@@ -27,24 +27,58 @@ async function getUnlockedTopics(telegramId) {
 }
 
 // ==== Язык дилемм ====
-// Тексты дилемм лежат в таблице dilemmas по строке на язык (колонка lang).
-// Для языка без текстов (пока нет перевода) отдаём запасной: uk -> ru, остальные -> en.
+// Тексты дилемм лежат в таблице dilemmas по строке на язык (колонка lang);
+// одна и та же дилемма в разных языках имеет одинаковые (topic, order_index).
+// Язык используем только когда перевод ПОЛНЫЙ — не меньше дилемм, чем на
+// русском (и в обычных темах, и в секретных). Иначе позиция игрока
+// (completed_count % число дилемм) «поплывёт» при смене языка: в неполном
+// списке та же цифра прогресса указывает на другую дилемму.
+// Запасной язык: для не-украинских — английский (если он полный), иначе русский.
 const SUPPORTED_LANGS = ['ru', 'en', 'uk', 'es', 'fr', 'ar'];
-const langHasDilemmasCache = new Map(); // lang -> { ok, at }
-async function resolveLang(lang) {
-  const wanted = SUPPORTED_LANGS.includes(lang) ? lang : 'ru';
-  if (wanted === 'ru' || wanted === 'en') return wanted;
-  const fallback = wanted === 'uk' ? 'ru' : 'en';
-  const cached = langHasDilemmasCache.get(wanted);
-  if (cached && Date.now() - cached.at < 60 * 1000) return cached.ok ? wanted : fallback;
+const langCompleteCache = new Map(); // lang -> { ok, at }
+async function countDilemmas(lang, pool) {
   const { count } = await supabaseAdmin
     .from('dilemmas')
     .select('id', { count: 'exact', head: true })
-    .eq('lang', wanted)
-    .eq('pool', 'main');
-  const ok = (count || 0) > 0;
-  langHasDilemmasCache.set(wanted, { ok, at: Date.now() });
-  return ok ? wanted : fallback;
+    .eq('lang', lang)
+    .eq('pool', pool);
+  return count || 0;
+}
+async function langIsComplete(lang) {
+  const cached = langCompleteCache.get(lang);
+  if (cached && Date.now() - cached.at < 60 * 1000) return cached.ok;
+  const [mainL, mainRu, secL, secRu] = await Promise.all([
+    countDilemmas(lang, 'main'), countDilemmas('ru', 'main'),
+    countDilemmas(lang, 'secret'), countDilemmas('ru', 'secret'),
+  ]);
+  const ok = mainL > 0 && mainL >= mainRu && secL >= secRu;
+  langCompleteCache.set(lang, { ok, at: Date.now() });
+  return ok;
+}
+async function resolveLang(lang) {
+  const wanted = SUPPORTED_LANGS.includes(lang) ? lang : 'ru';
+  if (wanted === 'ru') return 'ru';
+  if (await langIsComplete(wanted)) return wanted;
+  if (wanted !== 'uk' && wanted !== 'en' && await langIsComplete('en')) return 'en';
+  return 'ru';
+}
+
+// Секретные дилеммы у каждого языка — свои строки со своими id. Чтобы
+// открытая дилемма не «пропадала» при смене языка, сравниваем не id, а
+// order_index (он одинаков у всех переводов одной дилеммы).
+async function openedSecretIndexes(telegramId) {
+  const { data: opened } = await supabaseAdmin
+    .from('user_unlocked_secrets')
+    .select('dilemma_id')
+    .eq('telegram_id', telegramId);
+  const ids = (opened || []).map((r) => r.dilemma_id);
+  if (!ids.length) return new Set();
+  const { data: rows } = await supabaseAdmin
+    .from('dilemmas')
+    .select('order_index')
+    .in('id', ids)
+    .eq('pool', 'secret');
+  return new Set((rows || []).map((r) => r.order_index));
 }
 
 // ==== action: get ====
@@ -79,11 +113,8 @@ async function handleGet(req, res, telegramId) {
     .select('id', { count: 'exact', head: true })
     .eq('pool', 'secret')
     .eq('lang', activeLang);
-  const { count: secretOpenedCount } = await supabaseAdmin
-    .from('user_unlocked_secrets')
-    .select('dilemma_id', { count: 'exact', head: true })
-    .eq('telegram_id', telegramId);
-  const secretRemaining = Math.max(0, (secretTotal || 0) - (secretOpenedCount || 0));
+  const openedSecretIdx = await openedSecretIndexes(telegramId);
+  const secretRemaining = Math.max(0, (secretTotal || 0) - openedSecretIdx.size);
 
   const requestedIsAllowed = topic && topics.includes(topic);
   const activeTopic = requestedIsAllowed ? topic : topics[0];
@@ -211,6 +242,7 @@ async function handleChoose(req, res, telegramId) {
       pendingCheckpoints: newPendingCheckpoints,
       inCycle: newCompletedCount % CHECKPOINT_INTERVAL,
       cycleLength: CHECKPOINT_INTERVAL,
+      totalInTopic: total,
       checkpointEarned: newCheckpointEarned,
     },
   });
@@ -270,11 +302,7 @@ async function handleUnlockSecret(req, res, telegramId) {
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
   if ((user.secret_keys || 0) <= 0) return res.status(400).json({ error: 'Нет доступных ключей' });
 
-  const { data: alreadyOpened } = await supabaseAdmin
-    .from('user_unlocked_secrets')
-    .select('dilemma_id')
-    .eq('telegram_id', telegramId);
-  const openedIds = new Set((alreadyOpened || []).map((r) => r.dilemma_id));
+  const openedIdx = await openedSecretIndexes(telegramId);
 
   const { data: allSecrets } = await supabaseAdmin
     .from('dilemmas')
@@ -282,7 +310,7 @@ async function handleUnlockSecret(req, res, telegramId) {
     .eq('pool', 'secret')
     .eq('lang', activeLang);
 
-  const candidates = (allSecrets || []).filter((d) => !openedIds.has(d.id));
+  const candidates = (allSecrets || []).filter((d) => !openedIdx.has(d.order_index));
   if (!candidates.length) return res.status(400).json({ error: 'Все секретные дилеммы уже открыты' });
 
   const picked = candidates[Math.floor(Math.random() * candidates.length)];
@@ -335,11 +363,21 @@ async function handleChooseSecret(req, res, telegramId) {
 
   if (!owns) return res.status(403).json({ error: 'Эта дилемма ещё не открыта тобой' });
 
+  // id в user_unlocked_secrets мог быть выдан на другом языке — находим дилемму
+  // по её order_index на текущем языке.
+  const { data: ownedRow } = await supabaseAdmin
+    .from('dilemmas')
+    .select('order_index')
+    .eq('id', dilemmaId)
+    .eq('pool', 'secret')
+    .maybeSingle();
+  if (!ownedRow) return res.status(404).json({ error: 'Дилемма не найдена' });
+
   const { data: dilemma } = await supabaseAdmin
     .from('dilemmas')
     .select('*')
-    .eq('id', dilemmaId)
     .eq('pool', 'secret')
+    .eq('order_index', ownedRow.order_index)
     .eq('lang', activeLang)
     .maybeSingle();
 
